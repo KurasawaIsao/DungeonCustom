@@ -1,0 +1,21 @@
+{
+    "entries": [
+        {
+            "id": "Trap_Warp",
+            "weight": 5
+        },
+        {
+            "id": "Trap_Mud",
+            "weight": 1
+        },
+        {
+            "id": "Trap_Sleep",
+            "weight": 1
+        },
+        {
+            "id": "Trap_Arrow",
+            "weight": 1
+        }
+    ],
+    "tableId": "Table_Trap"
+}

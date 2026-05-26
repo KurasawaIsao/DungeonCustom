@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Kingyo",
+            "weight": 1
+        },
+      {
+        "id": "FishEye",
+        "weight": 1
+      },
+      {
+        "id": "Obie",
+        "weight": 1
+      }
+    ],
+    "tableId": "1~2"
+}

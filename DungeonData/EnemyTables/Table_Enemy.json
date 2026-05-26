@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Obie",
+            "weight": 13
+        },
+        {
+            "id": "Blood",
+            "weight": 1
+        },
+        {
+            "id": "PypeDevil",
+            "weight": 11
+        }
+    ],
+    "tableId": "Table_Enemy"
+}

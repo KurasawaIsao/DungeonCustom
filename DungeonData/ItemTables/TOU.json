@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Arrow",
+            "weight": 1
+        },
+        {
+            "id": "Staff_KnockBack",
+            "weight": 1
+        },
+        {
+            "id": "Stone",
+            "weight": 1
+        }
+    ],
+    "tableId": "TOU"
+}

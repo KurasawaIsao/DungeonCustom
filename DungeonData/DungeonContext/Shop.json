@@ -1,0 +1,24 @@
+﻿{
+    "dungeonId": "Shop",
+    "floors": [
+        {
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [],
+            "height": 50,
+            "itemTableId": "ALL",
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxItemCount": 9,
+            "maxRoomCount": 6,
+            "minRoomCount": 3,
+            "monsterHouseAppearanceRate": 0,
+            "shopAppearanceRate": 100,
+            "shopItemTableId": "Wand",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "useFixedRoom": false,
+            "width": 50
+        }
+    ]
+}

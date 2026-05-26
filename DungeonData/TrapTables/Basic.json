@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Trap_Mud",
+            "weight": 1
+        },
+        {
+            "id": "Trap_Knockback",
+            "weight": 1
+        },
+        {
+            "id": "Trap_Arrow",
+            "weight": 1
+        }
+    ],
+    "tableId": "Basic"
+}

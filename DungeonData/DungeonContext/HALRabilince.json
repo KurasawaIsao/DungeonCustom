@@ -1,0 +1,525 @@
+{
+    "blessOrCurseEnabled": true,
+    "dungeonId": "HALRabilince",
+    "floors": [
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 75,
+            "itemTableId": "Basic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 1,
+            "maxHeight": 60,
+            "maxItemCount": 8,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "Basic",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 75
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [
+                {
+                    "appearanceRate": 50,
+                    "path": "DungeonData\\EdittedRoomData\\shrine.json"
+                },
+                {
+                    "appearanceRate": 15,
+                    "path": "DungeonData\\EdittedRoomData\\BradRoom.json"
+                }
+            ],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "Basic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 4,
+            "maxHeight": 60,
+            "maxItemCount": 7,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "Basic",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": false,
+            "trapTableId": "Basic",
+            "useFixedRoom": true,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "3~4",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 5,
+            "maxHeight": 60,
+            "maxItemCount": 7,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "3~4",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                },
+                {
+                    "type": 7,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 5,
+            "maxHeight": 60,
+            "maxItemCount": 8,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "5",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 100,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 5,
+            "maxHeight": 60,
+            "maxItemCount": 6,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 100
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "6~7",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 100,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 5,
+            "maxHeight": 60,
+            "maxItemCount": 8,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 100
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "6~7",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "Epic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 6,
+            "maxHeight": 60,
+            "maxItemCount": 7,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "Epic",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "8~9",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 70,
+            "itemTableId": "Epic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 7,
+            "maxHeight": 60,
+            "maxItemCount": 7,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "Epic",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 70
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "8~9",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 120,
+            "itemTableId": "Epic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 8,
+            "maxHeight": 60,
+            "maxItemCount": 5,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "Epic",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 120
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "10~11",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 120,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 8,
+            "maxHeight": 60,
+            "maxItemCount": 5,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 120
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "10~11",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 120,
+            "itemTableId": "ALL",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 8,
+            "maxHeight": 60,
+            "maxItemCount": 5,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 120
+        }
+    ],
+    "generationSeed": 0,
+    "unidentifiedMode": 0,
+    "useGenerationSeed": false
+}

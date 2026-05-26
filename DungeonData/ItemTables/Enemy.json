@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Herb_Heal20",
+            "weight": 0
+        },
+        {
+            "id": "Food_Bread",
+            "weight": 1
+        },
+        {
+            "id": "Food_BigBread",
+            "weight": 1
+        }
+    ],
+    "tableId": "Enemy"
+}

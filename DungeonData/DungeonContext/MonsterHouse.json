@@ -1,0 +1,24 @@
+﻿{
+    "dungeonId": "MonsterHouse",
+    "floors": [
+        {
+            "enemyTableId": "ALL",
+            "fixedRoomPaths": [],
+            "height": 90,
+            "itemTableId": "ALL",
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxItemCount": 0,
+            "maxRoomCount": 10,
+            "minRoomCount": 5,
+            "monsterHouseAppearanceRate": 100,
+            "shopAppearanceRate": 100,
+            "shopItemTableId": "ALL",
+            "shopTrapDensity": 80,
+            "spawnAllFixedRooms": true,
+            "useFixedRoom": false,
+            "width": 90
+        }
+    ]
+}

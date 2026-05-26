@@ -1,0 +1,25 @@
+{
+    "entries": [
+        {
+            "id": "SleepHerb",
+            "weight": 1
+        },
+        {
+            "id": "ConfuseHerb",
+            "weight": 1
+        },
+        {
+            "id": "ParalysisHerb",
+            "weight": 1
+        },
+        {
+            "id": "PoisonHerb",
+            "weight": 1
+        },
+        {
+            "id": "AntidoteHerb",
+            "weight": 1
+        }
+    ],
+    "tableId": "Status"
+}

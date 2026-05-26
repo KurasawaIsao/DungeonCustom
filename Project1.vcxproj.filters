@@ -1,0 +1,891 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="ソース ファイル">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="リソース ファイル">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="ソース ファイル\shader">
+      <UniqueIdentifier>{e55b1a53-1324-425b-8c17-4246e2cf50f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\imgui">
+      <UniqueIdentifier>{c7c50140-954c-4b7d-90d8-86a365fd0644}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\imgui">
+      <UniqueIdentifier>{07d2f80f-7eb0-4184-ad9a-9ae59ca4b8d3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene">
+      <UniqueIdentifier>{8266cee0-7f69-41c4-8430-208bef660b3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Map">
+      <UniqueIdentifier>{63bb698e-199b-4600-9eee-d9c54fd1bd09}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Map">
+      <UniqueIdentifier>{8e931445-1f76-4304-a079-722d7a68584a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\MapObject">
+      <UniqueIdentifier>{ee314f5d-30e2-486f-9002-3d13e658d55b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\MapObject">
+      <UniqueIdentifier>{0d0ab64e-b735-4954-aea7-fac35c3ea2ca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Other">
+      <UniqueIdentifier>{652fe187-b22b-487e-9abf-50751ca9a43e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Other">
+      <UniqueIdentifier>{cc84c73b-34a3-478a-8a32-0d28eb3391ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\UI">
+      <UniqueIdentifier>{e9489086-da04-477c-80a1-62af8c6f7906}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Unit">
+      <UniqueIdentifier>{f52618ac-9ea1-4a89-bb54-4c4949044e4e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Unit">
+      <UniqueIdentifier>{997332a1-9bc8-4b56-8602-caeccd53c652}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\UI">
+      <UniqueIdentifier>{ab76e7bf-7d96-453c-940a-9c2d45c9527e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Item">
+      <UniqueIdentifier>{c3ad1708-4729-4e1c-9af3-b409efc31b44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Json">
+      <UniqueIdentifier>{208eb60e-2ffd-45a7-ad4a-b5baede32348}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Model">
+      <UniqueIdentifier>{da0ba330-08ac-4fd1-9bd8-36c68b14a952}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Model">
+      <UniqueIdentifier>{d2c0772f-38d0-43f6-a967-b15cb433659b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Vector">
+      <UniqueIdentifier>{9f5d9b91-896e-4a38-8ce3-0ea1b18596f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Enemy">
+      <UniqueIdentifier>{ed1b81fd-1b47-423b-9199-5b0a5be17eec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Scene">
+      <UniqueIdentifier>{dbf40e73-a459-4e13-bd6a-d5f2e256c40b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Particle">
+      <UniqueIdentifier>{4ee5ab83-1578-42ac-8cc3-8398420b5a4c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Editor">
+      <UniqueIdentifier>{9b4e5efd-90e5-4abc-830a-c721f7a49e05}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Particle">
+      <UniqueIdentifier>{76f93350-3f94-4438-97e7-26b38f4fdfc2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Sound">
+      <UniqueIdentifier>{5c1c74fd-7bfb-447b-9fb8-b19bfdd05941}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Sound">
+      <UniqueIdentifier>{31100910-95a2-4dd8-bd79-9663e02ffb82}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Trap">
+      <UniqueIdentifier>{c596a47d-6428-43d7-b905-a431a995b506}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Editor">
+      <UniqueIdentifier>{b799c526-b677-4f48-bc1d-64e0dcf8b2c0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Effects">
+      <UniqueIdentifier>{12ce0b55-c7b7-439a-8976-8ba3a152c0d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\Generator">
+      <UniqueIdentifier>{d625461a-4b0a-441a-97c1-0c144489d72a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Generator">
+      <UniqueIdentifier>{e53c81c4-74f8-4438-aeec-2fb518b09e86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Item">
+      <UniqueIdentifier>{c630ec7f-7979-4eac-a1e3-62b311fb1a75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\UnitAI">
+      <UniqueIdentifier>{7d06fbf0-7810-4012-aa89-0d88123f94fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Enemy">
+      <UniqueIdentifier>{7cd8ff51-f48d-4db6-9235-ae2aa4d1628f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\UnitAI">
+      <UniqueIdentifier>{7a65c688-cb12-40bc-82ad-8165ff865aca}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="imgui.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_demo.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_draw.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_impl_dx11.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_impl_win32.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_tables.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui_widgets.cpp">
+      <Filter>ソース ファイル\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonScene.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Title.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="CorridorGenerator.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="MapData.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Time.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="MapManager.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="MessageLog.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="MiniMapRenderer.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="VisionMaskRenderer.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>ソース ファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="SplashParticle.cpp">
+      <Filter>ソース ファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleCharacter.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="WarpParticle.cpp">
+      <Filter>ソース ファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="Object3D.cpp">
+      <Filter>ソース ファイル\MapObject</Filter>
+    </ClCompile>
+    <ClCompile Include="TitleUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Fade.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfirmWindow.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Unit.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitManager.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemDataBase.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="Enemy.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="PlayerInventoryUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemIdentificationManager.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="MapRenderer.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonDataIO.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemTableIO.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemIDConverter.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="JsonIO.cpp">
+      <Filter>ソース ファイル\Json</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorScene.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemInstanceIO.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneDataRenference.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemTableDatabase.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="MapLoader.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
+    <ClCompile Include="AnimationModel.cpp">
+      <Filter>ソース ファイル\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelRenderer.cpp">
+      <Filter>ソース ファイル\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Vector2Int.h">
+      <Filter>ヘッダー ファイル\Vector</Filter>
+    </ClCompile>
+    <ClCompile Include="Easing.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Input.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="LightManager.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Manager.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Polygon.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Skydorm.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="BasicPatrolAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="BerserkAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="ChaseAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="EnemyDatabase.cpp">
+      <Filter>ソース ファイル\Enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="TurnManager.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="EnemyTableIO.cpp">
+      <Filter>ソース ファイル\Enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="EnemyTableDatabase.cpp">
+      <Filter>ソース ファイル\Enemy</Filter>
+    </ClCompile>
+    <ClCompile Include="FloorTransitionUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonEndingUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="EffectBillboard.cpp">
+      <Filter>ソース ファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="EffectManager.cpp">
+      <Filter>ソース ファイル\Particle</Filter>
+    </ClCompile>
+    <ClCompile Include="audio.cpp">
+      <Filter>ソース ファイル\Sound</Filter>
+    </ClCompile>
+    <ClCompile Include="TrapDataBase.cpp">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClCompile>
+    <ClCompile Include="TrapTableDatabase.cpp">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClCompile>
+    <ClCompile Include="FlyingObject.cpp">
+      <Filter>ソース ファイル\MapObject</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="Ally.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="UnitMovementPlanner.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="RecruitManager.cpp">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClCompile>
+    <ClCompile Include="PotUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyboardUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="KeepDistAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="Trap.cpp">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClCompile>
+    <ClCompile Include="ItemInstance.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="Item.cpp">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClCompile>
+    <ClCompile Include="Shrine.cpp">
+      <Filter>ソース ファイル\MapObject</Filter>
+    </ClCompile>
+    <ClCompile Include="MapEditor.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClCompile>
+    <ClCompile Include="MapObjectPlacer.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="MapGeometryEditor.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="DungeonStructureEditor.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="MapFileManagement.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="SpawnTableEditor.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="SpawnTableIO.cpp">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClCompile>
+    <ClCompile Include="RunAwayAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="ShopUnitAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+    <ClCompile Include="ShopUI.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UIRenderer.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="UITextRenderer.cpp">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="MapGenerator.cpp">
+      <Filter>ソース ファイル\Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratorPlacer.cpp">
+      <Filter>ソース ファイル\Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="SpecialRoomGenerator.cpp">
+      <Filter>ソース ファイル\Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="RoomGenerator.cpp">
+      <Filter>ソース ファイル\Generator</Filter>
+    </ClCompile>
+    <ClCompile Include="WhimAI.cpp">
+      <Filter>ソース ファイル\UnitAI</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="imconfig.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_impl_dx11.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_internal.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui_impl_win32.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imstb_rectpack.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imstb_textedit.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imstb_truetype.h">
+      <Filter>ヘッダー ファイル\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Room.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="Title.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="CorridorGenarator.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="MapData.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="MapManager.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonScene.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Time.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="MessageLog.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="TurnManager.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="UnitManager.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="MiniMapRenderer.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="VisionMaskRenderer.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>ヘッダー ファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="SplashParticle.h">
+      <Filter>ヘッダー ファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleCharacter.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpParticle.h">
+      <Filter>ヘッダー ファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="Object3D.h">
+      <Filter>ヘッダー ファイル\MapObject</Filter>
+    </ClInclude>
+    <ClInclude Include="TitleUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Fade.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="ConfirmWindow.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Unit.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemData.h">
+      <Filter>ソース ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="HealEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="FoodEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="PlayerInventoryUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="MapRenderer.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="LightManager.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonData.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="Enemy.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonDataIO.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="JsonIO.h">
+      <Filter>ソース ファイル\Json</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorScene.h">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneDataReference.h">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelRenderer.h">
+      <Filter>ヘッダー ファイル\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="AnimationModel.h">
+      <Filter>ヘッダー ファイル\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Component.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Easing.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector2.h">
+      <Filter>ヘッダー ファイル\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector3.h">
+      <Filter>ヘッダー ファイル\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="Vector4.h">
+      <Filter>ヘッダー ファイル\Vector</Filter>
+    </ClInclude>
+    <ClInclude Include="GameObject.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="GameRandom.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Input.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Manager.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Polygon.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Skydorm.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="UnitAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="BasicPatrolAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="BerserkAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="ChaseAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyData.h">
+      <Filter>ソース ファイル\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="ImguiObject.h">
+      <Filter>ソース ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="GameUIObject.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="RayUtil.h">
+      <Filter>ヘッダー ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="FloorTransitionUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonEndingUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectBase.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="StatusEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="CurePoisonEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="PoisonEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="MudTrapEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="RottenFoodEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectBillboard.h">
+      <Filter>ヘッダー ファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectManager.h">
+      <Filter>ヘッダー ファイル\Particle</Filter>
+    </ClInclude>
+    <ClInclude Include="audio.h">
+      <Filter>ヘッダー ファイル\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="SoundEffect.h">
+      <Filter>ヘッダー ファイル\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="TrapDataBase.h">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClInclude>
+    <ClInclude Include="TrapTableDatabase.h">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClInclude>
+    <ClInclude Include="TrapData.h">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClInclude>
+    <ClInclude Include="WarpEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="FlyingObject.h">
+      <Filter>ヘッダー ファイル\MapObject</Filter>
+    </ClInclude>
+    <ClInclude Include="KnockbackEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="SkillData.h">
+      <Filter>ソース ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="DamageEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="Ally.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="UnitMovementPlanner.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="RecruitManager.h">
+      <Filter>ヘッダー ファイル\Unit</Filter>
+    </ClInclude>
+    <ClInclude Include="PotUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="KeyboardUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="KeepDistAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="Trap.h">
+      <Filter>ソース ファイル\Trap</Filter>
+    </ClInclude>
+    <ClInclude Include="MapLoader.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
+    </ClInclude>
+    <ClInclude Include="Shrine.h">
+      <Filter>ヘッダー ファイル\MapObject</Filter>
+    </ClInclude>
+    <ClInclude Include="MapObject.h">
+      <Filter>ヘッダー ファイル\MapObject</Filter>
+    </ClInclude>
+    <ClInclude Include="MapObjectPlacer.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="MapEditor.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorMode.h">
+      <Filter>ソース ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonStructureEditor.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="MapFileManagement.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="MapGeometryEditor.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="SpawnTableEditor.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="SpawnTableIO.h">
+      <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="RunAwayAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="ShopUnitAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
+    </ClInclude>
+    <ClInclude Include="ShopUI.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UIRenderer.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="UITextRenderer.h">
+      <Filter>ヘッダー ファイル\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="MapGenerator.h">
+      <Filter>ヘッダー ファイル\Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="GeneraterPlacer.h">
+      <Filter>ヘッダー ファイル\Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="SpecialRoomGenerater.h">
+      <Filter>ヘッダー ファイル\Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="RoomGenerator.h">
+      <Filter>ヘッダー ファイル\Generator</Filter>
+    </ClInclude>
+    <ClInclude Include="SummonEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="FlyingObjectEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="DigEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="EffectTargeting.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemTableIO.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="Item.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemDataBase.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyDatabase.h">
+      <Filter>ヘッダー ファイル\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemIDConverter.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemIdentificationManager.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemInstance.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemInstanceIO.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="ItemTableDataBase.h">
+      <Filter>ヘッダー ファイル\Item</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyModelManager.h">
+      <Filter>ヘッダー ファイル\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyTableDatabase.h">
+      <Filter>ヘッダー ファイル\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="EnemyTableIO.h">
+      <Filter>ヘッダー ファイル\Enemy</Filter>
+    </ClInclude>
+    <ClInclude Include="AttackDamageEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="ChangeAIEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="StoneEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="WhimAI.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="SpeedChangeEffect.h">
+      <Filter>ソース ファイル\Effects</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugTrace.h">
+      <Filter>ソース ファイル\Other</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="shader\unlitTextureVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\unlitTexturePS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\pixelLightingBlinnPhongPS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\pixelLightingBlinnPhongVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\unlitColorVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\unlitColorPS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\MinMapPS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\MiniMapVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\FilterPS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\FilterVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ParticlePS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ParticleVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ToonPS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ToonVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ToonOutlinePS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+    <FxCompile Include="shader\ToonOutlineVS.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="nlohmann_json.natvis">
+      <Filter>ソース ファイル\Other</Filter>
+    </Natvis>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shader\common.hlsl">
+      <Filter>ソース ファイル\shader</Filter>
+    </None>
+  </ItemGroup>
+</Project>

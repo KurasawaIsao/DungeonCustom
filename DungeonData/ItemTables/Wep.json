@@ -1,0 +1,13 @@
+{
+    "entries": [
+        {
+            "id": "Sh_IronShield",
+            "weight": 1
+        },
+        {
+            "id": "IronSword",
+            "weight": 1
+        }
+    ],
+    "tableId": "Wep"
+}

@@ -1,0 +1,17 @@
+{
+    "entries": [
+        {
+            "id": "Staff_Warp",
+            "weight": 1
+        },
+        {
+            "id": "Staff_KnockBack",
+            "weight": 2
+        },
+        {
+            "id": "Staff_Paralysis",
+            "weight": 1
+        }
+    ],
+    "tableId": "Wand"
+}

@@ -1,0 +1,25 @@
+{
+    "entries": [
+        {
+            "id": "Herb_Heal20",
+            "weight": 1
+        },
+        {
+            "id": "Pot_Storage",
+            "weight": 1
+        },
+        {
+            "id": "Food_Bread",
+            "weight": 1
+        },
+        {
+            "id": "Arrow",
+            "weight": 1
+        },
+        {
+            "id": "Stone",
+            "weight": 1
+        }
+    ],
+    "tableId": "Basic"
+}

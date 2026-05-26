@@ -1,0 +1,49 @@
+{
+    "entries": [
+        {
+            "id": "Kingyo",
+            "weight": 1
+        },
+        {
+            "id": "Armor",
+            "weight": 1
+        },
+        {
+            "id": "BlueJoker",
+            "weight": 1
+        },
+        {
+            "id": "FishEye",
+            "weight": 1
+        },
+        {
+            "id": "Uonome",
+            "weight": 1
+        },
+        {
+            "id": "Dark",
+            "weight": 1
+        },
+        {
+            "id": "KodamaJelly",
+            "weight": 1
+        },
+        {
+            "id": "EightEye",
+            "weight": 1
+        },
+        {
+            "id": "PypeDevil",
+            "weight": 1
+        },
+        {
+            "id": "Tormas",
+            "weight": 1
+        },
+        {
+            "id": "Hitoride",
+            "weight": 1
+        }
+    ],
+    "tableId": "ALL"
+}

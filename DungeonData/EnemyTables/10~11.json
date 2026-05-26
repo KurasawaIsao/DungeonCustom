@@ -1,0 +1,21 @@
+{
+    "entries": [
+        {
+            "id": "Dark",
+            "weight": 1
+        },
+        {
+            "id": "Armor",
+            "weight": 1
+        },
+        {
+            "id": "KodamaJelly",
+            "weight": 1
+        },
+        {
+            "id": "EightEye",
+            "weight": 1
+        }
+    ],
+    "tableId": "10~11"
+}

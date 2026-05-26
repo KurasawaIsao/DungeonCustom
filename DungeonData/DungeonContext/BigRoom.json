@@ -1,0 +1,74 @@
+{
+    "blessOrCurseEnabled": true,
+    "dungeonId": "BigRoom",
+    "floors": [
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "ALL",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 100,
+            "itemTableId": "Epic",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 0
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                },
+                {
+                    "type": 7,
+                    "weight": 100
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxHeight": 60,
+            "maxItemCount": 0,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 100,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 0,
+            "shopItemTableId": "",
+            "shopTrapDensity": 40,
+            "spawnAllFixedRooms": true,
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 100
+        }
+    ],
+    "generationSeed": 0,
+    "unidentifiedMode": 0,
+    "useGenerationSeed": false
+}

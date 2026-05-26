@@ -1,0 +1,13 @@
+{
+    "entries": [
+        {
+            "id": "Food_Bread",
+            "weight": 1
+        },
+        {
+            "id": "Pot_Storage",
+            "weight": 1
+        }
+    ],
+    "tableId": "bread"
+}

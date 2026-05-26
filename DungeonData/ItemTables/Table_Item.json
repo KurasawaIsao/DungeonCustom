@@ -1,0 +1,21 @@
+{
+    "entries": [
+        {
+            "id": "Herb_Heal20",
+            "weight": 1
+        },
+        {
+            "id": "Staff_AIRunAway",
+            "weight": 1
+        },
+        {
+            "id": "PoisonHerb",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Slow",
+            "weight": 1
+        }
+    ],
+    "tableId": "Table_Item"
+}
