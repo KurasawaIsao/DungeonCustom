@@ -200,7 +200,7 @@ void Ally::UpdateUnit() {
 void Ally::UpdateActionPhase()
 {
     // –¡•û‚ÌUŒ‚/“Á‹ZƒtƒF[ƒYB
-    // —×Ú“G‚ªŒ©‚¦‚Ä‚¢‚éŽž‚¾‚¯UŒ‚‚µAWait/Retreat ‚È‚Ç‚Ì•ûj‚Å‚Ís“®‚ðÁ”ï‚µ‚ÄˆÚ“®‘¤‚Ö‰ñ‚·B
+    // ’ÊíUŒ‚‚Í—×Ú“G‚¾‚¯‚ð‘ÎÛ‚É‚µA‘Ò‹@’†‚Ì“Á‹Z‚ÍˆÚ“®‚¹‚¸Ž‹ŠE“à‚Ì“G‚É‚àŽg‚¦‚é‚æ‚¤‚É‚·‚éB
     if (IsActionPhaseChecked()) return;
     MarkActionPhaseChecked();
     SetTurnConsumeType(TurnConsumeType::Action);
@@ -237,22 +237,30 @@ void Ally::UpdateActionPhase()
         return;
     }
     auto enemies = UnitManager::Instance()->GetAdjacentEnemies(*this);
-    Enemy* target = nullptr;
+    Enemy* adjacentTarget = nullptr;
     for (Enemy* enemy : enemies) {
         if (IsAllyHostileEnemy(enemy)) {
-            target = enemy;
+            adjacentTarget = enemy;
             break;
         }
     }
-    if (!target) return;
-    if (m_AIMode != AllyAIMode::NoSkill && chaseAI && chaseAI->ExecuteSkill(*this, target)) {
+
+    Enemy* skillTarget = adjacentTarget;
+    if (!skillTarget && m_AIMode == AllyAIMode::Wait) {
+        // ‘Ò‹@AI‚Í‚»‚Ìê‚©‚ç“®‚©‚È‚¢‚½‚ßAŽ‹ŠE“à‚Ì“G‚ð“Á‹Z‚¾‚¯‚ÌŒó•â‚Æ‚µ‚ÄE‚¤B
+        skillTarget = FindVisibleEnemy(MapManager::Instance()->GetCurrentMap());
+    }
+
+    if (m_AIMode != AllyAIMode::NoSkill && skillTarget && chaseAI && chaseAI->ExecuteSkill(*this, skillTarget)) {
         EndTurn();
         if (!CanActThisTurn()) ConsumeAllMoves();
         return;
     }
 
+    if (!adjacentTarget) return;
+
     int budgetBefore = GetActionBudget();
-    m_FacingDir = target->GetGridPos() - GetGridPos();
+    m_FacingDir = adjacentTarget->GetGridPos() - GetGridPos();
     Attack();
     if (GetActionBudget() == budgetBefore) EndTurn();
 }
