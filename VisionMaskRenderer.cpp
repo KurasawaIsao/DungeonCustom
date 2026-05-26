@@ -613,7 +613,8 @@ void VisionMaskRenderer::Draw()
     Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
     if (!map || !player) return;
 
-    const Vector2Int centerPos = hasFocusOverride ? focusGridPos : player->GetGridPos();
+    // プレイヤー移動中は開始マスを中心にして、視界マスクの切り替わりを到着後に遅らせる。
+    const Vector2Int centerPos = hasFocusOverride ? focusGridPos : player->GetVisionGridPos();
     const Vector3 centerWorld = GridToMaskWorld(centerPos);
 
     if (map->GetRoomAt(centerPos) != nullptr || IsRoomLikeTile(map, centerPos))

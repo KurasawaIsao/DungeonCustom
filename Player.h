@@ -127,6 +127,7 @@ public:
     int GetDEF() const override;
     bool IsInView(const Vector2Int& targetGridPos) const;
     int GetViewDistance() const;
+    Vector2Int GetVisionGridPos() const;
     bool IsStairConfirming() const;
     std::vector<InventoryItem>& GetItems() { return m_Items; }
     int GetEquippedWeaponIndex() const { return m_EquippedWeaponIndex; }

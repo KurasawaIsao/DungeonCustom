@@ -74,6 +74,7 @@ protected:
     MoveState m_MoveState = MoveState::Idle;
 
     Vector2Int m_MoveTarget;
+    Vector2Int m_MoveStartGridPos;
     Vector3 m_MoveStartPos;
     Vector3 m_MoveEndPos;
 
@@ -263,6 +264,7 @@ public:
     void SetGridPos(const Vector2Int& g);
     bool RepairInvalidGridPos(const char* context);
     const Vector2Int& GetGridPos() const { return m_GridPos; }
+    const Vector2Int& GetMoveStartGridPos() const { return m_MoveStartGridPos; }
     void SetCurrentDir(const Vector2Int& g) { m_CurrentDir = g; }
 
     void UpdateFacingRotation();

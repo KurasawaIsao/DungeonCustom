@@ -697,13 +697,20 @@ bool Player::RestoreStrengthToMax()
 void Player::ResetPosition(Vector2Int gp) 
 {
     m_PreviousGridPos = gp;
-    m_GridPos = m_MoveTarget = gp; m_Position = Vector3(gp.x * TILE_DISTANCE, 0, gp.y * TILE_DISTANCE); 
+    m_GridPos = m_MoveTarget = gp; m_MoveStartGridPos = gp; m_Position = Vector3(gp.x * TILE_DISTANCE, 0, gp.y * TILE_DISTANCE); 
     m_StairConfirmed = false;
 }
+Vector2Int Player::GetVisionGridPos() const
+{
+    // 移動演出中は移動開始マスを視界/LODの中心にして、到着後に新しい視界へ切り替える。
+    return IsAnimatingMove() ? GetMoveStartGridPos() : m_GridPos;
+}
+
 bool Player::IsInView(const Vector2Int& tp) const 
 {
-    const int dx = std::abs(m_GridPos.x - tp.x);
-    const int dy = std::abs(m_GridPos.y - tp.y);
+    const Vector2Int visionPos = GetVisionGridPos();
+    const int dx = std::abs(visionPos.x - tp.x);
+    const int dy = std::abs(visionPos.y - tp.y);
 
     MapManager* mapManager = MapManager::Instance();
     if (mapManager && mapManager->GetCurrentFloorData().playerVisionClear) {
@@ -712,7 +719,7 @@ bool Player::IsInView(const Vector2Int& tp) const
 
     MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
     if (map) {
-        const Room* playerRoom = map->GetRoomAt(m_GridPos);
+        const Room* playerRoom = map->GetRoomAt(visionPos);
         if (playerRoom && playerRoom == map->GetRoomAt(tp)) {
             return true;
         }

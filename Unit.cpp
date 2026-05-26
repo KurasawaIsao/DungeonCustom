@@ -141,6 +141,7 @@ void Unit::SetInitGridPos(const Vector2Int& g)
 {
     m_GridPos = g;
     m_LastValidGridPos = g;
+    m_MoveStartGridPos = g;
     m_Position = GridToWorld(g);
 }
 
@@ -151,6 +152,7 @@ void Unit::SetGridPos(const Vector2Int& g)
 
     m_GridPos = g;
     m_LastValidGridPos = g;
+    m_MoveStartGridPos = g;
     m_Position = GridToWorld(g);
 
 }
@@ -167,6 +169,7 @@ bool Unit::RepairInvalidGridPos(const char* /*context*/)
     if (!map->IsInBounds(m_LastValidGridPos) || !map->IsWalkable(m_LastValidGridPos)) return false;
 
     m_GridPos = m_LastValidGridPos;
+    m_MoveStartGridPos = m_GridPos;
     m_Position = GridToWorld(m_GridPos);
     m_MoveTarget = m_GridPos;
     m_MoveStartPos = m_Position;
@@ -558,6 +561,8 @@ void Unit::StartMove(const Vector2Int& target, float moveTime)
         return;
     }
 
+    // 視界/LODは移動演出が終わるまで移動開始マスを基準にする。
+    m_MoveStartGridPos = m_GridPos;
     m_MoveTarget = target;
     m_MoveStartPos = m_Position;
     m_MoveEndPos = GridToWorld(target);
@@ -672,6 +677,8 @@ void Unit::StartKnockback(const Vector2Int& target, int impactDamage, Unit* atta
     m_KnockbackCollisionUnit = (collisionUnit != this) ? collisionUnit : nullptr;
     m_KnockbackCollisionDamage = m_KnockbackCollisionUnit ? (std::max)(0, collisionDamage) : 0;
 
+    // 吹き飛び中も視界/LODは移動開始マスで固定する。
+    m_MoveStartGridPos = m_GridPos;
     m_MoveTarget = target;
     m_MoveStartPos = m_Position;
     m_MoveEndPos = GridToWorld(target);
@@ -711,6 +718,7 @@ void Unit::StartKnockback(const Vector2Int& target, int impactDamage, Unit* atta
 
 void Unit::StartSummonAppear(float duration)
 {
+    m_MoveStartGridPos = m_GridPos;
     m_MoveTarget = m_GridPos;
     m_MoveEndPos = GridToWorld(m_GridPos);
     m_MoveStartPos = m_MoveEndPos;
@@ -747,6 +755,8 @@ void Unit::StartWarp(const Vector2Int& targetGrid)
     if (map && (!map->IsInBounds(targetGrid) || !map->IsWalkable(targetGrid))) {
         return;
     }
+    // ワープ中も到着演出が終わるまで視界/LODの基準を移動前に残す。
+    m_MoveStartGridPos = m_GridPos;
     m_MoveTarget = targetGrid;
     m_MoveStartPos = m_Position; // 現在の世界座標から開始
     m_MoveEndPos = GridToWorld(targetGrid); // 目的地の世界座標

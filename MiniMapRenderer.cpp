@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Enemy.h"
 #include "Ally.h"
+#include "Item.h"
 #include "Input.h"
 #include "Time.h"
 #include "manager.h"
@@ -83,7 +84,7 @@ void MiniMapRenderer::CreateMapSampler()
 {
     if (mapSampler) return;
 
-    // Minimap pixels are tile data, so use point sampling and clamp to avoid thin wrap bleed.
+    // ミニマップはタイル単位で表示するため、にじみ防止用にポイントサンプリングとクランプを使う。
     D3D11_SAMPLER_DESC desc{};
     desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
     desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -195,7 +196,7 @@ void MiniMapRenderer::SetLookMode(bool enabled)
         int bottom = 0;
         if (GetPlayerRoomBounds(left, top, right, bottom))
         {
-            // Start Tab mode from the room center so a large current room is visible at once.
+            
             lookCenter = Vector2Int((left + right) / 2, (top + bottom) / 2);
         }
         ClampLookCenterToDiscoveredBounds();
@@ -262,8 +263,17 @@ void MiniMapRenderer::ClampLookCenterToDiscoveredBounds()
         return;
     }
 
-    lookCenter.x = (std::max)(left, (std::min)(right - 1, lookCenter.x));
-    lookCenter.y = (std::max)(top, (std::min)(bottom - 1, lookCenter.y));
+    const int halfW = texW / 2;
+    const int halfH = texH / 2;
+
+    // 探索済み範囲の一部が画面内に残る範囲で、Tab視点を自由に動かせるようにする。
+    const int minX = (std::max)(0, left - halfW);
+    const int maxX = (std::min)(mapW - 1, right - 1 + halfW);
+    const int minY = (std::max)(0, top - halfH);
+    const int maxY = (std::min)(mapH - 1, bottom - 1 + halfH);
+
+    lookCenter.x = (std::max)(minX, (std::min)(maxX, lookCenter.x));
+    lookCenter.y = (std::max)(minY, (std::min)(maxY, lookCenter.y));
 }
 
 void MiniMapRenderer::MarkDiscovered(int x, int y)
@@ -359,7 +369,7 @@ void MiniMapRenderer::RevealConnectedCorridors(const Vector2Int& center, int vie
         queue.push_back({ p, step });
     };
 
-    // Seed from every corridor tile currently visible so corridor maps do not lose small gaps.
+    // 現在見えている通路を起点にして、通路マップに小さな欠けが出ないよう補完する。
     for (int y = center.y - revealRadius; y <= center.y + revealRadius; ++y)
     {
         for (int x = center.x - revealRadius; x <= center.x + revealRadius; ++x)
@@ -395,7 +405,8 @@ void MiniMapRenderer::RevealFromPlayer()
     Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
     if (!player) return;
 
-    RevealFromPosition(player->GetGridPos(), player->GetViewDistance());
+    // 移動演出中は移動開始マスから探索範囲を更新し、到着後に新しい範囲を開く。
+    RevealFromPosition(player->GetVisionGridPos(), player->GetViewDistance());
 }
 
 void MiniMapRenderer::RevealFromPosition(const Vector2Int& center, int viewDistance)
@@ -496,7 +507,7 @@ bool MiniMapRenderer::GetPlayerRoomBounds(int& outLeft, int& outTop, int& outRig
     const Vector2Int pos = room.GetPosition();
     const Vector2Int size = room.GetSize();
 
-    // Keep one tile of margin so entrances at the room edge are not clipped in Tab mode.
+    // Tab表示で部屋端の入口が切れないよう、部屋の周囲に1マス余白を持たせる。
     outLeft = (std::max)(0, pos.x - 1);
     outTop = (std::max)(0, pos.y - 1);
     outRight = (std::min)(mapW, pos.x + size.x + 1);
@@ -585,6 +596,34 @@ void MiniMapRenderer::BuildDynamicLayer()
     if (!unitManager) return;
 
     Player* player = unitManager->GetPlayer();
+    if (map)
+    {
+        const Vector2Int topLeft = GetViewportTopLeft();
+        for (int y = 0; y < texH; ++y)
+        {
+            for (int x = 0; x < texW; ++x)
+            {
+                const int mapX = topLeft.x + x;
+                const int mapY = topLeft.y + y;
+                if (!player || !map->IsInside(mapX, mapY)) continue;
+                if (!showFullMap)
+                {
+                    if (!IsDiscovered(mapX, mapY)) continue;
+
+                    // アイテムは敵と同じ表示条件にそろえる。
+                    const Room* playerRoom = map->GetRoomAt(player->GetGridPos());
+                    const Room* itemRoom = map->GetRoomAt(Vector2Int(mapX, mapY));
+                    const bool revealSameRoomItemInLookMode = lookMode && playerRoom && playerRoom == itemRoom;
+                    if (!revealSameRoomItemInLookMode && !player->IsInView(Vector2Int(mapX, mapY))) continue;
+                }
+
+                if (dynamic_cast<Item*>(map->GetObjectAt(mapX, mapY)))
+                {
+                    pixels[y * texW + x] = 0xFFFFFF00;
+                }
+            }
+        }
+    }
     if (player)
     {
         int vx = 0;
@@ -604,7 +643,16 @@ void MiniMapRenderer::BuildDynamicLayer()
         if (map && !map->IsInBounds(ep)) {
             continue;
         }
-        if (!showFullMap && (!IsDiscovered(ep.x, ep.y) || !player->IsInView(ep))) continue;
+        if (!showFullMap)
+        {
+            if (!IsDiscovered(ep.x, ep.y)) continue;
+
+            // Tab中は、プレイヤーと同じ部屋にいる敵だけ視界制限を外して表示する。
+            const Room* playerRoom = map ? map->GetRoomAt(player->GetGridPos()) : nullptr;
+            const Room* enemyRoom = map ? map->GetRoomAt(ep) : nullptr;
+            const bool revealSameRoomEnemyInLookMode = lookMode && playerRoom && playerRoom == enemyRoom;
+            if (!revealSameRoomEnemyInLookMode && !player->IsInView(ep)) continue;
+        }
 
         int vx = 0;
         int vy = 0;

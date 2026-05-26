@@ -214,11 +214,15 @@ void Enemy::Draw()
     if (!m_AnimationModel)return;
     Player* player = UnitManager::Instance()->GetPlayer();
     if (player) {
-        bool visibleToPlayer = player->IsInView(GetGridPos());
-        if (!visibleToPlayer && IsAnimatingMove()) {
+        bool visibleToPlayer = false;
+        if (IsAnimatingMove()) {
+            // 移動中は確定済みの到達グリッドではなく、開始位置と現在の見た目位置で視界判定する。
             visibleToPlayer =
                 player->IsInView(WorldToGridForView(m_MoveStartPos)) ||
                 player->IsInView(WorldToGridForView(GetVisualPosition()));
+        }
+        else {
+            visibleToPlayer = player->IsInView(GetGridPos());
         }
         if (!visibleToPlayer && m_IsActingAnimation) {
             visibleToPlayer = true;
@@ -261,11 +265,14 @@ void Enemy::Update()
     Player* player = UnitManager::Instance()->GetPlayer();
     bool isInPlayerView = true;
     if (player) {
-        isInPlayerView = player->IsInView(GetGridPos());
-        if (!isInPlayerView && IsAnimatingMove()) {
+        if (IsAnimatingMove()) {
+            // 移動中は到達地点のLODを先取りせず、見た目が視界に入ってから更新する。
             isInPlayerView =
                 player->IsInView(WorldToGridForView(m_MoveStartPos)) ||
                 player->IsInView(WorldToGridForView(GetVisualPosition()));
+        }
+        else {
+            isInPlayerView = player->IsInView(GetGridPos());
         }
 
         // 視界外の敵は描画を省き、表示負荷を抑える。
