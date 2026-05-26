@@ -55,9 +55,12 @@ private:
 
     ID3D11Texture2D* tex = nullptr;
     ID3D11ShaderResourceView* srv = nullptr;
+    ID3D11SamplerState* mapSampler = nullptr;
 
     void CreateTexture();
     void ReleaseTexture();
+    void CreateMapSampler();
+    void ReleaseMapSampler();
     void ResizeTextureForCurrentMode();
     void SetLookMode(bool enabled);
     void UpdateLookModeInput();
@@ -73,6 +76,8 @@ private:
     bool IsDiscovered(int x, int y) const;
     void RevealViewArea(const Vector2Int& center, int viewDistance);
     void RevealRoom(int roomIndex, int viewDistance);
+    void RevealConnectedCorridors(const Vector2Int& center, int viewDistance);
+    bool GetPlayerRoomBounds(int& outLeft, int& outTop, int& outRight, int& outBottom) const;
     unsigned int GetTileColor(int x, int y) const;
     bool IsShopFloorTile(int x, int y) const;
 };

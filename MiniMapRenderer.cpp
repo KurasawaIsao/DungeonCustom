@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <utility>
 
 void MiniMapRenderer::Init(MapData* data, int drawX, int drawY, int drawW, int drawH)
 {
@@ -47,6 +48,7 @@ void MiniMapRenderer::Init(MapData* data, int drawX, int drawY, int drawW, int d
 void MiniMapRenderer::CreateTexture()
 {
     ReleaseTexture();
+    CreateMapSampler();
 
     D3D11_TEXTURE2D_DESC desc{};
     desc.Width = texW;
@@ -76,11 +78,48 @@ void MiniMapRenderer::ReleaseTexture()
     if (srv) { srv->Release(); srv = nullptr; }
     if (tex) { tex->Release(); tex = nullptr; }
 }
+
+void MiniMapRenderer::CreateMapSampler()
+{
+    if (mapSampler) return;
+
+    // Minimap pixels are tile data, so use point sampling and clamp to avoid thin wrap bleed.
+    D3D11_SAMPLER_DESC desc{};
+    desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+    desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+    desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+    desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+    desc.MaxLOD = D3D11_FLOAT32_MAX;
+    Renderer::GetDevice()->CreateSamplerState(&desc, &mapSampler);
+}
+
+void MiniMapRenderer::ReleaseMapSampler()
+{
+    if (mapSampler)
+    {
+        mapSampler->Release();
+        mapSampler = nullptr;
+    }
+}
+
 void MiniMapRenderer::ResizeTextureForCurrentMode()
 {
     int desiredW = DRAW_CELL_COUNT;
     int desiredH = DRAW_CELL_COUNT;
-    if (!lookMode && showFullMap)
+    if (lookMode)
+    {
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+        if (GetPlayerRoomBounds(left, top, right, bottom))
+        {
+            const int roomSize = (std::max)(right - left, bottom - top);
+            desiredW = (std::max)(DRAW_CELL_COUNT, roomSize);
+            desiredH = desiredW;
+        }
+    }
+    else if (showFullMap)
     {
         desiredW = (std::max)(1, mapW);
         desiredH = (std::max)(1, mapH);
@@ -149,6 +188,16 @@ void MiniMapRenderer::SetLookMode(bool enabled)
         UnitManager* unitManager = UnitManager::Instance();
         Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
         lookCenter = player ? player->GetGridPos() : Vector2Int(mapW / 2, mapH / 2);
+
+        int left = 0;
+        int top = 0;
+        int right = 0;
+        int bottom = 0;
+        if (GetPlayerRoomBounds(left, top, right, bottom))
+        {
+            // Start Tab mode from the room center so a large current room is visible at once.
+            lookCenter = Vector2Int((left + right) / 2, (top + bottom) / 2);
+        }
         ClampLookCenterToDiscoveredBounds();
     }
     lookPanTimer = 0.0f;
@@ -285,6 +334,59 @@ void MiniMapRenderer::RevealRoom(int roomIndex, int viewDistance)
     discoveredRooms[roomIndex] = true;
 }
 
+void MiniMapRenderer::RevealConnectedCorridors(const Vector2Int& center, int viewDistance)
+{
+    if (!map || discoveredTiles.size() != static_cast<size_t>(mapW * mapH)) return;
+
+    const int revealRadius = (std::max)(0, viewDistance);
+    const int maxSteps = (std::max)(6, viewDistance * 4 + 6);
+    std::vector<bool> visited(mapW * mapH, false);
+    std::vector<std::pair<Vector2Int, int>> queue;
+
+    auto isCorridorLike = [this](const Vector2Int& p) -> bool
+    {
+        if (!map->IsInside(p)) return false;
+        const TileType tile = map->GetTile(p.x, p.y);
+        return tile == TileType::Corridor || tile == TileType::Stair;
+    };
+
+    auto push = [&](const Vector2Int& p, int step)
+    {
+        if (!isCorridorLike(p)) return;
+        const int index = p.y * mapW + p.x;
+        if (visited[index]) return;
+        visited[index] = true;
+        queue.push_back({ p, step });
+    };
+
+    // Seed from every corridor tile currently visible so corridor maps do not lose small gaps.
+    for (int y = center.y - revealRadius; y <= center.y + revealRadius; ++y)
+    {
+        for (int x = center.x - revealRadius; x <= center.x + revealRadius; ++x)
+        {
+            push(Vector2Int(x, y), 0);
+        }
+    }
+
+    static const Vector2Int dirs[4] =
+    {
+        { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }
+    };
+
+    for (size_t i = 0; i < queue.size(); ++i)
+    {
+        const Vector2Int p = queue[i].first;
+        const int step = queue[i].second;
+        MarkDiscovered(p.x, p.y);
+        if (step >= maxSteps) continue;
+
+        for (const Vector2Int& dir : dirs)
+        {
+            push(p + dir, step + 1);
+        }
+    }
+}
+
 void MiniMapRenderer::RevealFromPlayer()
 {
     if (!map) return;
@@ -301,6 +403,7 @@ void MiniMapRenderer::RevealFromPosition(const Vector2Int& center, int viewDista
     if (!map) return;
 
     RevealViewArea(center, viewDistance);
+    RevealConnectedCorridors(center, viewDistance);
 
     const int roomIndex = map->GetRoomIndexAt(center.x, center.y);
     if (roomIndex >= 0)
@@ -374,6 +477,30 @@ bool MiniMapRenderer::GetDiscoveredBounds(int& outLeft, int& outTop, int& outRig
     outTop = (std::max)(0, top);
     outRight = (std::min)(mapW, right);
     outBottom = (std::min)(mapH, bottom);
+    return outLeft < outRight && outTop < outBottom;
+}
+
+bool MiniMapRenderer::GetPlayerRoomBounds(int& outLeft, int& outTop, int& outRight, int& outBottom) const
+{
+    if (!map) return false;
+
+    UnitManager* unitManager = UnitManager::Instance();
+    Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
+    if (!player) return false;
+
+    const int roomIndex = map->GetRoomIndexAt(player->GetGridPos());
+    const auto& rooms = map->GetRooms();
+    if (roomIndex < 0 || roomIndex >= (int)rooms.size()) return false;
+
+    const Room& room = rooms[roomIndex];
+    const Vector2Int pos = room.GetPosition();
+    const Vector2Int size = room.GetSize();
+
+    // Keep one tile of margin so entrances at the room edge are not clipped in Tab mode.
+    outLeft = (std::max)(0, pos.x - 1);
+    outTop = (std::max)(0, pos.y - 1);
+    outRight = (std::min)(mapW, pos.x + size.x + 1);
+    outBottom = (std::min)(mapH, pos.y + size.y + 1);
     return outLeft < outRight && outTop < outBottom;
 }
 
@@ -557,6 +684,14 @@ void MiniMapRenderer::Draw()
     if (srv == nullptr) return;
 
     Renderer::SetDepthEnable(false);
+
+    ID3D11SamplerState* oldSampler = nullptr;
+    if (mapSampler)
+    {
+        Renderer::GetDeviceContext()->PSGetSamplers(0, 1, &oldSampler);
+        Renderer::GetDeviceContext()->PSSetSamplers(0, 1, &mapSampler);
+    }
+
     if (lookMode)
     {
         blackOverlayPoly.Draw();
@@ -568,12 +703,19 @@ void MiniMapRenderer::Draw()
         miniMapPoly.SetTexture(srv);
         miniMapPoly.Draw();
     }
+
+    if (mapSampler)
+    {
+        Renderer::GetDeviceContext()->PSSetSamplers(0, 1, &oldSampler);
+        if (oldSampler) oldSampler->Release();
+    }
     Renderer::SetDepthEnable(true);
 }
 
 void MiniMapRenderer::Uninit()
 {
     ReleaseTexture();
+    ReleaseMapSampler();
     miniMapPoly.Uninit();
     lookMapPoly.Uninit();
     blackOverlayPoly.Uninit();
