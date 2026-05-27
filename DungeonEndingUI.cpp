@@ -107,9 +107,10 @@ void DungeonEndingUI::DrawGameUI()
     const D2D1_COLOR_F white = D2D1::ColorF(1.0f, 0.96f, 0.90f, textAlpha);
     const D2D1_COLOR_F sub = D2D1::ColorF(0.78f, 0.72f, 0.68f, textAlpha);
 
+    // 風ターンは原因ではなく専用の全文メッセージとして表示する。
     const std::string message =
         (m_Type == EndingType::Death)
-        ? (m_Cause + u8"で倒れた")
+        ? ((m_Cause == u8"風で飛ばされてしまった") ? m_Cause : (m_Cause + u8"で倒れた"))
         : (m_PlayerName + u8"は" + m_DungeonName + u8"を無事に突破した");
 
     UITextRenderer::Begin();

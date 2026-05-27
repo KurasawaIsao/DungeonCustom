@@ -81,6 +81,7 @@ bool DungeonDataIO::LoadFromFile(const std::string& path, DungeonData& outData)
         floor.shopItemTableId = f.value("shopItemTableId", floor.itemTableId);
         floor.viewDistance = f.value("viewDistance", 2);
         floor.playerVisionClear = f.value("playerVisionClear", true);
+        floor.windTurnLimit = f.value("windTurnLimit", 1500);
         floor.maxEnemyCount = f.value("maxEnemyCount", 10);
         floor.maxItemCount = f.value("maxItemCount", 10);
         floor.maxTrapCount = f.value("maxTrapCount", 10);
@@ -155,6 +156,7 @@ bool DungeonDataIO::SaveToFile(const std::string& path, const DungeonData& data)
         jf["shopItemTableId"] = f.shopItemTableId;
         jf["viewDistance"] = f.viewDistance;
         jf["playerVisionClear"] = f.playerVisionClear;
+        jf["windTurnLimit"] = f.windTurnLimit;
         jf["maxEnemyCount"] = f.maxEnemyCount;
         jf["maxItemCount"] = f.maxItemCount;
         jf["maxTrapCount"] = f.maxTrapCount;

@@ -95,6 +95,9 @@ namespace
 // そのため「StartDungeon -> Build」の順番を崩すと、描画側が参照するマップがまだ存在しない。
 void DungeonScene::Init()
 {
+    // テストプレイを繰り返した時に、前回SceneのUnit参照が残らないよう先に掃除する。
+    UnitManager::Instance()->ClearSceneReferences();
+
     // 1. Scene に常駐する表示/入力オブジェクトを先に用意する。
     AddGameObject<Camera>(0)->SetPlayerEnable(true);
     AddGameObject<Skydorm>(0);
@@ -153,6 +156,8 @@ void DungeonScene::Update()
 void DungeonScene::Uninit()
 {
     Scene::Uninit();
+    // Scene破棄後にUnitManagerへ残ったポインタを消し、次回テストプレイのRTTI参照落ちを防ぐ。
+    UnitManager::Instance()->ClearSceneReferences();
 }
 void DungeonScene::InitDungeonData()
 {

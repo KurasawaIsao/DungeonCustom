@@ -40,6 +40,14 @@ void UnitManager::ClearAllAllies()
     allies.clear();
 }
 
+void UnitManager::ClearSceneReferences()
+{
+    // Sceneをまたいで破棄済みUnitを参照しないよう、テストプレイ開始/終了時に登録だけを必ず空にする。
+    player = nullptr;
+    enemies.clear();
+    allies.clear();
+}
+
 //指定のマスに敵がいるかどうか
 bool UnitManager::HasEnemy(const Vector2Int& pos) const
 {

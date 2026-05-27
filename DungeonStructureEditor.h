@@ -30,6 +30,7 @@ private:
     bool m_BulkApplyFixedRooms = false;
     bool m_BulkApplyViewDistance = false;
     bool m_BulkApplyPlayerVisionClear = false;
+    bool m_BulkApplyWindTurnLimit = false;
     bool m_BulkApplyMaxEnemyCount = false;
     bool m_BulkApplyMaxItemCount = false;
     bool m_BulkApplyMaxTrapCount = false;

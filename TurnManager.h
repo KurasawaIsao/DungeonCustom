@@ -29,6 +29,13 @@ private:
     bool m_EnemyActionLoopHadProgress = false;
     // 勧誘メニューなど、UI がターン進行を止めたい時に使う一時停止フラグ。
     bool m_IsPaused = false;
+    // 風ターンの警告は同じ残りターンで一度だけ表示する。
+    bool m_WindWarning200Shown = false;
+    bool m_WindWarning100Shown = false;
+    bool m_WindWarning50Shown = false;
+
+    bool HandleWindTurnLimit();
+    void StartWindGameOver();
 
 public:
     TurnManager()
@@ -53,6 +60,9 @@ public:
         m_ShopTheftMode = false;
         m_EnemyActionLoopHadProgress = false;
         m_IsPaused = false;
+        m_WindWarning200Shown = false;
+        m_WindWarning100Shown = false;
+        m_WindWarning50Shown = false;
     }
     void StartPlayerTurn();
     void StartEnemyTurn();

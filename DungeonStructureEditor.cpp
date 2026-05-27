@@ -84,6 +84,7 @@ bool DungeonStructureEditor::HasSelectedBulkApplyFields() const
         m_BulkApplyFixedRooms ||
         m_BulkApplyViewDistance ||
         m_BulkApplyPlayerVisionClear ||
+        m_BulkApplyWindTurnLimit ||
         m_BulkApplyMaxEnemyCount ||
         m_BulkApplyMaxItemCount ||
         m_BulkApplyMaxTrapCount ||
@@ -148,6 +149,10 @@ void DungeonStructureEditor::ApplySelectedFloorSettings(const FloorData& source,
     if (m_BulkApplyPlayerVisionClear)
     {
         target.playerVisionClear = source.playerVisionClear;
+    }
+    if (m_BulkApplyWindTurnLimit)
+    {
+        target.windTurnLimit = source.windTurnLimit;
     }
     if (m_BulkApplyMaxEnemyCount)
     {
@@ -251,6 +256,7 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             m_BulkApplyFixedRooms = false;
             m_BulkApplyViewDistance = false;
             m_BulkApplyPlayerVisionClear = false;
+            m_BulkApplyWindTurnLimit = false;
             m_BulkApplyMaxEnemyCount = false;
             m_BulkApplyMaxItemCount = false;
             m_BulkApplyMaxTrapCount = false;
@@ -332,6 +338,8 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
         if (ImGui::Button("Add New Floor")) {
             FloorData f{};
             f.width = 50; f.height = 50;
+            // エディタから新規作成する階層も、風ターンの初期値は1500ターンにする。
+            f.windTurnLimit = 1500;
             dungeon.AddFloor(f);
             EnsureBulkTargetSize(dungeon.GetFloorCount());
         }
@@ -408,6 +416,7 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             ImGui::Checkbox("Fixed Room Parts##BulkApplyFixedRooms", &m_BulkApplyFixedRooms);
             ImGui::Checkbox("View Distance##BulkApplyViewDistance", &m_BulkApplyViewDistance);
             ImGui::Checkbox("Player Vision Clear##BulkApplyPlayerVisionClear", &m_BulkApplyPlayerVisionClear);
+            ImGui::Checkbox("Wind Turn Limit##BulkApplyWindTurnLimit", &m_BulkApplyWindTurnLimit);
             ImGui::Checkbox("Max Enemy Count##BulkApplyMaxEnemyCount", &m_BulkApplyMaxEnemyCount);
             ImGui::Checkbox("Max Item Count##BulkApplyMaxItemCount", &m_BulkApplyMaxItemCount);
             ImGui::Checkbox("Max Trap Count##BulkApplyMaxTrapCount", &m_BulkApplyMaxTrapCount);
@@ -558,6 +567,8 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             ImGui::Separator();
             detailChanged |= ImGui::SliderInt("View Distance", &f.viewDistance, 0, 20);
             detailChanged |= ImGui::Checkbox("Player Vision Clear", &f.playerVisionClear);
+            // 風ターンはフロア滞在ターンの上限。0以下にすると制限なしとして扱う。
+            detailChanged |= ImGui::InputInt("Wind Turn Limit", &f.windTurnLimit);
             ImGui::Separator();
             detailChanged |= ImGui::InputInt("maxEnemyCount", &f.maxEnemyCount);
             detailChanged |= ImGui::InputInt("maxItemCount", &f.maxItemCount);

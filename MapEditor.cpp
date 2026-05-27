@@ -20,6 +20,7 @@
 #include "Shrine.h"
 #include "DungeonScene.h"
 #include "SceneDataReference.h"
+#include "UnitManager.h"
 #include <ctime>
 
 
@@ -467,6 +468,9 @@ void MapEditor::StartTestPlay()
 
     const std::string dungeonPath = GetSelectedTestDungeonPath();
     if (!fs::exists(dungeonPath)) return;
+
+    // テストプレイを繰り返す前に、前回のダンジョンUnit参照を確実に破棄する。
+    UnitManager::Instance()->ClearSceneReferences();
 
     DataReference::NextDungeonId = dungeonPath.substr(0, dungeonPath.find_last_of('.'));
     DataReference::IsEditorTestPlay = true;

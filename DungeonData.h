@@ -53,6 +53,8 @@ struct FloorData {
     std::string shopItemTableId;
     int viewDistance = 2;
     bool playerVisionClear = true;
+    // 0以下なら無制限。正の値なら、そのフロアで指定ターン経過時に風でゲームオーバーにする。
+    int windTurnLimit = 1500;
 
     int maxEnemyCount;
     int maxItemCount;

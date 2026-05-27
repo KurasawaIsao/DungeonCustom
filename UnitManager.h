@@ -32,6 +32,7 @@ public:
 
     void ClearAllEnemies();
     void ClearAllAllies();
+    void ClearSceneReferences();
    
     void SetPlayer(Player* p) { player = p; }
     Player* GetPlayer() const { return player; }

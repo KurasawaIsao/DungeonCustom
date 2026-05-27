@@ -12,6 +12,7 @@
 #include "EnemyDatabase.h"
 #include "MapData.h"
 #include "MiniMapRenderer.h"
+#include "DungeonEndingUI.h"
 #include <vector>
 
 TurnManager* TurnManager::instance = nullptr;
@@ -216,8 +217,59 @@ void TurnManager::FinishTurnCycle()
         if (enemy) enemy->ClearHostileRecognitionSuppression();
     }
     m_TurnCount++;
+    if (HandleWindTurnLimit()) return;
     SpawnEnemy();
     StartPlayerTurn();
+}
+
+bool TurnManager::HandleWindTurnLimit()
+{
+    // 現在フロアの風ターン設定を見て、残りターン警告と制限到達時のゲームオーバーを処理する。
+    MapManager* mapManager = MapManager::Instance();
+    if (!mapManager) return false;
+
+    const int windTurnLimit = mapManager->GetCurrentFloorData().windTurnLimit;
+    if (windTurnLimit <= 0) return false;
+
+    const int remainingTurns = windTurnLimit - m_TurnCount;
+    if (remainingTurns <= 0)
+    {
+        StartWindGameOver();
+        return true;
+    }
+
+    auto announceWind = [&](int threshold, bool& shown)
+    {
+        if (shown || remainingTurns != threshold) return;
+
+        MessageLog::Instance().AddMessage(
+            u8"強い風が吹き始めた。あと" + std::to_string(threshold) + u8"ターンで飛ばされそうだ。");
+        shown = true;
+    };
+
+    announceWind(200, m_WindWarning200Shown);
+    announceWind(100, m_WindWarning100Shown);
+    announceWind(50, m_WindWarning50Shown);
+    return false;
+}
+
+void TurnManager::StartWindGameOver()
+{
+    // 風ターンが尽きた時は、既存の死亡演出UIに原因を渡してゲームオーバーへ移行する。
+    Scene* scene = Manager::GetScene();
+    if (!scene) return;
+
+    Player* player = UnitManager::Instance()->GetPlayer();
+    const std::string playerName = player ? player->GetName() : std::string(u8"プレイヤー");
+
+    MapManager* mapManager = MapManager::Instance();
+    const std::string dungeonName = mapManager ? mapManager->GetDungeonData().GetDungeonId() : std::string(u8"ダンジョン");
+
+    if (auto* ending = scene->GetGameObject<DungeonEndingUI>())
+    {
+        if (player) player->SetVisible(false);
+        ending->StartDeath(playerName, dungeonName, u8"風で飛ばされてしまった");
+    }
 }
 
 void TurnManager::Update()
@@ -268,6 +320,8 @@ void TurnManager::Update()
         {
             // 入力受付やプレイヤーの攻撃/移動は Player::UpdateUnit に集約。
             // 行動済み、演出終了、投擲物なし、の条件が揃ってから敵ターンへ進む。
+            if (HandleWindTurnLimit()) return;
+
             const bool hadActiveFlyingObject = IsAnyFlyingObjectActive();
             if (!hadActiveFlyingObject)
             {
