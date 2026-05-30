@@ -9,6 +9,7 @@
 #include "UIRenderer.h"
 #include "UITextRenderer.h"
 #include "main.h"
+#include "MessageLog.h"
 
 #include <algorithm>
 
@@ -78,6 +79,8 @@ void DungeonEndingUI::Update()
 
     if (m_MessageReady && Input::GetKeyTrigger(VK_RETURN))
     {
+		MessageLog::Instance().ClearHistory();
+		MessageLog::Instance().SetVisible(false);
         Manager::SetScene<Title>();
     }
 }

@@ -18,6 +18,7 @@
 #include "Enemy.h"
 #include "ShopUI.h"
 #include "MessageLog.h"
+#include "DungeonThemeDatabase.h"
 #include <cstdlib>
 #include <ctime>
 
@@ -118,6 +119,15 @@ namespace
         mapManager->AfterUnitMoved(player, true);
     }
 
+    void ApplyFloorTheme(const FloorData& floor)
+    {
+        const DungeonThemeData& theme = DungeonThemeDatabase::GetThemeOrDefault(floor.themeId);
+
+        // 階層テーマに合わせて、マップモデルとBGMを同時に切り替える。
+        MapRenderer::SetTheme(theme.id);
+        if (!theme.bgmPath.empty())
+            EffectManager::PlayBGM(theme.bgmPath.c_str());
+    }
     void StartClearEnding(MapManager* mapManager)
     {
         Player* player = Manager::GetScene()->GetGameObject<Player>();
@@ -136,7 +146,7 @@ void MapManager::StartDungeon()
 {
     const FloorData& floor = GetCurrentFloorData();
 
-    EffectManager::PlayBGM("Asset\\Sound\\tsumetaidaichi.wav");
+    ApplyFloorTheme(floor);
 
     {
         ScopedGenerationSeed generationSeed(m_DungeonData, floor, m_CurrentFloor);
@@ -167,7 +177,6 @@ void MapManager::ClearFloor()
 void MapManager::ChangeFloor()
 {
     ClearFloor();
-    EffectManager::PlayBGM("Asset\\Sound\\tsumetaidaichi.wav");
 
     if (m_CurrentFloor >= m_DungeonData.GetFloorCount())
     {
@@ -180,6 +189,7 @@ void MapManager::ChangeFloor()
 
 	// 現在の階層に応じたマップを生成し、敵やアイテム等を配置させる。
     const FloorData& floor = GetCurrentFloorData();
+    ApplyFloorTheme(floor);
     {
         ScopedGenerationSeed generationSeed(m_DungeonData, floor, m_CurrentFloor);
         GenerateNewMap(floor, Manager::GetScene());

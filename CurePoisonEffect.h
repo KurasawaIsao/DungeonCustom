@@ -26,11 +26,19 @@ public:
             return;
         }
 
+        bool cured = false;
+        if (ctx.target->GetStatModifierStage(StatModifierType::Attack) < 0)
+        {
+            // “Å‚Å‰º‚ª‚Á‚½UŒ‚’iŠK‚ğ–ß‚·B
+            ctx.target->ClearStatModifierStage(StatModifierType::Attack);
+            cured = true;
+        }
         if (ctx.target->GetStatus() == Status::Poison)
         {
             ctx.target->ClearStatus();
+            cured = true;
         }
-        else
+        if (!cured)
         {
             MessageLog::Instance().AddMessage(ctx.target->GetName() + u8"‚Ì“Å‚ÍÁ‚¦‚Ä‚¢‚éB");
         }

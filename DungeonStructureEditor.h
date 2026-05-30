@@ -20,6 +20,7 @@ private:
     std::vector<unsigned char> m_BulkTargetFloors;
     bool m_MirrorEditsToBulkTargets = false;
     bool m_BulkApplyAllSettings = true;
+    bool m_BulkApplyTheme = false;
     bool m_BulkApplyMapSource = false;
     bool m_BulkApplyMapSize = false;
     bool m_BulkApplyMinRoomCount = false;

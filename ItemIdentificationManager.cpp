@@ -15,7 +15,7 @@ void ItemIdentificationManager::Init(const std::vector<ItemData>& database, Unid
         u8"かたい壺", u8"あさい壺", u8"みかづき形の壺", u8"たかそうな壺"
     };
     std::vector<std::string> staves = {
-        u8"カシの杖", u8"ナシの杖", u8"金の杖", u8"スギの杖", u8"ヒノキの杖", u8"クルミの杖"
+		u8"カシの杖", u8"ナシの杖", u8"金の杖", u8"スギの杖", u8"ヒノキの杖", u8"クルミの杖",u8"サクラの杖", u8"マツの杖", u8"ヒバの杖", u8"クリの杖"
     };
 
     // シャッフル処理
@@ -29,6 +29,11 @@ void ItemIdentificationManager::Init(const std::vector<ItemData>& database, Unid
 
     std::vector<std::string> unidentifiedTargets;
     for (const auto& data : database) {
+		// 名前のみ最初から判明して呪い祝福のみを伏せる場合ここでブロック
+        if (data.type == ItemType::Weapon|| data.type == ItemType::Shield) {
+            continue;
+        }
+
         if (data.identifiable) {
             unidentifiedTargets.push_back(data.name);
         }
@@ -71,7 +76,7 @@ void ItemIdentificationManager::Init(const std::vector<ItemData>& database, Unid
                 info.unidentifiedName = staves[staffIdx++];
             }
             else {
-                info.unidentifiedName = u8"なぞのアイテム";
+
             }
         }
 

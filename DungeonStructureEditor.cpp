@@ -4,6 +4,7 @@
 #include "EnemyTableDatabase.h"
 #include "ItemTableDatabase.h"
 #include "TrapTableDatabase.h"
+#include "DungeonThemeDatabase.h"
 #include <algorithm>
 
 namespace
@@ -74,7 +75,8 @@ int DungeonStructureEditor::GetBulkTargetCount(int floorCount, int sourceIndex) 
 }
 bool DungeonStructureEditor::HasSelectedBulkApplyFields() const
 {
-    return m_BulkApplyMapSource ||
+    return m_BulkApplyTheme ||
+        m_BulkApplyMapSource ||
         m_BulkApplyMapSize ||
         m_BulkApplyMinRoomCount ||
         m_BulkApplyMaxRoomCount ||
@@ -100,6 +102,10 @@ bool DungeonStructureEditor::HasSelectedBulkApplyFields() const
 void DungeonStructureEditor::ApplySelectedFloorSettings(const FloorData& source, FloorData& target) const
 {
     // 選択式の一括反映では、チェックした項目だけを現在階層から対象階層へコピーする。
+    if (m_BulkApplyTheme)
+    {
+        target.themeId = source.themeId;
+    }
     if (m_BulkApplyMapSource)
     {
         target.mapSource = source.mapSource;
@@ -246,6 +252,7 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             }
         };
         auto clearBulkApplyFields = [&]() {
+            m_BulkApplyTheme = false;
             m_BulkApplyMapSource = false;
             m_BulkApplyMapSize = false;
             m_BulkApplyMinRoomCount = false;
@@ -406,6 +413,7 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             }
 
             // 必要な項目だけを選んで、選択中階層からチェック済み階層へ反映する。
+            ImGui::Checkbox("Theme##BulkApplyTheme", &m_BulkApplyTheme);
             ImGui::Checkbox("Map Source / File##BulkApplyMapSource", &m_BulkApplyMapSource);
             ImGui::Checkbox("Map Size##BulkApplyMapSize", &m_BulkApplyMapSize);
             ImGui::Checkbox("Min Rooms##BulkApplyMinRoomCount", &m_BulkApplyMinRoomCount);
@@ -454,6 +462,26 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             FloorData& f = dungeon.GetFloor(m_SelectedFloorIndex);
             bool detailChanged = false;
 
+            ImGui::SeparatorText("Theme");
+            if (ImGui::Button("Reload Theme Settings")) {
+                DungeonThemeDatabase::Reload();
+            }
+
+            const auto& themes = DungeonThemeDatabase::GetAllThemes();
+            const DungeonThemeData& currentTheme = DungeonThemeDatabase::GetThemeOrDefault(f.themeId);
+            std::string themePreview = currentTheme.displayName.empty() ? currentTheme.id : currentTheme.displayName;
+            if (ImGui::BeginCombo("Floor Theme", themePreview.c_str())) {
+                for (const auto& theme : themes) {
+                    std::string label = theme.displayName.empty() ? theme.id : theme.displayName + " (" + theme.id + ")";
+                    const bool selected = (theme.id == currentTheme.id);
+                    if (ImGui::Selectable(label.c_str(), selected)) {
+                        f.themeId = theme.id;
+                        detailChanged = true;
+                    }
+                    if (selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
             const char* sourceNames[] = { "Auto (Random)", "Fixed (Full Map File)" };
             int currentSource = (int)f.mapSource;
             if (ImGui::Combo("Map Source", &currentSource, sourceNames, 2)) {

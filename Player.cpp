@@ -312,6 +312,8 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
 
     bool stopAfterOneStep = HasNewDashAdjacentEnemy();
     int maxSteps = map->GetWidth() * map->GetHeight();
+
+	// Shiftダッシュは、以下のいずれかに該当するまで連続で移動する。
     for (int i = 0; i < maxSteps; ++i) {
         if (!CanInstantDashStep(dir)) break;
 
@@ -595,13 +597,13 @@ int Player::GetATK() const {
     int total = m_ATK + (m_Strength - m_MaxStrength);
     if (total < 1) total = 1;
     if (m_EquippedWeaponIndex != -1) total += m_Items[m_EquippedWeaponIndex].instance.GetData()->baseValue;
-    return total;
+    return ApplyStatModifierToValue(StatModifierType::Attack, total);
 }
 
 int Player::GetDEF() const {
     int total = m_DEF;
     if (m_EquippedShieldIndex != -1) total += m_Items[m_EquippedShieldIndex].instance.GetData()->baseValue;
-    return total;
+    return ApplyStatModifierToValue(StatModifierType::Defense, total);
 }
 
 void Player::SortItems() {
@@ -814,7 +816,8 @@ void Player::UseItem(int index) {
     m_IsActingAnimation = true;
     ItemInstance& inst = m_Items[index].instance;
     inst.Use(this, index);
-    if (!inst.IsPot() && inst.GetData()->type != ItemType::Staff) m_Items.erase(m_Items.begin() + index);
+    // アイテムを使用した後消す処理が入るのはここなので呪い時に消滅しない処理はここに入れる
+    if (!inst.IsPot() && inst.GetData()->type != ItemType::Staff && !inst.IsCursed()) m_Items.erase(m_Items.begin() + index);
     RefreshEquipIndices();
     EndTurn();
 }

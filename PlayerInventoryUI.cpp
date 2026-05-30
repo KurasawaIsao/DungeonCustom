@@ -529,7 +529,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
         CloseAllMenus();
     } });
 
-    if (itemInst.GetData()->canRename && !itemInst.IsOptionRevealed() && itemInst.GetIdentifiedState() == IdentifyState::Unidentified)
+    if (itemInst.GetData()->canRename && !itemInst.IsOptionRevealed() && itemInst.GetIdentifiedState() == IdentifyState::Unidentified && !itemInst.IsOptionRevealed())
     {
         commands.push_back({ u8"–¼‘O‚ð•t‚¯‚é", [this, &itemInst]() {
             m_RenameTargetIndex = m_ItemCommandTarget;

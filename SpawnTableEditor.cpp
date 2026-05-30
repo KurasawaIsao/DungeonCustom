@@ -61,6 +61,7 @@ void SpawnTableEditor::DrawTableEditorTab()
 
     switch (m_CurrentCategory)
     {
+		/// それぞれのカテゴリに対して、テーブルの選択、編集、保存、削除を行うUIを描画する関数を呼び出す
     case TableCategory::Item:  DrawTableEditorContents(m_ItemTables, TableCategory::Item); break;
     case TableCategory::Enemy: DrawTableEditorContents(m_EnemyTables, TableCategory::Enemy); break;
     case TableCategory::Trap:  DrawTableEditorContents(m_TrapTables, TableCategory::Trap); break;

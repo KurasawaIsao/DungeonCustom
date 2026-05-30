@@ -33,14 +33,16 @@ void ItemInstance::Use(Player* player, int inventoryIndex)
     {
 
     case ItemType::Herb:
-        TryIdentify(ItemCommandType::Use);
+        
         if (IsCursed())
         {
             MessageLog::Instance().AddMessage(player->GetName() + u8"は" + GetDisplayName() + u8"を飲もうとした！");
             MessageLog::Instance().AddMessage(GetDisplayName() +u8"は呪われている！");
+            RevealOption();
         }
         else
         {
+            TryIdentify(ItemCommandType::Use);
             MessageLog::Instance().AddMessage(player->GetName() + u8"は" + GetDisplayName() + u8"を飲んだ。");
             player->AddFullness(5);
         }
@@ -52,6 +54,7 @@ void ItemInstance::Use(Player* player, int inventoryIndex)
     case ItemType::Staff:
         MessageLog::Instance().AddMessage(player->GetName() + u8"は" + GetDisplayName() + u8"を振った！");
         if (IsCursed())MessageLog::Instance().AddMessage(GetDisplayName() + u8"は呪われている！");
+        RevealOption();
     
         break;
     case ItemType::Weapon:
@@ -63,6 +66,7 @@ void ItemInstance::Use(Player* player, int inventoryIndex)
             player->EquipItem(inventoryIndex); // 装備する
             MessageLog::Instance().AddMessage(GetDisplayName() + u8"を装備した！");
             if (IsCursed()) MessageLog::Instance().AddMessage(GetDisplayName() + u8"は呪われている！");
+            RevealOption();
         }
         break;
     }
@@ -226,9 +230,13 @@ void ItemInstance::OnBreak(const Vector2Int& center)
 }
 void ItemInstance::InitIdentify(bool applyBlessOrCurse)
 {
-    const ItemData* data = GetData();
-    if (data && data->BlessOrCurse && applyBlessOrCurse) { // アイテムデータが呪い対象なら
-        // 例: 10%の確率で呪われる
+	// アイテムデータの識別状態を確認して、必要なら識別する
+    auto& managerInfo = ItemIdentificationManager::Instance().GetInfo(m_Data->name);
+    if (managerInfo.isIdentified) {
+        SetIdentified();
+    }
+
+    if (m_Data && m_Data->BlessOrCurse && applyBlessOrCurse) { // アイテムデータが呪い対象なら
         int r = GameRandom::Range(0, 99);
 
         if (r < 10)
@@ -243,18 +251,17 @@ void ItemInstance::InitIdentify(bool applyBlessOrCurse)
         {
             SetBless(BlessState::Normal);
         }
-        // それ以外は Normal
 
         // 消耗品（草や食べ物）や未識別アイテムは、最初は状態を伏せておく
-        m_IsOptionRevealed = !data->identifiable;
+        m_IsOptionRevealed = !m_Data->identifiable;
         
     }
     else if (!applyBlessOrCurse) {
         SetBless(BlessState::Normal);
         m_IsOptionRevealed = true;
     }
-    else if (data && data->type == ItemType::Pot) {
-        // そもそも呪いがないアイテム（パンなど）は最初から「判明」扱いで良い
+    else if (m_Data && m_Data->type == ItemType::Pot) {
+        // そもそも呪いがないアイテム（
         m_IsOptionRevealed = false;
     }
     else {
@@ -266,74 +273,71 @@ void ItemInstance::InitIdentify(bool applyBlessOrCurse)
 std::string ItemInstance::GetDisplayName() const
 {
     auto& info = ItemIdentificationManager::Instance().GetInfo(m_Data->name);
-    std::string baseName;
+    std::string displayName;
 
-    std::string displayName = baseName; 
-
-    // 修正値の表示 
-    if (m_Identify == IdentifyState::Identified && (m_Data->type == ItemType::Weapon || m_Data->type == ItemType::Shield))
-    {
-        if (m_PlusValue > 0) {
-            displayName += "+" + std::to_string(m_PlusValue);
-        }
-        else if(m_PlusValue<0){
-            displayName += "-" + std::to_string(m_PlusValue); 
-        }
-        else
-        {
-            displayName += "-" + std::to_string(m_PlusValue); 
-        }
+    //  矢や石のスタック数
+    if ((m_Data->type == ItemType::Arrow || m_Data->type == ItemType::Stone) && m_StackCount > 0) {
+        displayName += std::to_string(m_StackCount) + u8"個の";
     }
-    // 名前自体の決定
+
+    //  現在の状態に合わせた名前の表示
     if (m_Identify == IdentifyState::Identified || info.isIdentified) {
-        baseName = m_Data->name;
+        displayName += m_Data->name;
     }
     else if (!info.customName.empty()) {
-        baseName = info.customName + u8"（？" + info.unidentifiedName + u8"）";
+        displayName += info.customName + u8"（？" + info.unidentifiedName + u8"）";
     }
     else {
-        baseName = info.unidentifiedName;
+        displayName += info.unidentifiedName;
     }
+
+    //  修正値
+    if ((m_Identify == IdentifyState::Identified || info.isIdentified) &&
+        (m_Data->type == ItemType::Weapon || m_Data->type == ItemType::Shield))
+    {
+        if (m_PlusValue >= 0) {
+            displayName += "+" + std::to_string(m_PlusValue);
+        }
+		else  if (m_PlusValue < 0)
+        {
+            displayName += std::to_string(m_PlusValue); // 負の数は - が自動でつく
+        }
+    }
+
+    // 壺の容量
     if (m_Data->type == ItemType::Pot && IsPot()) {
-        // [現在の中身の数 / 最大容量] を表示
-        baseName += "[" + std::to_string(m_Pot->items.size()) + "/" + std::to_string(m_Pot->capacity) + "]";
+        displayName += "[" + std::to_string(m_Pot->items.size()) + "/" + std::to_string(m_Pot->capacity) + "]";
     }
+
+    //  杖の回数
     if (m_Data->type == ItemType::Staff) {
         if (m_Identify == IdentifyState::Identified || info.isIdentified) {
-            // 識別済み：正の回数を表示 [5]
-            baseName += "[" + std::to_string(m_Charges) + "]";
+            displayName += "[" + std::to_string(m_Charges) + "]";
         }
         else {
-            // 未識別：0から始まる負の回数を表示 [0], [-1]...
-            baseName += "[" + std::to_string(m_UnidentifiedUsageCount) + "]";
+            displayName += "[" + std::to_string(m_UnidentifiedUsageCount) + "]";
         }
     }
 
-    if ((m_Data->type == ItemType::Arrow || m_Data->type == ItemType::Stone) && m_StackCount > 0) {
-        baseName = std::to_string(m_StackCount) + u8"個の" + baseName;
-    }
-
-    return baseName;
+    return displayName;
 }
 ImU32 ItemInstance::GetNameColor() const {
     auto& info = ItemIdentificationManager::Instance().GetInfo(m_Data->name);
 
-    //  呪い・祝福の状態がまだ判明していない場合
-    if (!m_IsOptionRevealed) {
+    if (m_Identify == IdentifyState::Unidentified && !info.isIdentified) {
         return IM_COL32(255, 255, 0, 255); // 黄色
     }
-    //  判明していて、かつ呪われている場合
-    if (IsCursed()) {
-        return IM_COL32(255, 100, 100, 255); // 赤色
+
+    if (m_IsOptionRevealed || m_Identify == IdentifyState::Identified || info.isIdentified) {
+        if (IsCursed()) {
+            return IM_COL32(255, 100, 100, 255); // 赤色
+        }
+        if (IsBlessed()) {
+            return IM_COL32(100, 255, 255, 255); // 水色
+        }
     }
 
-    //  判明していて、かつ祝福されている場合
-    if (IsBlessed()) {
-        return IM_COL32(100, 255, 255, 255); // 水色（お好みで）
-    }
-  
-
-    //  通常状態（判明済み・呪いなし）
+    // 通常状態
     return IM_COL32(255, 255, 255, 255); // 白色
 }
 bool ItemInstance::PutItem(ItemInstance&& item)
@@ -357,12 +361,14 @@ std::optional<ItemInstance> ItemInstance::TakeOutItem()
 
 void ItemInstance::TryIdentify(ItemCommandType cmd)
 {
-    if (m_Identify == IdentifyState::Identified)
+    if (m_Identify == IdentifyState::Identified && !m_IsOptionRevealed)
         return;
 
     if (!m_Data->identifiable)
         return;
-
+       auto& managerInfo = ItemIdentificationManager::Instance().GetInfo(m_Data->name);
+       if(managerInfo.isIdentified)
+		   return;
     switch (m_Data->useType)
     {
     case ItemUseType::Drink:
@@ -372,10 +378,10 @@ void ItemInstance::TryIdentify(ItemCommandType cmd)
             std::string realName = GetTrueName();
 
             Player* player = Manager::GetScene()->GetGameObject<Player>();
-            // 1. マネージャー側の種類フラグを「識別済み」にする
+            // マネージャー側の種類フラグを「識別済み」にする
             ItemIdentificationManager::Instance().SetKindIdentified(realName);
 
-            // 2. プレイヤーが持っている同じ種類のアイテムもすべて識別済みに更新する
+            // プレイヤーが持っている同じ種類のアイテムもすべて識別済みに更新する
             auto& inventory = player->GetItems();
             for (auto& slot : inventory) {
                 if (slot.instance.GetData() && slot.instance.GetTrueName() == realName) {

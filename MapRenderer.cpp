@@ -2,6 +2,7 @@
 #include "modelRenderer.h"
 #include "renderer.h"
 #include "LightManager.h"
+#include "DungeonThemeDatabase.h"
 #include "input.h"
 #include <algorithm>
 #include <cmath>
@@ -12,9 +13,35 @@ ModelRenderer* MapRenderer::s_StairModel = nullptr;
 ModelRenderer* MapRenderer::s_CorridorModel= nullptr;
 ModelRenderer* MapRenderer::s_EditorCorridorModel = nullptr;
 ModelRenderer* MapRenderer::s_ShopFloorModel = nullptr;
+std::string MapRenderer::s_CurrentThemeId = "default";
 ID3D11VertexShader* MapRenderer::s_GridVertexShader = nullptr;
 ID3D11PixelShader* MapRenderer::s_GridPixelShader = nullptr;
 ID3D11InputLayout* MapRenderer::s_GridVertexLayout = nullptr;
+void MapRenderer::SetTheme(const std::string& themeId)
+{
+    s_CurrentThemeId = themeId.empty() ? "default" : themeId;
+
+    // 既にモデルが作られている場合は、次の描画から指定テーマのモデルに差し替える。
+    if (s_FloorModel || s_WallModel || s_StairModel || s_CorridorModel || s_EditorCorridorModel || s_ShopFloorModel)
+        LoadCurrentThemeModels();
+}
+
+void MapRenderer::LoadCurrentThemeModels()
+{
+    const DungeonThemeData& theme = DungeonThemeDatabase::GetThemeOrDefault(s_CurrentThemeId);
+    s_CurrentThemeId = theme.id;
+
+    auto loadModel = [](ModelRenderer*& model, const std::string& path)
+        {
+            if (path.empty()) return;
+            if (!model) model = new ModelRenderer();
+            model->Load(path.c_str());
+        };
+
+    // タイル種別ごとのモデルをテーマ設定から読み込む。
+    loadModel(s_FloorModel, theme.models.floor);
+    loadModel(s_WallModel, theme.models.wall);
+}
 void MapRenderer::Init()
 {
     if (!s_FloorModel)
@@ -49,6 +76,8 @@ void MapRenderer::Init()
         s_ShopFloorModel = new ModelRenderer();
         s_ShopFloorModel->Load("Asset\\Model\\ShopFloor.obj");
     }
+    LoadCurrentThemeModels();
+
     if (!s_GridVertexShader)
     {
         Renderer::CreateVertexShader(&s_GridVertexShader, &s_GridVertexLayout, "shader\\unlitColorVS.cso");
@@ -139,9 +168,8 @@ void MapRenderer::Draw()
             s_FloorModel->Draw();
             break;
         case TileType::Corridor:
-            // Editor view uses Corridor.obj so manually placed passages are easy to identify.
             if (m_IsEditor) s_EditorCorridorModel->Draw();
-            else s_CorridorModel->Draw();
+            else s_FloorModel->Draw();
             break;
         case TileType::Wall:
             s_WallModel->Draw();

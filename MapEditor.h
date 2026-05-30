@@ -5,6 +5,7 @@
 #include "ImguiObject.h"
 #include "SpawnTableEditor.h"
 #include "DungeonStructureEditor.h"
+#include "DungeonThemeDatabase.h"
 #include "EditorMode.h"
 #include <vector>
 #include <string>
@@ -40,10 +41,19 @@ private:
     int m_SelectedTestDungeonIndex = 0;
     bool m_RandomizeTestPlaySeed = true;
 
+    // --- テーマ作成用データ ---
+    char m_ThemeID[64] = "NewTheme";
+    char m_ThemeName[64] = "New Theme";
+    std::string m_ThemeBgmPath;
+    DungeonThemeTileModels m_ThemeModels;
+
     // --- ファイルリスト ---
     std::vector<std::string> m_MapFileList;
     std::vector<std::string> m_RoomPartFileList;
     std::vector<std::string> m_DungeonFileList;
+    std::vector<std::string> m_ThemeFileList;
+    std::vector<std::string> m_ThemeBgmFileList;
+    std::vector<std::string> m_ThemeMapModelFileList;
 
     // --- サブエディタ ---
     MapGeometryEditor    m_GeometryEditor;
@@ -75,6 +85,12 @@ private:
     std::string GetTestMapPath() const;
     void SyncTestDungeonSelection(bool force);
     void DrawTestPlayControls();
+    void DrawThemeEditorTab();
+    void ExportTheme();
+    void ImportTheme(const std::string& path);
+    std::string GetThemePath(const std::string& name) const;
+    std::string GetThemeBgmPath(const std::string& name) const;
+    std::string GetThemeMapModelPath(const std::string& name) const;
     void StartTestPlay();
     void RefreshFileList();
 

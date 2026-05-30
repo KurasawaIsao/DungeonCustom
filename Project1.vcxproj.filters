@@ -375,6 +375,9 @@
     <ClCompile Include="DungeonStructureEditor.cpp">
       <Filter>ソース ファイル\Editor</Filter>
     </ClCompile>
+    <ClCompile Include="DungeonThemeDatabase.cpp">
+      <Filter>ソース ファイル\Map</Filter>
+    </ClCompile>
     <ClCompile Include="MapFileManagement.cpp">
       <Filter>ソース ファイル\Editor</Filter>
     </ClCompile>
@@ -721,6 +724,9 @@
     </ClInclude>
     <ClInclude Include="DungeonStructureEditor.h">
       <Filter>ヘッダー ファイル\Editor</Filter>
+    </ClInclude>
+    <ClInclude Include="DungeonThemeDatabase.h">
+      <Filter>ヘッダー ファイル\Map</Filter>
     </ClInclude>
     <ClInclude Include="MapFileManagement.h">
       <Filter>ヘッダー ファイル\Editor</Filter>

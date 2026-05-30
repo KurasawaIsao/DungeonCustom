@@ -1,0 +1,9 @@
+{
+    "bgm": "DungeonData\\DungeonThemeSettings\\BGM\\yodomi.wav",
+    "id": "Stone",
+    "models": {
+        "floor": "DungeonData\\DungeonThemeSettings\\MapModel\\StoneFloor.obj",
+        "wall": "DungeonData\\DungeonThemeSettings\\MapModel\\MetalWall.obj"
+    },
+    "name": "Stone"
+}

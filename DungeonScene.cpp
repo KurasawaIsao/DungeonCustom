@@ -192,8 +192,8 @@ void DungeonScene::BuildDefaultDungeonData(DungeonData& dungeon)
     FloorData f{};
     f.width = 100;
     f.height = 100;
-    f.itemTableId = "early";
-    f.enemyTableId = "early";
+    f.itemTableId = "ALL";
+    f.enemyTableId = "ALL";
     f.trapTableId = "Basic";
     f.maxEnemyCount = 10;
     f.maxItemCount = 10;

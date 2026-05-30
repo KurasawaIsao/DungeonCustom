@@ -22,6 +22,7 @@ public:
     // ゲーム開始時に未識別名をシャッフルして割り当てる
     void Init(const std::vector<ItemData>& database, UnidentifiedMode unidentifiedMode);
 
+	// アイテムの実際の名前を指定して、識別情報を取得
     IdentificationInfo& GetInfo(const std::string& realName) {
         return m_Table[realName];
     }

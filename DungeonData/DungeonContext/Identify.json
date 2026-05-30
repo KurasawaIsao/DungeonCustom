@@ -1,0 +1,210 @@
+{
+    "blessOrCurseEnabled": true,
+    "dungeonId": "Identify",
+    "floors": [
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "Table",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                },
+                {
+                    "type": 7,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxHeight": 60,
+            "maxItemCount": 20,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 100,
+            "shopItemTableId": "",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "themeId": "default",
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50,
+            "windTurnLimit": 1500
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "Table",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                },
+                {
+                    "type": 7,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxHeight": 60,
+            "maxItemCount": 20,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 100,
+            "shopItemTableId": "",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "themeId": "default",
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50,
+            "windTurnLimit": 1500
+        },
+        {
+            "corridorComplexity": 45,
+            "enemyTableId": "1~2",
+            "fixedRoomPaths": [],
+            "generationSeedOffset": 0,
+            "height": 50,
+            "itemTableId": "Table",
+            "layoutWeights": [
+                {
+                    "type": 0,
+                    "weight": 100
+                },
+                {
+                    "type": 1,
+                    "weight": 0
+                },
+                {
+                    "type": 2,
+                    "weight": 0
+                },
+                {
+                    "type": 3,
+                    "weight": 0
+                },
+                {
+                    "type": 4,
+                    "weight": 0
+                },
+                {
+                    "type": 5,
+                    "weight": 0
+                },
+                {
+                    "type": 6,
+                    "weight": 0
+                },
+                {
+                    "type": 7,
+                    "weight": 0
+                }
+            ],
+            "mapFilePath": "",
+            "mapSource": 0,
+            "maxEnemyCount": 0,
+            "maxHeight": 60,
+            "maxItemCount": 20,
+            "maxRoomCount": 6,
+            "maxTrapCount": 10,
+            "maxWidth": 60,
+            "minHeight": 40,
+            "minRoomCount": 3,
+            "minWidth": 40,
+            "monsterHouseAppearanceRate": 0,
+            "playerVisionClear": true,
+            "shopAppearanceRate": 100,
+            "shopItemTableId": "",
+            "shopTrapDensity": 35,
+            "spawnAllFixedRooms": true,
+            "themeId": "default",
+            "trapTableId": "Basic",
+            "useFixedRoom": false,
+            "useFullyRandomMapSize": false,
+            "useRandomMapSize": false,
+            "viewDistance": 2,
+            "width": 50,
+            "windTurnLimit": 1500
+        }
+    ],
+    "generationSeed": 0,
+    "unidentifiedMode": 2,
+    "useGenerationSeed": false
+}

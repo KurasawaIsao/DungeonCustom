@@ -37,6 +37,7 @@ struct FixedRoomSetting {
 };
 struct FloorData {
     // 1フロア分の生成設定。
+    std::string themeId = "default";
     // マップサイズ、部屋数、敵/アイテムテーブル、視界、特殊部屋の出現率などをまとめて持つ。
     int width;
     int height;

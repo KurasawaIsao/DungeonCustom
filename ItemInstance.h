@@ -69,7 +69,12 @@ public:
     }
     const std::string& GetUnidetifiedName() const
     {
-        return m_UnidentifiedName;
+        auto& info = ItemIdentificationManager::Instance().GetInfo(m_Data->name);
+        if (!info.unidentifiedName.empty()) {
+            return info.unidentifiedName;
+        }
+
+        return m_Data->name;
     }
 
 
@@ -134,7 +139,6 @@ private:
     std::unique_ptr<PotData> m_Pot;//‚Â‚Ú?
     int m_PlusValue = 0;//•ŠíC³’l
 
-    std::string m_UnidentifiedName;
     std::string m_CustomName;
 
     BlessState m_Bless = BlessState::Normal;

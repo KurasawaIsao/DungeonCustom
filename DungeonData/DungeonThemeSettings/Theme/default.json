@@ -1,0 +1,9 @@
+{
+    "bgm": "Asset\\Sound\\tsumetaidaichi.wav",
+    "id": "default",
+    "models": {
+        "floor": "Asset\\Model\\Floor.obj",
+        "wall": "Asset\\Model\\Wall.obj"
+    },
+    "name": "Default"
+}

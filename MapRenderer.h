@@ -2,6 +2,7 @@
 #include "GameObject.h"
 #include "MapData.h"
 #include "renderer.h"
+#include <string>
 class ModelRenderer;
 
 class MapRenderer : public GameObject
@@ -15,11 +16,13 @@ public:
     void UpdateTile(int x, int y, TileType type);
     void Clear();
     void SetEditor(bool editor) { m_IsEditor = editor; }
+    static void SetTheme(const std::string& themeId);
 private:
     void BuildGridVertices();
     void CreateGridVertexBuffer();
     void DrawGrid();
     void AddGridLine(const XMFLOAT3& start, const XMFLOAT3& end);
+    static void LoadCurrentThemeModels();
 
     int m_Width = 0;
     int m_Height = 0;
@@ -40,6 +43,7 @@ private:
     static ModelRenderer* s_CorridorModel;
     static ModelRenderer* s_EditorCorridorModel;
     static ModelRenderer* s_ShopFloorModel;
+    static std::string s_CurrentThemeId;
     static ID3D11VertexShader* s_GridVertexShader;
     static ID3D11PixelShader* s_GridPixelShader;
     static ID3D11InputLayout* s_GridVertexLayout;

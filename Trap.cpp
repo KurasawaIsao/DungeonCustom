@@ -6,6 +6,7 @@
 #include "LightManager.h"
 #include "EffectManager.h"
 #include "TurnManager.h"
+#include "MapManager.h"
 void Trap::Init()
 {
     m_Model = new ModelRenderer();
@@ -59,6 +60,11 @@ void Trap::Activate(Unit* target) {
 
     m_Data->effect->Apply(ctx);
     if (m_Data->singleUse || (m_Data->breakChancePercent > 0 && GameRandom::Percent(m_Data->breakChancePercent))) {
+        if (auto* map = MapManager::Instance()->GetCurrentMap())
+        {
+            map->RemoveMapObject(this);
+        }
+
         SetDestroy();
     }
 }

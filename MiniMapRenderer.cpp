@@ -12,6 +12,8 @@
 #include "scene.h"
 #include "PlayerInventoryUI.h"
 #include "ShopUI.h"
+#include "MessageLog.h"
+#include "Trap.h"
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
@@ -616,10 +618,18 @@ void MiniMapRenderer::BuildDynamicLayer()
                     const bool revealSameRoomItemInLookMode = lookMode && playerRoom && playerRoom == itemRoom;
                     if (!revealSameRoomItemInLookMode && !player->IsInView(Vector2Int(mapX, mapY))) continue;
                 }
+                MapObject* obj = map->GetObjectAt(mapX, mapY);
 
-                if (dynamic_cast<Item*>(map->GetObjectAt(mapX, mapY)))
+                if (auto* item = dynamic_cast<Item*>(obj))
                 {
                     pixels[y * texW + x] = 0xFFFFFF00;
+                }
+                else if (auto* trap = dynamic_cast<Trap*>(obj))
+                {
+                    if (trap->IsVisible()) 
+                    {
+                        pixels[y * texW + x] = 0xFF4000A0;
+                    }
                 }
             }
         }

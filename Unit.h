@@ -3,6 +3,8 @@
 #include "Vector2Int.h"
 #include "MessageLog.h"
 #include <string>
+#include <array>
+#include <cstddef>
 #include "SkillData.h"
 #include "MapData.h"
 
@@ -35,6 +37,17 @@ enum class TurnSpeed {
 enum class TurnConsumeType {
     Action,
     Move
+};
+enum class StatModifierType {
+    Attack,
+    Defense,
+    Count
+};
+
+struct StatModifierState {
+    int stage = 0;
+    int maxStage = 0;
+    float ratePerStage = 0.25f;
 };
 // Unit はプレイヤー/敵/仲間に共通する「盤面上の戦闘ユニット」の土台。
 // HP/能力値/状態異常/ターン予算/グリッド移動/アニメーションなど、勢力に依存しない処理だけを持つ。
@@ -108,6 +121,10 @@ protected:
     int m_Exp = 0;
     int m_ExpToNext = 10; // 次レベル必要経験値
 
+    // 攻撃低下・防御上昇などの段階制バフ/デバフを共通管理する。
+    // stage は負数なら低下、正数なら上昇として扱い、maxStage の範囲で重ねがけを止める。
+    std::array<StatModifierState, static_cast<size_t>(StatModifierType::Count)> m_StatModifiers;
+
     int m_RegenCounter = 0;
     int m_RegenConst = 50; // 50ターンで全回復
 
@@ -154,6 +171,7 @@ protected:
     std::string m_DefaultAnim = "Idle"; 
 
 public:
+    Unit();
 
     virtual void OnTurnStart()
     {
@@ -289,9 +307,9 @@ public:
     bool IsDead() const { return m_HP <= 0; }
     int GetHP() const { return m_HP; }
     void SetHP(int value) { m_HP = value; }
-    virtual int GetDEF() const { return m_DEF; }
+    virtual int GetDEF() const { return ApplyStatModifierToValue(StatModifierType::Defense, m_DEF); }
     virtual void SetDEF(int value) { m_DEF = value; }
-    virtual int GetATK() const { return (m_Status == Status::Poison) ? ((m_ATK + 1) / 2) : m_ATK; }
+    virtual int GetATK() const { return ApplyStatModifierToValue(StatModifierType::Attack, m_ATK); }
     virtual void SetATK(int value) { m_ATK = value; }
     int GetACC() const { return m_ACC; }
     void SetACC(int value) { m_ACC = value; }
@@ -358,6 +376,12 @@ public:
 
     void SetStatus(Status effect, int duration, Unit* source = nullptr);
     Status GetStatus() const { return m_Status; }
+
+    void InitStatModifier(StatModifierType type, int maxStage, float ratePerStage = 0.25f);
+    int AddStatModifierStage(StatModifierType type, int stageDelta, Unit* source = nullptr);
+    int GetStatModifierStage(StatModifierType type) const;
+    void ClearStatModifierStage(StatModifierType type);
+    int ApplyStatModifierToValue(StatModifierType type, int value) const;
 
     // 毎ターン開始時に状態異常のカウントを下げる
     bool UpdateStatusCount();

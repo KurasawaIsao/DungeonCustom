@@ -171,12 +171,13 @@ void Item::OnStepped(Player* player)
 
     const std::string name = m_Instance.GetDisplayName();
     player->AddItem(std::move(m_Instance));
-    SetDestroy();
 
     MessageLog::Instance().AddMessage(
         (name + u8"‚ðE‚Á‚½").c_str()
     );
     MapManager::Instance()->GetCurrentMap()->RemoveMapObject(this);
+    SetDestroy();
+
 }
 
 void Item::OnHitWall()

@@ -1,0 +1,37 @@
+{
+    "entries": [
+        {
+            "id": "Staff_Haste",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Slow",
+            "weight": 1
+        },
+        {
+            "id": "Staff_AIRunAway",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Paralysis",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Confuse",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Sleep",
+            "weight": 1
+        },
+        {
+            "id": "Staff_Damage",
+            "weight": 1
+        },
+        {
+            "id": "Staff_KnockBack",
+            "weight": 1
+        }
+    ],
+    "tableId": "Table"
+}

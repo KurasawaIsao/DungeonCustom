@@ -25,6 +25,7 @@ public:
             return;
         }
 
-        ctx.target->SetStatus(Status::Poison, m_NonPlayerDuration, ctx.user);
+        // プレイヤー以外の毒は、共通の攻撃低下デバフとして重ねがけする。
+        ctx.target->AddStatModifierStage(StatModifierType::Attack, -1, ctx.user);
     }
 };

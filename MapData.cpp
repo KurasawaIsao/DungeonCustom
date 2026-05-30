@@ -186,6 +186,7 @@ bool MapData::IsEntranceTile(int x, int y) const
 
         if (!IsInside(nx, ny)) continue;
 
+        //部屋外の通路タイル検出
         if (GetTile(nx, ny) == TileType::Corridor)
         {
             if (GetRoomAt({ nx, ny }) == nullptr)
@@ -204,7 +205,7 @@ void MapData::AddMapObject(MapObject* obj, int x, int y)
         return;
     }
 
-    // Cell already occupied.
+	// すでにオブジェクトがある場所には置けない
     int index = y * m_Width + x;
     if (m_GridObjects[index] != nullptr) {
         obj->SetDestroy();
@@ -213,22 +214,22 @@ void MapData::AddMapObject(MapObject* obj, int x, int y)
 
     obj->SetGridPos({ x, y });
 
-    // Register in the grid.
+	// グリッドに配置
     m_GridObjects[index] = obj;
 
-    // Track for management.
+	// MapObjectのリストにも追加
     m_AllObjects.push_back(obj);
 }
 void MapData::RemoveMapObject(MapObject* obj)
 {
     if (!obj) return;
 
-    // Clear the grid cell if the object is still inside the map.
+	// グリッドから削除
     Vector2Int pos = obj->GetGridPos();
     if (IsInArrayBounds(pos.x, pos.y))
         m_GridObjects[pos.y * m_Width + pos.x] = nullptr;
 
-    // Remove from management list.
+	// MapObjectのリストから削除
     auto it = std::find(m_AllObjects.begin(), m_AllObjects.end(), obj);
     if (it != m_AllObjects.end()) {
         m_AllObjects.erase(it);
@@ -295,17 +296,17 @@ void MapData::Deserialize(const nlohmann::json& j)
 
 bool MapData::IsRoomBorderTile(int x, int y) const
 {
-    // 1. そもそも座標がマップ外なら即終了
+    // 1そもそも座標がマップ外なら即終了
     if (!IsInside(x, y)) return false;
 
-    // 2. 床タイルでなければ判定しない
+    //  床タイルでなければ判定しない
     if (GetTile(x, y) != TileType::Floor) return false;
 
-    // 3. 部屋のインデックスを取得
+    // 部屋のインデックスを取得
     int roomIndex = GetRoomIndexAt(x, y);
     if (roomIndex < 0) return false;
 
-    // 4. m_Rooms のサイズチェック（安全策）
+    //  m_Rooms のサイズチェック
     if (roomIndex >= (int)m_Rooms.size()) return false;
 
     static const Vector2Int dirs[4] = {

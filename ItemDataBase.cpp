@@ -37,7 +37,7 @@ namespace
     StatusEffect g_Confuse(Status::Confusion,5);
     StatusEffect g_Paralysis(Status::Paralysis, -1);
     StatusEffect g_Sleep(Status::Sleep, 3);
-    PoisonEffect g_Poison(1, 50);
+    PoisonEffect g_Poison(1);
     CurePoisonEffect g_CurePoison;
     WarpEffect g_Warp;
     DamageEffect g_Damage(25);

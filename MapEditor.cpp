@@ -12,6 +12,7 @@
 #include "ItemTableDataBase.h"
 #include "EnemyTableDatabase.h"
 #include "DungeonDataIO.h"
+#include "JsonIO.h"
 #include "input.h"
 #include "LightManager.h"
 #include "TrapDataBase.h"
@@ -22,6 +23,8 @@
 #include "SceneDataReference.h"
 #include "UnitManager.h"
 #include <ctime>
+#include <algorithm>
+#include <cctype>
 
 
 namespace fs = std::filesystem;
@@ -39,6 +42,7 @@ void MapEditor::Init() {
     LightManager::Instance().Init();
     ItemDatabase::Init();
     TrapDatabase::Init();
+	DungeonThemeDatabase::Init();
     m_ObjectPlacer.InitializeSelection();
     m_Map = new MapData(50, 50);
     m_Map->SetAllTile(TileType::Floor);
@@ -151,6 +155,10 @@ void MapEditor::DrawMapEditorWindow() {
 				m_SpawnTableEditor.DrawTableEditorTab();
                 ImGui::EndTabItem();
             }
+            if (ImGui::BeginTabItem("Theme")) {
+                DrawThemeEditorTab();
+                ImGui::EndTabItem();
+            }
 
             ImGui::EndTabBar();
 
@@ -158,6 +166,8 @@ void MapEditor::DrawMapEditorWindow() {
 
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
             if (ImGui::Button("Return to Title", ImVec2(-1, 30))) {
+                MessageLog::Instance().ClearHistory();
+                MessageLog::Instance().SetVisible(false);
                 Manager::SetScene<Title>();
             }
             ImGui::PopStyleColor();
@@ -327,43 +337,162 @@ std::string MapEditor::GetMapPath(const std::string& name, ExportDirectory direc
     return folder + fileName;
 }
 
+std::string MapEditor::GetThemePath(const std::string& name) const
+{
+    std::string fileName = name;
+    if (fileName.find(".json") == std::string::npos) fileName += ".json";
+    return DungeonThemeDatabase::GetThemeDirectory() + "\\" + fileName;
+}
+
+std::string MapEditor::GetThemeBgmPath(const std::string& name) const
+{
+    return DungeonThemeDatabase::GetBgmDirectory() + "\\" + name;
+}
+
+std::string MapEditor::GetThemeMapModelPath(const std::string& name) const
+{
+    return DungeonThemeDatabase::GetMapModelDirectory() + "\\" + name;
+}
+
+void MapEditor::DrawThemeEditorTab()
+{
+    ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[ Theme Builder ]");
+    ImGui::InputText("Theme ID", m_ThemeID, sizeof(m_ThemeID));
+
+    if (ImGui::Button("Refresh Theme Assets", ImVec2(-1, 0)))
+    {
+        RefreshFileList();
+        DungeonThemeDatabase::Reload();
+    }
+
+    if (ImGui::BeginCombo("Load Theme", "Select..."))
+    {
+        for (const auto& file : m_ThemeFileList)
+        {
+            if (ImGui::Selectable(file.c_str()))
+                ImportTheme(GetThemePath(file));
+        }
+        ImGui::EndCombo();
+    }
+
+    auto getFileName = [](const std::string& path) -> std::string
+        {
+            if (path.empty()) return "None";
+            return fs::path(path).filename().string();
+        };
+
+    auto drawPathCombo = [&](const char* label, std::string& targetPath, const std::vector<std::string>& files, auto makePath)
+        {
+            const std::string preview = getFileName(targetPath);
+            if (ImGui::BeginCombo(label, preview.c_str()))
+            {
+                if (ImGui::Selectable("None", targetPath.empty()))
+                    targetPath.clear();
+                for (const auto& file : files)
+                {
+                    const std::string path = makePath(file);
+                    const bool selected = (targetPath == path);
+                    if (ImGui::Selectable(file.c_str(), selected))
+                        targetPath = path;
+                    if (selected) ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+        };
+
+    ImGui::SeparatorText("BGM");
+    // BGMフォルダに入っているwavを、テーマのBGM候補として選ぶ。
+    drawPathCombo("BGM File", m_ThemeBgmPath, m_ThemeBgmFileList, [&](const std::string& file) { return GetThemeBgmPath(file); });
+
+    ImGui::SeparatorText("Map Models");
+    // MapModelフォルダに入っているobjを、タイル種別ごとの表示モデルとして選ぶ。
+    drawPathCombo("Floor Model", m_ThemeModels.floor, m_ThemeMapModelFileList, [&](const std::string& file) { return GetThemeMapModelPath(file); });
+    drawPathCombo("Wall Model", m_ThemeModels.wall, m_ThemeMapModelFileList, [&](const std::string& file) { return GetThemeMapModelPath(file); });
+    ImGui::Separator();
+    if (ImGui::Button("Export Theme JSON", ImVec2(-1, 30)))
+        ExportTheme();
+}
+
+void MapEditor::ExportTheme()
+{
+    DungeonThemeData theme;
+    theme.id = m_ThemeID;
+    theme.displayName = m_ThemeID;
+    theme.bgmPath = m_ThemeBgmPath;
+    theme.models = m_ThemeModels;
+
+    // 作成したテーマはDungeonThemeSettings\\Themeへ1テーマ1ファイルで保存する。
+    if (DungeonThemeDatabase::SaveTheme(theme))
+        RefreshFileList();
+
+}
+
+void MapEditor::ImportTheme(const std::string& path)
+{
+    nlohmann::json root;
+    if (!JsonIO::LoadJson(path, root)) return;
+
+    if (root.contains("themes") && root["themes"].is_array() && !root["themes"].empty())
+        root = root["themes"][0];
+
+    const std::string id = root.value("id", "NewTheme");
+    const std::string name = root.value("name", id);
+    strncpy_s(m_ThemeID, sizeof(m_ThemeID), id.c_str(), _TRUNCATE);
+    strncpy_s(m_ThemeName, sizeof(m_ThemeName), name.c_str(), _TRUNCATE);
+    m_ThemeBgmPath = root.value("bgm", "");
+
+    const nlohmann::json emptyModels = nlohmann::json::object();
+    const nlohmann::json& models = root.contains("models") ? root["models"] : emptyModels;
+    m_ThemeModels.floor = models.value("floor", "");
+    m_ThemeModels.wall = models.value("wall", "");
+
+}
 void MapEditor::RefreshFileList() {
-    auto ScanDir = [](const std::string& path, std::vector<std::string>& list) {
+    auto ToLower = [](std::string value) {
+        std::transform(value.begin(), value.end(), value.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        return value;
+        };
+
+    auto ScanDir = [&](const std::string& path, std::vector<std::string>& list, const std::vector<std::string>& extensions) {
         list.clear();
         if (!fs::exists(path)) {
             fs::create_directories(path);
             return;
         }
         for (const auto& entry : fs::directory_iterator(path)) {
-            if (entry.path().extension() == ".json") {
+            if (!entry.is_regular_file()) continue;
+
+            const std::string ext = ToLower(entry.path().extension().string());
+            if (std::find(extensions.begin(), extensions.end(), ext) != extensions.end()) {
                 list.push_back(entry.path().filename().string());
             }
         }
         };
 
-    // 固定マップと部屋パーツのリストを別々に更新する
-    ScanDir("DungeonData\\EdittedMapData\\", m_MapFileList);
-    ScanDir("DungeonData\\EdittedRoomData\\", m_RoomPartFileList);
-    ScanDir("DungeonData\\DungeonContext\\", m_DungeonFileList);
+    // 固定マップ、部屋パーツ、テーマ素材のリストを用途ごとに更新する。
+    ScanDir("DungeonData\\EdittedMapData\\", m_MapFileList, { ".json" });
+    ScanDir("DungeonData\\EdittedRoomData\\", m_RoomPartFileList, { ".json" });
+    ScanDir("DungeonData\\DungeonContext\\", m_DungeonFileList, { ".json" });
+    ScanDir(DungeonThemeDatabase::GetThemeDirectory() + "\\", m_ThemeFileList, { ".json" });
+    ScanDir(DungeonThemeDatabase::GetBgmDirectory() + "\\", m_ThemeBgmFileList, { ".wav" });
+    ScanDir(DungeonThemeDatabase::GetMapModelDirectory() + "\\", m_ThemeMapModelFileList, { ".obj" });
     SyncTestDungeonSelection(false);
 }
 void MapEditor::ExportMap(ExportDirectory directory) {
-    // 1. タイルから最新の部屋データを同期
+    // タイルから最新の部屋データを同期
     m_GeometryEditor.UpdateRoomDataFromTiles(m_Map);
 
-    // 2. MapEditorが管理しているパスを取得
+    //  MapEditorが管理しているパスを取得
     const char* fileName = (directory == ExportDirectory::MapData) ? m_MapFileName : m_RoomPartFileName;
     std::string path = GetMapPath(fileName, directory);
 
-    // 3. Serializerに「純粋なデータ」を渡して丸投げ
+    //  Serializerに「純粋なデータ」を渡して丸投げ
     if (m_FileManager.ExportMap(path, m_Map, m_ObjectPlacer.GetPlacedObjects())) {
-        // 4. 成功したらUIのリストを更新
         RefreshFileList();
     }
 }
 
 void MapEditor::ImportMap(const std::string& path) {
-    // Serializerに読み込みを丸投げ
     if (m_FileManager.ImportMap(path, m_Map, m_ObjectPlacer)) {
         // 描画情報を同期
         SyncRenderer();

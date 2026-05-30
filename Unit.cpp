@@ -9,16 +9,105 @@
 #include "Player.h"
 #include "EffectBillboard.h"
 #include "EffectManager.h"
+#include <algorithm>
+#include <cmath>
 bool Unit::s_SkipMoveAnimation = false;
 
 namespace
 {
+    size_t StatModifierIndex(StatModifierType type)
+    {
+        return static_cast<size_t>(type);
+    }
+
+    const char* GetStatModifierName(StatModifierType type)
+    {
+        switch (type)
+        {
+        case StatModifierType::Attack: return u8"攻撃力";
+        case StatModifierType::Defense: return u8"守備力";
+        default: return u8"能力";
+        }
+    }
+
     Vector2Int NormalizeFacingDir(const Vector2Int& dir)
     {
         return Vector2Int(
             (dir.x > 0) ? 1 : (dir.x < 0 ? -1 : 0),
             (dir.y > 0) ? 1 : (dir.y < 0 ? -1 : 0));
     }
+}
+
+Unit::Unit()
+{
+    // 全ユニット共通の段階制補正を初期化する。個別調整したい場合は派生クラスの Init で呼び直す。
+    InitStatModifier(StatModifierType::Attack, 4, 0.25f);
+    InitStatModifier(StatModifierType::Defense, 4, 0.25f);
+}
+
+void Unit::InitStatModifier(StatModifierType type, int maxStage, float ratePerStage)
+{
+    const size_t index = StatModifierIndex(type);
+    if (index >= m_StatModifiers.size()) return;
+
+    StatModifierState& state = m_StatModifiers[index];
+    state.maxStage = (std::max)(0, maxStage);
+    state.ratePerStage = (std::max)(0.0f, ratePerStage);
+    state.stage = std::clamp(state.stage, -state.maxStage, state.maxStage);
+}
+
+int Unit::AddStatModifierStage(StatModifierType type, int stageDelta, Unit* source)
+{
+    (void)source;
+    const size_t index = StatModifierIndex(type);
+    if (index >= m_StatModifiers.size() || stageDelta == 0) return 0;
+
+    StatModifierState& state = m_StatModifiers[index];
+    const int before = state.stage;
+    state.stage = std::clamp(state.stage + stageDelta, -state.maxStage, state.maxStage);
+
+    if (state.stage == before)
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"の" + GetStatModifierName(type) + (stageDelta < 0 ? u8"はもう下がらない。" : u8"はもう上がらない。"));
+        return state.stage;
+    }
+
+    MessageLog::Instance().AddMessage(m_Name + u8"の" + GetStatModifierName(type) + (state.stage < before ? u8"が下がった。" : u8"が上がった。"));
+    return state.stage;
+}
+
+int Unit::GetStatModifierStage(StatModifierType type) const
+{
+    const size_t index = StatModifierIndex(type);
+    if (index >= m_StatModifiers.size()) return 0;
+    return m_StatModifiers[index].stage;
+}
+
+void Unit::ClearStatModifierStage(StatModifierType type)
+{
+    const size_t index = StatModifierIndex(type);
+    if (index >= m_StatModifiers.size()) return;
+
+    StatModifierState& state = m_StatModifiers[index];
+    if (state.stage == 0) return;
+
+    const int before = state.stage;
+    state.stage = 0;
+    MessageLog::Instance().AddMessage(m_Name + u8"の" + GetStatModifierName(type) + (before < 0 ? u8"が元に戻った。" : u8"の強化が消えた。"));
+}
+
+int Unit::ApplyStatModifierToValue(StatModifierType type, int value) const
+{
+    const size_t index = StatModifierIndex(type);
+    if (index >= m_StatModifiers.size()) return (std::max)(1, value);
+
+    const StatModifierState& state = m_StatModifiers[index];
+    if (state.stage == 0) return (std::max)(1, value);
+
+    // 段階数から倍率を作る。下げすぎても0倍にはせず、最低1ダメージ計算が壊れないようにする。
+    float rate = 1.0f + state.ratePerStage * static_cast<float>(state.stage);
+    if (rate < 0.1f) rate = 0.1f;
+    return (std::max)(1, static_cast<int>(std::round(value * rate)));
 }
 
 
@@ -338,7 +427,9 @@ void Unit::SetStatus(Status effect, int duration, Unit* source)
             MessageLog::Instance().AddMessage(m_Name + u8"はすでに動けない！");
             break;
         case Status::Poison:
-            MessageLog::Instance().AddMessage(m_Name + u8"はすでに毒を受けている！");
+            // 毒の重ねがけは共通の攻撃低下段階として処理する。
+            AddStatModifierStage(StatModifierType::Attack, -1, source);
+            if (duration != 0) m_StatusDuration = duration;
             break;
         default:
             break;
@@ -401,6 +492,8 @@ void Unit::SetStatus(Status effect, int duration, Unit* source)
         break;
     case Status::Poison:
         MessageLog::Instance().AddMessage(m_Name + u8"は毒を受けた。");
+        // 毒は攻撃低下として扱い、同じ処理で他の攻撃デバフと重ねられるようにする。
+        AddStatModifierStage(StatModifierType::Attack, -1, source);
         m_Status = effect;
         m_StatusDuration = duration;
         break;
@@ -445,6 +538,7 @@ void Unit::ClearStatus()
         break;
     case Status::Poison:
         MessageLog::Instance().AddMessage(msg + u8"の毒が消えた。");
+        ClearStatModifierStage(StatModifierType::Attack);
         break;
     default:
         break;
