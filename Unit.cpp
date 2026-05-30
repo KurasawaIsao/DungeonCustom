@@ -56,9 +56,8 @@ void Unit::InitStatModifier(StatModifierType type, int maxStage, float ratePerSt
     state.stage = std::clamp(state.stage, -state.maxStage, state.maxStage);
 }
 
-int Unit::AddStatModifierStage(StatModifierType type, int stageDelta, Unit* source)
+int Unit::AddStatModifierStage(StatModifierType type, int stageDelta)
 {
-    (void)source;
     const size_t index = StatModifierIndex(type);
     if (index >= m_StatModifiers.size() || stageDelta == 0) return 0;
 
@@ -410,9 +409,8 @@ bool Unit::ConsumeActionBlockAfterStatusClear()
     m_BlockActionOnceAfterStatusClear = false;
     return true;
 }
-void Unit::SetStatus(Status effect, int duration, Unit* source)
+void Unit::SetStatus(Status effect, int duration)
 {
-    const bool showVisual = !source || ShouldShowCombatVisual(source);
     if (m_Status == effect) {
         switch (effect) {
         case Status::Confusion:
@@ -428,7 +426,7 @@ void Unit::SetStatus(Status effect, int duration, Unit* source)
             break;
         case Status::Poison:
             // 毒の重ねがけは共通の攻撃低下段階として処理する。
-            AddStatModifierStage(StatModifierType::Attack, -1, source);
+            AddStatModifierStage(StatModifierType::Attack, -1);
             if (duration != 0) m_StatusDuration = duration;
             break;
         default:
@@ -436,64 +434,49 @@ void Unit::SetStatus(Status effect, int duration, Unit* source)
         }
         return;
     }
-    StopLoopEffect();
+   
 
     switch (effect) {
     case Status::Confusion:
-        if (m_Status == effect)
-        {
-            MessageLog::Instance().AddMessage(m_Name + u8"はすでに混乱している！");
-            if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Confuse.png");
-            break;
-        }
-        else
-        {
-            if (showVisual) EffectManager::PlaySE("Asset\\Sound\\Confuse.wav");
-            MessageLog::Instance().AddMessage(m_Name + u8"は混乱した。");
-            if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Confuse.png");
-            m_Status = effect;
-            m_StatusDuration = duration;
-            break;
-        }
+        StopLoopEffect();
+        EffectManager::PlaySE("Asset\\Sound\\Confuse.wav");
+        MessageLog::Instance().AddMessage(m_Name + u8"は混乱した。");
+        m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Confuse.png");
+        m_Status = effect;
+        m_StatusDuration = duration;
+        break;
 
        
     case Status::Sleep:
-        if (m_Status == effect)
-        {
-            MessageLog::Instance().AddMessage(m_Name + u8"はすでに眠っている！");
-            if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Sleep.png");
-            break;
-        }
-        else
-        {
-            if (showVisual) EffectManager::PlaySE("Asset\\Sound\\Sleep.wav");
-            MessageLog::Instance().AddMessage(m_Name + u8"は眠ってしまった。");
-            if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Sleep.png");
-            m_Status = effect;
-            m_StatusDuration = duration;
-            if (showVisual) PlayAnimation("Sleep", 1.0f);
-            m_DefaultAnim = "Sleep";
-            break;
-        }
+        StopLoopEffect();
+        EffectManager::PlaySE("Asset\\Sound\\Sleep.wav");
+        MessageLog::Instance().AddMessage(m_Name + u8"は眠ってしまった。");
+        m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Sleep.png");
+        m_Status = effect;
+        m_StatusDuration = duration;
+        PlayAnimation("Sleep", 1.0f);
+        m_DefaultAnim = "Sleep";
+        break;
       
     case Status::Paralysis:
-        if (showVisual) EffectManager::PlaySE("Asset\\Sound\\Paralysis.wav");
+        StopLoopEffect();
+        EffectManager::PlaySE("Asset\\Sound\\Paralysis.wav");
         MessageLog::Instance().AddMessage(m_Name + u8"は動けなくなった。");
-        if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Paralysis.png");
         m_Status = effect;
         m_StatusDuration = duration;
         break;
     case Status::Nap:
-        if (showVisual) m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Sleep.png");
+        StopLoopEffect();
+        m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Sleep.png");
         m_Status = effect;
         m_StatusDuration = duration;
-        if (showVisual) PlayAnimation("Sleep", 1.0f);
+        PlayAnimation("Sleep", 1.0f);
         m_DefaultAnim = "Sleep";
         break;
     case Status::Poison:
         MessageLog::Instance().AddMessage(m_Name + u8"は毒を受けた。");
         // 毒は攻撃低下として扱い、同じ処理で他の攻撃デバフと重ねられるようにする。
-        AddStatModifierStage(StatModifierType::Attack, -1, source);
+        AddStatModifierStage(StatModifierType::Attack, -1);
         m_Status = effect;
         m_StatusDuration = duration;
         break;

@@ -177,7 +177,7 @@ void MapManager::ClearFloor()
 void MapManager::ChangeFloor()
 {
     ClearFloor();
-
+	MessageLog::Instance().SetVisible(false);
     if (m_CurrentFloor >= m_DungeonData.GetFloorCount())
     {
         StartClearEnding(this);

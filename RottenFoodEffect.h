@@ -27,7 +27,7 @@ public:
         }
         case 2:
         default:
-            ctx.target->SetStatus(Status::Confusion, 5, ctx.user);
+            ctx.target->SetStatus(Status::Confusion, 5);
             break;
         }
     }

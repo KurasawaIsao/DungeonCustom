@@ -37,17 +37,17 @@ public:
             Player* player = dynamic_cast<Player*>(ctx.target);
             if (player)
             {
-                player->SetStatus(m_EffectType, 50, ctx.user);
+                player->SetStatus(m_EffectType, 50);
             }
             else
             {
-                ctx.target->SetStatus(m_EffectType, 0, ctx.user);
+                ctx.target->SetStatus(m_EffectType, 0);
             }
             
         }
         else
         {
-            ctx.target->SetStatus(m_EffectType, finalDuration, ctx.user);
+            ctx.target->SetStatus(m_EffectType, finalDuration);
         }
         
      

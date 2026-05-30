@@ -132,7 +132,7 @@ protected:
 
     Status m_Status = Status::None;
     int m_StatusDuration = 0; // 状態異常の残りターン数
-    bool m_BlockActionOnceAfterStatusClear = false;
+	bool m_BlockActionOnceAfterStatusClear = false;// 状態異常が治った次のターンに行動をブロックするフラグ（混乱の状態異常が治る場合などに、治った次のターンに行動させないために使う）
 
     class EffectBillboard* m_LoopEffect = nullptr;
     // ===== 座標 =====
@@ -374,11 +374,11 @@ public:
     void TakeDamage(int damage, Unit* attacker = nullptr);
     void ConstantDamage(int value, Unit* attacker = nullptr, bool waitForAnimation = true);
 
-    void SetStatus(Status effect, int duration, Unit* source = nullptr);
+    void SetStatus(Status effect, int duration);
     Status GetStatus() const { return m_Status; }
 
     void InitStatModifier(StatModifierType type, int maxStage, float ratePerStage = 0.25f);
-    int AddStatModifierStage(StatModifierType type, int stageDelta, Unit* source = nullptr);
+    int AddStatModifierStage(StatModifierType type, int stageDelta);
     int GetStatModifierStage(StatModifierType type) const;
     void ClearStatModifierStage(StatModifierType type);
     int ApplyStatModifierToValue(StatModifierType type, int value) const;
