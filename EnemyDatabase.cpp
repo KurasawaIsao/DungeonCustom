@@ -82,7 +82,7 @@ void EnemyDatabase::Init()
             9, 5, 2, 90, 5, 3, 8,
             10, 0.2f,"",1.0f,SleepType::WakeOnRoom,
             {
-                Skill(u8"‚ ‚â‚µ‚¢Œõ", 0.9f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget)
+                Skill(u8"‚ ‚â‚µ‚¢Œõ", 0.1f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget)
             },
             EnemyAIType::PatrolAndChase,
             EnemyTurnSpeedType::Normal, EnemyTurnSpeedType::Normal, 3,
