@@ -1,6 +1,4 @@
 // ピクセルシェーダー
-// unlitColorPS.hlsl
-
 #include "common.hlsl"	// 必ずインクルード
 
 void main(in PS_IN In, out float4 outDiffuse : SV_Target)

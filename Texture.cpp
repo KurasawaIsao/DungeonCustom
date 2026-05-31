@@ -49,7 +49,6 @@ ID3D11ShaderResourceView* Texture::LoadDDS(const char* FileName)
     ID3D11ShaderResourceView* texture;
 
     // 画像読み込み
-    // LoadFromWICFile(wFileName, WIC_FLAGS_NONE, &metadata, image);
     LoadFromDDSFile(wFileName, DDS_FLAGS_NONE, &metadata, image);
 
     // テクスチャ生成

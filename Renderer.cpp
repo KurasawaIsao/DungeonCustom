@@ -97,7 +97,6 @@ void Renderer::Init()
 	textureDesc.Height = swapChainDesc.BufferDesc.Height;
 	textureDesc.MipLevels = 1;
 	textureDesc.ArraySize = 1;
-	//textureDesc.Format = DXGI_FORMAT_D16_UNORM;
 	textureDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
 	textureDesc.SampleDesc = swapChainDesc.SampleDesc;
 	textureDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -188,7 +187,6 @@ void Renderer::Init()
 
 	m_Device->CreateDepthStencilState(&depthStencilDesc, &m_DepthStateEnable);//深度有効ステート
 
-	//depthStencilDesc.DepthEnable = FALSE;
 	depthStencilDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
 	m_Device->CreateDepthStencilState(&depthStencilDesc, &m_DepthStateDisable);//深度無効ステート
 

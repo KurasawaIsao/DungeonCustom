@@ -28,7 +28,6 @@ void Skydorm::Update()
 	//“K“–‚É‰ñ“]
 	m_Rotation.y += 0.008f;
 
-	/*Camera* camera=*/
 }
 
 void Skydorm::Draw()
@@ -58,5 +57,4 @@ void Skydorm::Uninit()
 
 	m_VertexShader->Release();
 	m_VertexLayout->Release();
-	//delete m_modelrenderer;
 }

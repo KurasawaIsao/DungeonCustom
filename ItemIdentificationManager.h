@@ -1,4 +1,3 @@
-// ItemIdentificationManager.h
 #pragma once
 #include <map>
 #include <string>

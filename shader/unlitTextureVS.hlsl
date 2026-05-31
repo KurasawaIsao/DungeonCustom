@@ -1,6 +1,4 @@
 
-// unlitColorVS.hlsl
-
 #include "common.hlsl"	// 必ずインクルード
 
 void main(in VS_IN In, out PS_IN Out)
@@ -30,15 +28,15 @@ void main(in VS_IN In, out PS_IN Out)
     }
 	// 頂点変換(必ず変更)
     matrix wvp; // ワールドビュープロジェクション行列
-    wvp = mul(World, View); // wvp = World * View
-    wvp = mul(wvp, Projection); // wvp = wvp * Projection
+    wvp = mul(World, View);
+    wvp = mul(wvp, Projection);
 	// ポリゴンの頂点を変換行列で変換して出力
     Out.Position = mul(skinnedPos, wvp); // 頂点座標を行列で変換
 	
     Out.TexCoord = In.TexCoord; // 頂点のテクスチャ座標を出力
     Out.Diffuse = In.Diffuse; // 頂点色の出力
     Out.Normal = In.Normal;
-    Out.Depth = Out.Position.z/* / Out.Position.y*/;
+    Out.Depth = Out.Position.z;
 
 }
 

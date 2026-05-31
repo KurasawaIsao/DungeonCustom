@@ -20,7 +20,6 @@ class Enemy : public Unit
 {
 private:
    //Unit‚É‚ ‚é‚à‚Ì‚ğŒp³æ‚Å‘‚©‚È‚¢‚Å...
-   // class AnimationModel* m_AnimationModel;
 
  
     EnemyData m_Data;

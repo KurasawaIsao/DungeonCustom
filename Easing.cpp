@@ -118,12 +118,3 @@ XMFLOAT3 LerpedFloat3(const XMFLOAT3& a, const XMFLOAT3& b, float t) {
 }
 
 }
-
-//3Dベクトル線形補間 time=0.0fならstart => time=1.0ならendになるよう直線補間する
-//他のバージョンが必要なら自作する
-//XMFLOAT3 Vec3Lerp(XMFLOAT3 startpos, XMFLOAT3 endpos, float time)
-//{
-//	XMFLOAT3 retv;//startからendをtで保管してretvを作る
-//	//補完部分(未完)
-//	return retv;
-//}

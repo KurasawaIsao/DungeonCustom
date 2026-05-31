@@ -23,12 +23,6 @@ const char* WINDOW_NAME = "不思議のダンジョンCustom";
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-/// <summary>
-/// //
-/// </summary>
-/// <param name="hWnd"></param>
-/// <returns></returns>
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 HWND g_Window;

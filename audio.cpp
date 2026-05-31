@@ -138,11 +138,6 @@ void Audio::Play(bool Loop)
 
 	m_SourceVoice->SubmitSourceBuffer(&bufinfo, NULL);
 
-/*
-	float outputMatrix[4] = { 0.0f , 0.0f, 1.0f , 0.0f };
-	m_SourceVoice->SetOutputMatrix(m_MasteringVoice, 2, 2, outputMatrix);
-	//m_SourceVoice->SetVolume(0.1f);
-*/
 
 
 	// Ä¶

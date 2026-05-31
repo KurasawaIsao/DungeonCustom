@@ -29,7 +29,6 @@ void Polygon2D::Init(float x, float y, float width, float height, const char* Fi
 
 	//頂点バッファ作成
 	D3D11_BUFFER_DESC	bd{};//{}を後に書くと自動で初期化してくれる
-	/*ZeroMemory(&bd, sizeof(bd));*/
 	bd.Usage = D3D11_USAGE_DEFAULT;
 	bd.ByteWidth = sizeof(VERTEX_3D) * 4;
 	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
@@ -38,11 +37,6 @@ void Polygon2D::Init(float x, float y, float width, float height, const char* Fi
 	D3D11_SUBRESOURCE_DATA sd{};
 	sd.pSysMem = vertex;
 
-	/*TexMetadata metadata;
-	ScratchImage image;
-
-	CreateShaderResourceView(Renderer::GetDevice(), image.GetImages(), image.GetImageCount(), metadata, &m_texture);
-	assert(m_texture);*/
 	if (FileName != nullptr)
 	{
 		m_texture = Texture::Load(FileName);

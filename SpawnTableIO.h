@@ -1,4 +1,3 @@
-// SpawnTableIO.h
 #pragma once
 #include <string>
 #include <exception>

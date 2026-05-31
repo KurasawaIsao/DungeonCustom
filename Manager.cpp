@@ -42,7 +42,6 @@ void Manager::Init()
     // DungeonScene ‚â EditorScene ‚Ö‚Ì‘JˆÚ‚Í Manager::SetScene ‚Å m_Nextscene ‚É—\–ñ‚³‚ê‚éB
 	Input::Init();
 	Audio::InitMaster();
-    //InitImGuiFonts();
 	m_scene = new Title();
 	m_scene->Init();
 

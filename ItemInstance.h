@@ -1,4 +1,3 @@
-// ItemInstance.h
 #pragma once
 #include "ItemData.h"
 #include "Vector2Int.h"

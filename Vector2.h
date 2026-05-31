@@ -81,10 +81,6 @@ public:
 	}
 
 
-	/*float operator*(const Vector2& a)const
-	{
-		return x * a.x + y * a.y + z * a.z;
-	}*/
 
 	float Length()const
 	{

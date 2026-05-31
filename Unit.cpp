@@ -245,7 +245,7 @@ void Unit::SetGridPos(const Vector2Int& g)
 
 }
 
-bool Unit::RepairInvalidGridPos(const char* /*context*/)
+bool Unit::RepairInvalidGridPos(const char*)
 {
     MapData* map = MapManager::Instance() ? MapManager::Instance()->GetCurrentMap() : nullptr;
     if (!map) return false;

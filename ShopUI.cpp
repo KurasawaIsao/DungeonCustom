@@ -256,8 +256,6 @@ int ShopUI::FinalizePendingShopSales(Player* player)
                 item->SetPlayerShopItem(false);
                 item->SetShopItem(true);
 
-                //map->RemoveMapObject(item);
-                //item->SetDestroy();
             }
         }
     }
@@ -302,7 +300,6 @@ void ShopUI::AngerShopKeeper(Enemy* enemy)
     if (!enemy || !enemy->IsShopKeeper() || enemy->IsShopHostile()) return;
     MessageLog::Instance().AddMessage(u8"“X”Ô‚ð“{‚ç‚¹‚½I");
     enemy->SetShopKeeperMode(true);
-    //TurnManager::Instance()->SetShopTheftMode(true);
 }
 
 void ShopUI::DrawShopBuyUI(Player* player)

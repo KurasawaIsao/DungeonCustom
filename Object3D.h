@@ -13,8 +13,6 @@ private:
 	ID3D11InputLayout* m_VertexLayout;
 
 	int m_frame;
-	//float m_Angle;
-	//XMFLOAT2 m_pos;
 public:
 
 	void Init();

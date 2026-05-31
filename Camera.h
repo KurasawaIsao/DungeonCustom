@@ -28,7 +28,6 @@ private:
 	//タイトル演出用
 	bool m_IsTitleCamera = false;
 
-	// Camera.h
 	float m_TitlePitch = -10.0f;
 	float m_TitlePitchMin = -70.0f;
 	float m_TitlePitchMax = 25.0f;

@@ -16,7 +16,6 @@ Object3D* Object3D::Init(const char* FileName)
 {
 	m_AnimationModel = new AnimationModel();
 	m_AnimationModel->Load(FileName);
-	//"model\\box.obj"
 	Renderer::CreateVertexShader(&m_VertexShader, &m_VertexLayout, "shader\\unlitTextureVS.cso");
 	Renderer::CreatePixelShader(&m_PixelShader, "shader\\unlitTexturePS.cso");
 

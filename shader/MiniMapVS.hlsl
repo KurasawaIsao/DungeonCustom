@@ -1,6 +1,4 @@
 
-// unlitColorVS.hlsl
-
 #include "common.hlsl"	// 必ずインクルード
 
 struct MinimapInstance

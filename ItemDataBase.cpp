@@ -492,7 +492,6 @@ void ItemDatabase::Init()
     );
     m_ItemIDs.push_back("Sh_IronShield");
 
-    //SetShopPriceDefaults();
 
     // ---- SpawnTableì«Ç›çûÇ› ----
     ItemTableDatabase::LoadAll("DungeonData\\ItemTables\\");

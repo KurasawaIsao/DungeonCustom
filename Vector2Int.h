@@ -86,10 +86,6 @@ public:
 		float dy = static_cast<float>(a.y - b.y);
 		return sqrt(dx * dx + dy * dy);
 	}
-	/*float operator*(const Vector2Int& a)const
-	{
-		return x * a.x + y * a.y + z * a.z;
-	}*/
 
 	float Length()const
 	{
@@ -100,4 +96,4 @@ public:
 		return abs(x - other.x) + abs(y - other.y);
 	}
 };
-#endif // VECTOR2INT_H
+#endif

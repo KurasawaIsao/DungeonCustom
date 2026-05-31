@@ -19,12 +19,10 @@ public:
     {
         if (!user || !target || target == user || target->GetHP() <= 0) return false;
 
-        // Enemy skills only affect the player side: Player or Ally.
         if (dynamic_cast<Enemy*>(user)) {
             return dynamic_cast<Player*>(target) || dynamic_cast<Ally*>(target);
         }
 
-        // Player-side skills only affect Enemy units.
         if (dynamic_cast<Player*>(user) || dynamic_cast<Ally*>(user)) {
             return dynamic_cast<Enemy*>(target) != nullptr;
         }
@@ -73,7 +71,6 @@ public:
                 return dist <= radius;
             case EffectTargetType::UserRoom:
             {
-                // Room skills affect the user's room plus nearby visible tiles, but never the user.
                 if (unit == ctx.user) return false;
                 if (userRoom && map->GetRoomAt(p) == userRoom) return true;
 

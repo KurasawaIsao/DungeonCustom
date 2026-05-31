@@ -119,7 +119,6 @@ void MapEditor::DrawMapEditorWindow() {
                 ImGui::EndTabItem();
             }
 
-            // --- Map File ---
             if (ImGui::BeginTabItem("Map File")) {
                 ImGui::TextColored(ImVec4(1, 1, 0, 1), "Full Map");
                 ImGui::InputText("Full Map File Name", m_MapFileName, 128);

@@ -109,10 +109,7 @@ void Camera::Draw()
 	}
 
 	//行列をセット
-	Renderer::SetViewMatrix(m_View);
-
-	/*Renderer::SetCameraPosition(m_Position);*/
-}
+	Renderer::SetViewMatrix(m_View);}
 
 void Camera::Uninit()
 {

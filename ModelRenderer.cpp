@@ -154,14 +154,6 @@ void ModelRenderer::LoadModel( const char *FileName, MODEL *Model)
 
 			Model->SubsetArray[i].Material.Texture = nullptr;
 
-			//// テクスチャ読み込み
-			//TexMetadata metadata;
-			//ScratchImage image;
-			//wchar_t wc[256];
-			//mbstowcs(wc, modelObj.SubsetArray[i].Material.TextureName, sizeof(wc));
-			//LoadFromWICFile(wc, WIC_FLAGS_NONE, &metadata, image);
-			//CreateShaderResourceView(Renderer::GetDevice(), image.GetImages(), image.GetImageCount(), metadata, &Model->SubsetArray[i].Material.Texture);
-
 			if (strlen(modelObj.SubsetArray[i].Material.TextureName) != 0)
 			{
 				char* ext = PathFindExtension(modelObj.SubsetArray[i].Material.TextureName);
