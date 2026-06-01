@@ -26,6 +26,7 @@ enum class UIState
     RecruitConfirm,
     RecruitDismiss,
     Rename,
+    MessageHistory,
     ShrineConfirm
 };
 class PlayerInventoryUI : public GameObject, public GameUIObject
@@ -48,6 +49,7 @@ private:
     int m_AllyCursor = 0;
     int m_AllyCommandCursor = 0;
     int m_GroundCursor = 0;
+    int m_MessageHistoryCursor = 0;
     int m_ShrineConfirmCursor = 0;
     int m_PotSide = 0;
     int m_PotItemCursor = 0;
@@ -104,6 +106,7 @@ private:
     void DrawItemCommandMenu(Player* player);
     void DrawAllyMenu();
     void DrawGroundMenu(Player* player);
+    void DrawMessageHistoryUI();
     void DrawRenameUI(Player* player);
     void DrawPotUI(Player* player);
     void DrawRecruitUI();

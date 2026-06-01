@@ -101,6 +101,8 @@ void Player::Update() {
     }
     if (m_MoveState != MoveState::Idle || m_IsActingAnimation) return;
 
+    UpdateMoveAnimationByInput();
+
     // 階段確認
     MapManager* mm = Manager::GetScene()->GetGameObject<MapManager>();
     MapData* map = mm ? mm->GetCurrentMap() : nullptr;
@@ -230,6 +232,45 @@ void Player::MoveInput() {
     Move(inputDir);
 }
 
+bool Player::IsMoveAnimationInputHeld() const
+{
+    // 睡眠や麻痺中は状態異常アニメーションを優先し、方向入力で上書きしない。
+    if (m_Status == Status::Sleep || m_Status == Status::Nap || m_Status == Status::Paralysis) return false;
+    if (Input::GetKeyPress(VK_SPACE)) return false;
+
+    return Input::GetKeyPress(VK_UP) ||
+        Input::GetKeyPress(VK_DOWN) ||
+        Input::GetKeyPress(VK_LEFT) ||
+        Input::GetKeyPress(VK_RIGHT);
+}
+
+bool Player::IsMoveAnimationBlockedByUi() const
+{
+    // メニューや確認ウィンドウの操作中は、カーソル入力で走りモーションへ切り替えない。
+    auto* scene = Manager::GetScene();
+    if (!scene) return false;
+
+    auto* ui = scene->GetGameObject<PlayerInventoryUI>();
+    auto* shopUi = scene->GetGameObject<ShopUI>();
+    auto* confirm = scene->GetGameObject<ConfirmWindow>();
+    return (ui && ui->IsAnyMenuOpen()) ||
+        (shopUi && shopUi->IsAnyMenuOpen()) ||
+        (confirm && confirm->GetEnable());
+}
+
+void Player::UpdateMoveAnimationByInput()
+{
+    if (IsMoveAnimationBlockedByUi()) return;
+
+    PlayAnimation(IsMoveAnimationInputHeld() ? "Run" : m_DefaultAnim, 1.0f);
+}
+
+std::string Player::GetMoveEndAnimation() const
+{
+    // 罠などで睡眠になった直後は Sleep を優先し、通常時だけキー保持で Run を維持する。
+    if (m_DefaultAnim != "Idle") return m_DefaultAnim;
+    return IsMoveAnimationInputHeld() ? "Run" : m_DefaultAnim;
+}
 void Player::ExecuteConfusionAction() {
     Vector2Int inputDir(0, 0);
     if (Input::GetKeyPress(VK_UP))    inputDir.y += 1;
@@ -474,7 +515,7 @@ void Player::InstantMoveTo(const Vector2Int& gridPos, bool suppressObjectStep) {
         }
     }
     MapManager::Instance()->AfterUnitMoved(this, suppressObjectStep);
-    PlayAnimation("Idle", 1.0f);
+    PlayAnimation(GetMoveEndAnimation(), 1.0f);
 }
 
 void Player::Move(const Vector2Int& dir) {
@@ -493,7 +534,7 @@ void Player::Move(const Vector2Int& dir) {
     if (Ally* ally = dynamic_cast<Ally*>(targetUnit)) {
         Vector2Int oldPos = m_GridPos;
         m_PreviousGridPos = oldPos;
-        StartMove(next, MOVE_TIME_DASH);
+        StartMove(next, MOVE_TIME_NORMAL);
         ally->RequestMove(oldPos);
         ally->ReserveMoveConsumedOnNextTurn();
         ally->LookAt(-dir);
@@ -508,7 +549,7 @@ void Player::Move(const Vector2Int& dir) {
     if (UnitManager::Instance()->HasEnemy(next)) return;
 
     m_PreviousGridPos = m_GridPos;
-    StartMove(next, MOVE_TIME_DASH);
+    StartMove(next, MOVE_TIME_NORMAL);
     EndTurn();
 }
 

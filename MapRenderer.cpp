@@ -28,7 +28,7 @@ void MapRenderer::SetTheme(const std::string& themeId)
 
 void MapRenderer::LoadCurrentThemeModels()
 {
-    const DungeonThemeData& theme = DungeonThemeDatabase::GetThemeOrDefault(s_CurrentThemeId);
+    const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(s_CurrentThemeId);
     s_CurrentThemeId = theme.id;
 
     auto loadModel = [](ModelRenderer*& model, const std::string& path)

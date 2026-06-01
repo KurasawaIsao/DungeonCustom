@@ -68,6 +68,48 @@ void MapData::SetActiveRect(int left, int top, int right, int bottom, bool activ
         }
     }
 }
+void MapData::ExpandActiveAreaWithWall(int padding)
+{
+    if (padding <= 0) return;
+
+    const std::vector<bool> baseActiveTiles = m_ActiveTiles;
+    std::vector<bool> expandedActiveTiles = m_ActiveTiles;
+
+    for (int y = 0; y < m_Height; ++y)
+    {
+        for (int x = 0; x < m_Width; ++x)
+        {
+            const int index = y * m_Width + x;
+            if (baseActiveTiles[index]) continue;
+
+            bool nearMap = false;
+            for (int oy = -padding; oy <= padding && !nearMap; ++oy)
+            {
+                for (int ox = -padding; ox <= padding; ++ox)
+                {
+                    const int nx = x + ox;
+                    const int ny = y + oy;
+                    if (!IsInArrayBounds(nx, ny)) continue;
+
+                    if (baseActiveTiles[ny * m_Width + nx])
+                    {
+                        nearMap = true;
+                        break;
+                    }
+                }
+            }
+
+            if (nearMap)
+            {
+                // マップ外扱いだったマスを表示範囲に加え、地形としては壁で埋める。
+                expandedActiveTiles[index] = true;
+                m_Tiles[index] = TileType::Wall;
+            }
+        }
+    }
+
+    m_ActiveTiles = expandedActiveTiles;
+}
 void MapData::ApplyRooms()
 {
     // 全部壁でリセット

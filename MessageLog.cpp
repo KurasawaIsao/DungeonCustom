@@ -3,6 +3,11 @@
 #include "UIRenderer.h"
 #include "UITextRenderer.h"
 
+namespace
+{
+    constexpr size_t kMaxHistoryLines = 100;
+}
+
 MessageLog& MessageLog::Instance()
 {
     static MessageLog inst;
@@ -13,6 +18,12 @@ void MessageLog::AddMessage(const std::string& msg)
 {
     // 表示用ログとは別に、あとで見返すための履歴へも必ず残す。
     m_History.push_back(msg);
+    if (m_History.size() > kMaxHistoryLines)
+    {
+        // 履歴は直近100件だけを残し、古いログから破棄する。
+        m_History.erase(m_History.begin(), m_History.begin() + (m_History.size() - kMaxHistoryLines));
+    }
+
     m_Logs.push_back(msg);
     m_ScrollToBottom = true;
 

@@ -32,6 +32,7 @@ private:
     int m_RecruitmentModifier;
     bool m_IsShopKeeper = false;
     bool m_IsShopHostile = false;
+    bool m_EditorPreviewOnly = false;
     bool m_ConsumeTurnAfterNapConditionWake = false;
     bool m_RecruitByPlayerNormalAttack = false;
   
@@ -60,6 +61,8 @@ public:
   
 
     EnemyData GetEnemyData() const { return m_Data; }
+    void SetEditorPreviewOnly(bool previewOnly) { m_EditorPreviewOnly = previewOnly; }
+    bool IsEditorPreviewOnly() const { return m_EditorPreviewOnly; }
     void SetShopKeeperMode(bool hostile);
     void ChangeAI(EnemyAIType aiType);
     bool IsShopKeeper() const { return m_IsShopKeeper; }

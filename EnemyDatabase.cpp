@@ -449,6 +449,17 @@ const EnemyData* EnemyDatabase::Get(const std::string& id)
     }
     return &it->second;
 }
+std::vector<std::string> EnemyDatabase::GetAllIds()
+{
+    std::vector<std::string> ids;
+    ids.reserve(m_Data.size());
+    for (const auto& pair : m_Data)
+    {
+        ids.push_back(pair.first);
+    }
+    return ids;
+}
+
 const EnemyData* EnemyDatabase::DrawFromTable(const std::string& tableId)
 {
     // EnemyTableDatabaseは出現比率だけを持ち、最終的なステータス実体はEnemyDatabaseから引く。

@@ -304,7 +304,7 @@ bool DungeonThemeDatabase::Exists(const std::string& themeId)
         [&](const DungeonThemeData& theme) { return theme.id == themeId; });
 }
 
-const DungeonThemeData& DungeonThemeDatabase::GetThemeOrDefault(const std::string& themeId)
+const DungeonThemeData& DungeonThemeDatabase::GetOrDefault(const std::string& themeId)
 {
     EnsureLoaded();
 
@@ -321,7 +321,7 @@ const DungeonThemeData& DungeonThemeDatabase::GetThemeOrDefault(const std::strin
     return g_Themes.front();
 }
 
-const std::vector<DungeonThemeData>& DungeonThemeDatabase::GetAllThemes()
+const std::vector<DungeonThemeData>& DungeonThemeDatabase::GetAll()
 {
     EnsureLoaded();
     return g_Themes;

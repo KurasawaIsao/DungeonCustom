@@ -225,6 +225,13 @@ void Unit::SetTriggerAnimation(const std::string& animName, float speed, bool wa
 
 
 
+std::string Unit::GetMoveEndAnimation() const
+{
+    // 睡眠などで基準アニメーションが変わっている場合は、その状態を優先する。
+    return m_DefaultAnim;
+}
+
+
 void Unit::SetInitGridPos(const Vector2Int& g)
 {
     m_GridPos = g;
@@ -497,7 +504,7 @@ void Unit::ClearStatus()
     {
         m_DefaultAnim = "Idle";
         if (!m_IsActingAnimation && m_MoveState == MoveState::Idle) {
-            PlayAnimation("Idle", 1.0f);
+            PlayAnimation(m_DefaultAnim, 1.0f);
         }
     };
 
@@ -666,7 +673,7 @@ void Unit::StartMove(const Vector2Int& target, float moveTime)
         m_IsAnimatingMove = false;
         m_VisualRotationOffset = Vector3(0.0f, 0.0f, 0.0f);
         MapManager::Instance()->AfterUnitMoved(this);
-        PlayAnimation("Idle", 1.0f);
+        PlayAnimation(GetMoveEndAnimation(), 1.0f);
         return;
     }
 
@@ -784,7 +791,7 @@ void Unit::StartKnockback(const Vector2Int& target, int impactDamage, Unit* atta
         m_VisualRotationOffset = Vector3(0.0f, 0.0f, 0.0f);
         ApplyKnockbackImpactDamage();
         MapManager::Instance()->AfterUnitMoved(this);
-        PlayAnimation("Idle", 1.0f);
+        PlayAnimation(GetMoveEndAnimation(), 1.0f);
         return;
     }
 
@@ -817,14 +824,14 @@ void Unit::StartSummonAppear(float duration)
         m_Position = m_MoveEndPos;
         m_MoveState = MoveState::Idle;
         m_IsAnimatingMove = false;
-        PlayAnimation("Idle", 1.0f);
+        PlayAnimation(GetMoveEndAnimation(), 1.0f);
         return;
     }
 
     m_Position = m_MoveStartPos;
     m_MoveState = MoveState::Summoning;
     m_IsAnimatingMove = true;
-    PlayAnimation("Idle", 1.0f);
+    PlayAnimation(GetMoveEndAnimation(), 1.0f);
 }
 void Unit::StartWarp(const Vector2Int& targetGrid)
 {
@@ -849,7 +856,7 @@ void Unit::StartWarp(const Vector2Int& targetGrid)
         m_MoveState = MoveState::Idle;
         m_IsAnimatingMove = false;
         MapManager::Instance()->AfterUnitMoved(this);
-        PlayAnimation("Idle", 1.0f);
+        PlayAnimation(GetMoveEndAnimation(), 1.0f);
         return;
     }
 
@@ -913,7 +920,7 @@ void Unit::UpdateLerpMove() {
         m_MoveTimer = 0.0f;
         m_IsAnimatingMove = false;
         if (finishedState != MoveState::Summoning) MapManager::Instance()->AfterUnitMoved(this);
-        PlayAnimation("Idle", 1.0f);
+        PlayAnimation(GetMoveEndAnimation(), 1.0f);
     }
 }
 bool Unit::IsAnimationFinished() const

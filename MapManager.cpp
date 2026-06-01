@@ -121,7 +121,7 @@ namespace
 
     void ApplyFloorTheme(const FloorData& floor)
     {
-        const DungeonThemeData& theme = DungeonThemeDatabase::GetThemeOrDefault(floor.themeId);
+        const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(floor.themeId);
 
         // 階層テーマに合わせて、マップモデルとBGMを同時に切り替える。
         MapRenderer::SetTheme(theme.id);

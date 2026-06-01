@@ -17,6 +17,8 @@ public:
 	virtual void Update() = 0;
 	virtual void Draw() = 0;
 	virtual void Uninit() = 0;
+	// ƒJƒƒ‰‹——£‚Å•`‰æ‡‚ğ•À‚×‘Ö‚¦‚é‘ÎÛ‚©‚Ç‚¤‚©B°‚È‚Ç‚ÌŠî€•`‰æ‚Í false ‚É‚·‚éB
+	virtual bool UsesCameraSort() const { return true; }
 
 	void SetDestroy() { m_Destroy = true; };
 	bool Destroy()

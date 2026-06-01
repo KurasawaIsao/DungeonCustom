@@ -14,7 +14,8 @@ public:
     static const ItemData* GetRandom();
     static const ItemData* DrawFromTable(const std::string& tableId);
 
-    static std::vector<ItemData> GetAllData();
+    static std::vector<ItemData> GetAll();
+    static const std::vector<std::string>& GetAllIds();
 
 private:
     static void SetShopPriceDefaults();

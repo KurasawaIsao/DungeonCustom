@@ -18,6 +18,7 @@ public:
     {
         return m_Data;
     }
+    static std::vector<std::string> GetAllIds();
 
 private:
 

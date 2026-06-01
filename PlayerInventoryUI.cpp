@@ -98,6 +98,7 @@ void PlayerInventoryUI::CloseAllMenus()
     m_AllyCursor = 0;
     m_AllyCommandCursor = 0;
     m_GroundCursor = 0;
+    m_MessageHistoryCursor = 0;
     m_ShrineConfirmCursor = 0;
     m_PotSide = 0;
     m_PotItemCursor = 0;
@@ -221,6 +222,10 @@ void PlayerInventoryUI::DrawPlayerUI()
         DrawGroundMenu(player);
         break;
 
+    case UIState::MessageHistory:
+        DrawMessageHistoryUI();
+        break;
+
     case UIState::PotMenu:
         DrawPotUI(player);
         break;
@@ -252,6 +257,7 @@ void PlayerInventoryUI::DrawMainMenu(Player* player)
         u8"道具",
         u8"仲間",
         u8"足元",
+        u8"ログ履歴",
         u8"閉じる"
     };
 
@@ -281,6 +287,13 @@ void PlayerInventoryUI::DrawMainMenu(Player* player)
         case 2:
             m_State = UIState::GroundMenu;
             break;
+        case 3:
+        {
+            const auto& history = MessageLog::Instance().GetHistory();
+            m_MessageHistoryCursor = history.empty() ? 0 : static_cast<int>(history.size()) - 1;
+            m_State = UIState::MessageHistory;
+            break;
+        }
         default:
             CloseAllMenus();
             break;
@@ -288,7 +301,7 @@ void PlayerInventoryUI::DrawMainMenu(Player* player)
         return;
     }
 
-    UIRect rect{ 20.0f, 20.0f, 190.0f, 178.0f };
+    UIRect rect{ 20.0f, 20.0f, 190.0f, 205.0f };
     UIRenderer::DrawWindow(rect);
 
     UITextRenderer::Begin();
@@ -299,6 +312,74 @@ void PlayerInventoryUI::DrawMainMenu(Player* player)
     {
         DrawMenuChoice(commands[i], i == m_MainMenuCursor, rect.x + 30.0f, y, rect.w - 60.0f, D2D1::ColorF(D2D1::ColorF::White));
         y += 27.0f;
+    }
+
+    UITextRenderer::End();
+    RestoreMainRenderTarget();
+}
+
+void PlayerInventoryUI::DrawMessageHistoryUI()
+{
+    const auto& history = MessageLog::Instance().GetHistory();
+    const int total = static_cast<int>(history.size());
+
+    if (Input::GetKeyTrigger('X'))
+    {
+        m_State = UIState::MainMenu;
+        return;
+    }
+
+    if (total > 0)
+    {
+        // 履歴画面ではカーソルをスクロール位置として扱い、上下キーで表示範囲を動かす。
+        if (m_MessageHistoryCursor < 0) m_MessageHistoryCursor = 0;
+        if (m_MessageHistoryCursor >= total) m_MessageHistoryCursor = total - 1;
+        if (Input::GetKeyTrigger(VK_UP)) m_MessageHistoryCursor = (std::max)(0, m_MessageHistoryCursor - 1);
+        if (Input::GetKeyTrigger(VK_DOWN)) m_MessageHistoryCursor = (std::min)(total - 1, m_MessageHistoryCursor + 1);
+    }
+    else
+    {
+        m_MessageHistoryCursor = 0;
+    }
+
+    UIRect rect{ 240.0f, 92.0f, 800.0f, 520.0f };
+    UIRenderer::DrawWindow(rect);
+
+    UITextRenderer::Begin();
+    UITextRenderer::DrawOutlinedTextUtf8(u8"ログ履歴", rect.x + 28.0f, rect.y + 18.0f, rect.w - 56.0f, 30.0f, 24.0f, D2D1::ColorF(D2D1::ColorF::White));
+    UITextRenderer::DrawOutlinedTextUtf8(u8"↑↓: 履歴移動  X: 戻る", rect.x + 540.0f, rect.y + 22.0f, 230.0f, 24.0f, 16.0f, D2D1::ColorF(0.75f, 0.75f, 0.75f, 1.0f));
+
+    if (total <= 0)
+    {
+        UITextRenderer::DrawOutlinedTextUtf8(u8"まだログはありません。", rect.x + 36.0f, rect.y + 72.0f, rect.w - 72.0f, 30.0f, 21.0f, D2D1::ColorF(D2D1::ColorF::White));
+        UITextRenderer::End();
+        RestoreMainRenderTarget();
+        return;
+    }
+
+    const int visibleCount = 14;
+    int start = 0;
+    if (m_MessageHistoryCursor >= visibleCount) start = m_MessageHistoryCursor - visibleCount + 1;
+    const int end = (std::min)(start + visibleCount, total);
+
+    std::string countText = std::to_string(m_MessageHistoryCursor + 1) + " / " + std::to_string(total);
+    UITextRenderer::DrawOutlinedTextUtf8(countText, rect.x + 36.0f, rect.y + 50.0f, 160.0f, 24.0f, 16.0f, D2D1::ColorF(0.75f, 0.75f, 0.75f, 1.0f));
+
+    float y = rect.y + 78.0f;
+    for (int i = start; i < end; ++i)
+    {
+        // 古い順に番号を付けて表示し、現在位置だけ色を変えて見失わないようにする。
+        const bool selected = (i == m_MessageHistoryCursor);
+        std::string line = std::to_string(i + 1) + ". " + history[i];
+        UITextRenderer::DrawOutlinedTextUtf8(
+            line,
+            rect.x + 34.0f,
+            y,
+            rect.w - 68.0f,
+            28.0f,
+            18.0f,
+            selected ? D2D1::ColorF(1.0f, 0.92f, 0.45f, 1.0f) : D2D1::ColorF(D2D1::ColorF::White));
+        y += 29.0f;
     }
 
     UITextRenderer::End();

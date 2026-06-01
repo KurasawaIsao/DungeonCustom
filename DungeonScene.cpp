@@ -62,6 +62,8 @@ namespace
                 ImGuiWindowFlags_NoSavedSettings);
             if (ImGui::Button("Return to Editor", ImVec2(-1, 32)))
             {
+				MessageLog::Instance().SetVisible(false);
+				MessageLog::Instance().Clear();
                 ReturnToEditor();
             }
 
@@ -130,7 +132,7 @@ void DungeonScene::Init()
     // 3. JSON の DungeonData を読み、未識別名などフロア全体に関わる状態を初期化する。
     InitDungeonData();
     ItemIdentificationManager::Instance().Init(
-        ItemDatabase::GetAllData(),
+        ItemDatabase::GetAll(),
         mapManager->GetDungeonData().GetUnidentifiedMode()
     );
     // 4. マップ生成、敵/アイテム配置、プレイヤー初期配置までを MapManager 側で行う。

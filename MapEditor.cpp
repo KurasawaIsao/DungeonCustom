@@ -11,6 +11,7 @@
 #include "ItemDataBase.h"
 #include "ItemTableDataBase.h"
 #include "EnemyTableDatabase.h"
+#include "EnemyDatabase.h"
 #include "DungeonDataIO.h"
 #include "JsonIO.h"
 #include "input.h"
@@ -42,6 +43,7 @@ void MapEditor::Init() {
     LightManager::Instance().Init();
     ItemDatabase::Init();
     TrapDatabase::Init();
+    EnemyDatabase::Init();
 	DungeonThemeDatabase::Init();
     m_ObjectPlacer.InitializeSelection();
     m_Map = new MapData(50, 50);
@@ -105,8 +107,11 @@ void MapEditor::DrawMapEditorWindow() {
                     ImGui::SameLine();
                     ImGui::RadioButton("Trap", (int*)&m_ObjectMode, (int)EditorPlaceMode::Trap);
                     ImGui::SameLine();
+                    ImGui::RadioButton("Enemy", (int*)&m_ObjectMode, (int)EditorPlaceMode::Enemy);
+                    ImGui::SameLine();
                     ImGui::RadioButton("Shrine", (int*)&m_ObjectMode, (int)EditorPlaceMode::Shrine);
                     ImGui::Separator();
+             
 
                     // オブジェクト配置。m_ObjectModeを渡す
                     m_ObjectPlacer.DrawPlacerTab(m_Map, m_ObjectMode);
@@ -266,6 +271,11 @@ void MapEditor::HandleMouse() {
         }
         else if (m_ObjectMode == EditorPlaceMode::Shrine) {
             if (ImGui::IsMouseDown(0)) m_ObjectPlacer.PlaceShrine(m_Map, m_HoverTile.x, m_HoverTile.y);
+            if (ImGui::IsMouseDown(1)) m_ObjectPlacer.RemoveObjectAt(m_Map, m_HoverTile.x, m_HoverTile.y);
+        }
+        else if (m_ObjectMode == EditorPlaceMode::Enemy) {
+            // EnemyModeでは選択中の敵IDを、固定マップの初期配置として置く。
+            if (ImGui::IsMouseDown(0)) m_ObjectPlacer.PlaceEnemy(m_Map, m_HoverTile.x, m_HoverTile.y);
             if (ImGui::IsMouseDown(1)) m_ObjectPlacer.RemoveObjectAt(m_Map, m_HoverTile.x, m_HoverTile.y);
         }
     }

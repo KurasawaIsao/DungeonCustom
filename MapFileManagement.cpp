@@ -42,6 +42,7 @@ bool MapFileManagement::ExportMap(const std::string& path, MapData* map, const s
     nlohmann::json items = nlohmann::json::array();
     nlohmann::json traps = nlohmann::json::array();
     nlohmann::json shrines = nlohmann::json::array();
+    nlohmann::json enemies = nlohmann::json::array();
 
     for (const auto& obj : placedObjects) {
         nlohmann::json data;
@@ -63,11 +64,16 @@ bool MapFileManagement::ExportMap(const std::string& path, MapData* map, const s
         case EditorPlacedObject::Type::Shrine:
             shrines.push_back(data);
             break;
+        case EditorPlacedObject::Type::Enemy:
+            data["id"] = obj.id;
+            enemies.push_back(data);
+            break;
         }
     }
     root["items"] = items;
     root["traps"] = traps;
     root["shrines"] = shrines;
+    root["enemies"] = enemies;
 
     std::ofstream ofs(path);
     if (!ofs) return false;
@@ -124,6 +130,12 @@ bool MapFileManagement::ImportMap(const std::string& path, MapData* map, MapObje
     if (root.contains("shrines")) {
         for (const auto& s : root["shrines"]) {
             placer.PlaceShrine(map, s["x"].get<int>(), s["y"].get<int>());
+        }
+    }
+    if (root.contains("enemies")) {
+        for (const auto& e : root["enemies"]) {
+            // 固定マップの敵配置は、エディタ用の敵リストにも登録して再保存できるようにする。
+            placer.PlaceEnemyByID(map, e["id"], e["x"], e["y"]);
         }
     }
 

@@ -5,21 +5,28 @@
 #include "Item.h"
 #include "Trap.h"
 #include "Shrine.h"
+#include "Enemy.h"
+#include "EnemyDatabase.h"
 #include "ItemDataBase.h"
 #include "TrapDataBase.h"
 #include "MapEditor.h"
 #include "MessageLog.h"
 #include "imgui.h"
+#include <algorithm>
 
 void MapObjectPlacer::InitializeSelection() {
-    auto allItems = ItemDatabase::GetAllData();
+    auto allItems = ItemDatabase::GetAll();
     if (!allItems.empty()) m_SelectedItemId = allItems[0].id;
 
-    auto allTraps = TrapDatabase::GetAllIDs();
+    auto allTraps = TrapDatabase::GetAllIds();
     if (!allTraps.empty()) m_SelectedTrapId = allTraps[0];
+
+    if (!EnemyDatabase::GetAll().empty()) m_SelectedEnemyId = EnemyDatabase::GetAll().begin()->first;
 }
 void MapObjectPlacer::PlaceItem(MapData* map, int x, int y) {
-    if (!map->IsInside(x, y)) return;
+    if (!map || !map->IsInside(x, y)) return;
+    // 壁など歩けないマスには配置しない。
+    if (!map->IsWalkable(x, y)) return;
 
     RemoveObjectAt(map, x, y);
 
@@ -70,7 +77,9 @@ void MapObjectPlacer::PlaceItem(MapData* map, int x, int y) {
 
 void MapObjectPlacer::PlaceTrap(MapData* map, int x, int y)
 {
-    if (!map->IsInside(x, y)) return;
+    if (!map || !map->IsInside(x, y)) return;
+    // 壁など歩けないマスには配置しない。
+    if (!map->IsWalkable(x, y)) return;
 
     RemoveObjectAt(map, x, y);
 
@@ -96,7 +105,9 @@ void MapObjectPlacer::PlaceTrap(MapData* map, int x, int y)
 }
 void MapObjectPlacer::PlaceShrine(MapData* map, int x, int y)
 {
-    if (!map->IsInside(x, y)) return;
+    if (!map || !map->IsInside(x, y)) return;
+    // 壁など歩けないマスには配置しない。
+    if (!map->IsWalkable(x, y)) return;
 
     RemoveObjectAt(map, x, y);
 
@@ -115,6 +126,39 @@ void MapObjectPlacer::PlaceShrine(MapData* map, int x, int y)
     m_PlacedObjects.push_back(newObj);
 }
 
+void MapObjectPlacer::PlaceEnemy(MapData* map, int x, int y)
+{
+    PlaceEnemyByID(map, m_SelectedEnemyId, x, y);
+}
+
+void MapObjectPlacer::PlaceEnemyByID(MapData* map, std::string id, int x, int y)
+{
+    if (!map || !map->IsInside(x, y)) return;
+    // 敵は歩行可能なマスにだけ置き、固定マップの初期配置として扱う。
+    if (!map->IsWalkable(x, y)) return;
+
+    RemoveObjectAt(map, x, y);
+
+    if (map->GetObjectAt(x, y) || map->GetUnitAt(x, y)) return;
+
+    const EnemyData* data = EnemyDatabase::Get(id);
+    if (!data) return;
+
+    Enemy* enemyObj = Manager::GetScene()->AddGameObject<Enemy>(1);
+    enemyObj->ApplyData(*data);
+    enemyObj->ClearStatus();
+    enemyObj->SetEditorPreviewOnly(true);
+    enemyObj->SetInitGridPos({ x, y });
+
+    // エディタの削除・保存対象として、敵IDと座標を保持する。
+    EditorPlacedObject newObj;
+    newObj.type = EditorPlacedObject::Type::Enemy;
+    newObj.id = id;
+    newObj.pos = { x, y };
+    newObj.enemyView = enemyObj;
+    m_PlacedObjects.push_back(newObj);
+}
+
 void MapObjectPlacer::RemoveObjectAt(MapData* map, int x, int y) {
     auto it = std::find_if(m_PlacedObjects.begin(), m_PlacedObjects.end(), [&](const EditorPlacedObject& o) {
         return o.pos.x == x && o.pos.y == y;
@@ -124,6 +168,11 @@ void MapObjectPlacer::RemoveObjectAt(MapData* map, int x, int y) {
         if (it->view) {
             map->RemoveMapObject(it->view);
             it->view->SetDestroy();
+        }
+        if (it->enemyView) {
+            // エディタ表示用の敵をシーンから破棄する。
+            it->enemyView->StopLoopEffect();
+            it->enemyView->SetDestroy();
         }
         m_PlacedObjects.erase(it);
         // ここで return することで、削除後のイテレータを触るリスクをゼロにする
@@ -139,6 +188,11 @@ void MapObjectPlacer::ClearAllObjects(MapData* map)
             // Sceneから消去
             obj.view->SetDestroy();
         }
+        if (obj.enemyView) {
+            // 敵プレビューはMapObjectではないため、シーン側の実体だけ破棄する。
+            obj.enemyView->StopLoopEffect();
+            obj.enemyView->SetDestroy();
+        }
     }
     m_PlacedObjects.clear();
 }
@@ -146,7 +200,7 @@ void MapObjectPlacer::ClearAllObjects(MapData* map)
 void MapObjectPlacer::DrawPlacerTab(MapData* map,EditorPlaceMode mode)
 {
     if (mode == EditorPlaceMode::Item) {
-        const auto items = ItemDatabase::GetAllData();
+        const auto items = ItemDatabase::GetAll();
 
         // 現在選択中のアイテム名を取得
         const ItemData* selectedItem = ItemDatabase::Get(m_SelectedItemId);
@@ -182,7 +236,7 @@ void MapObjectPlacer::DrawPlacerTab(MapData* map,EditorPlaceMode mode)
         const char* comboLabel = selectedData ? selectedData->name.c_str() : "Select Trap...";
 
         if (ImGui::BeginCombo("Select Trap", comboLabel)) {
-            for (const auto& id : TrapDatabase::GetAllIDs()) {
+            for (const auto& id : TrapDatabase::GetAllIds()) {
                 const TrapData* tData = TrapDatabase::Get(id);
                 if (!tData) continue;
 
@@ -193,12 +247,38 @@ void MapObjectPlacer::DrawPlacerTab(MapData* map,EditorPlaceMode mode)
             ImGui::EndCombo();
         }
     }
+
+    else if (mode == EditorPlaceMode::Enemy) {
+        std::vector<const EnemyData*> enemies;
+        for (const auto& pair : EnemyDatabase::GetAll()) {
+            enemies.push_back(&pair.second);
+        }
+        std::sort(enemies.begin(), enemies.end(), [](const EnemyData* a, const EnemyData* b) {
+            return a->id < b->id;
+            });
+
+        const EnemyData* selectedEnemy = EnemyDatabase::Get(m_SelectedEnemyId);
+        std::string comboLabel = selectedEnemy ? selectedEnemy->name  : "Select Enemy...";
+        if (ImGui::BeginCombo("Select Enemy", comboLabel.c_str())) {
+            for (const EnemyData* enemy : enemies) {
+                if (!enemy) continue;
+                std::string label = enemy->name;
+                if (ImGui::Selectable(label.c_str(), m_SelectedEnemyId == enemy->id)) {
+                    m_SelectedEnemyId = enemy->id;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::TextDisabled("Left click: place / Right click: remove");
+    }
     else if (mode == EditorPlaceMode::Shrine) {
         ImGui::TextColored(ImVec4(0, 1, 1, 1), "Set Shrine");
     }
 }
 void MapObjectPlacer::PlaceItemByID(MapData* map, std::string id, int x, int y, int count) {
-    if (!map->IsInside(x, y)) return;
+    if (!map || !map->IsInside(x, y)) return;
+    // JSON読み込み時も、壁など歩けないマスの配置は無視する。
+    if (!map->IsWalkable(x, y)) return;
 
     RemoveObjectAt(map, x, y);
 
@@ -236,7 +316,9 @@ void MapObjectPlacer::PlaceItemByID(MapData* map, std::string id, int x, int y, 
 }
 
 void MapObjectPlacer::PlaceTrapByID(MapData* map, std::string id, int x, int y) {
-    if (!map->IsInside(x, y)) return;
+    if (!map || !map->IsInside(x, y)) return;
+    // JSON読み込み時も、壁など歩けないマスの配置は無視する。
+    if (!map->IsWalkable(x, y)) return;
 
     // 1. 重複削除（アイテム、罠、祠を問わずその座標にあるものを消す）
     RemoveObjectAt(map, x, y);

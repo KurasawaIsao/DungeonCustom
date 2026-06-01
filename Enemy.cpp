@@ -213,7 +213,7 @@ void Enemy::Draw()
 {
     if (!m_AnimationModel)return;
     Player* player = UnitManager::Instance()->GetPlayer();
-    if (player) {
+    if (player && !m_EditorPreviewOnly) {
         bool visibleToPlayer = false;
         if (IsAnimatingMove()) {
             // 移動中は確定済みの到達グリッドではなく、開始位置と現在の見た目位置で視界判定する。
@@ -264,7 +264,7 @@ void Enemy::Update()
     RepairInvalidGridPos("Enemy::Update");
     Player* player = UnitManager::Instance()->GetPlayer();
     bool isInPlayerView = true;
-    if (player) {
+    if (player && !m_EditorPreviewOnly) {
         if (IsAnimatingMove()) {
             // 移動中は到達地点のLODを先取りせず、見た目が視界に入ってから更新する。
             isInPlayerView =
@@ -295,6 +295,10 @@ void Enemy::Update()
         Vector3 effectPos = m_Position;
         effectPos.y += 2.0f;
         m_LoopEffect->SetPosition(effectPos);
+    }
+    if (m_EditorPreviewOnly) {
+        // エディタの配置プレビューではAIや索敵を動かさず、表示だけ更新する。
+        return;
     }
     if (IsTurnBlockedByStatus(m_Status)) {
         return;

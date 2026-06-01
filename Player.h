@@ -56,10 +56,18 @@ private:
     bool m_InputEnable = true;
     bool m_StairConfirmed = false;
 
+    // 方向キーを押し続けている間は、移動のつなぎで走りモーションを維持する。
+    bool IsMoveAnimationInputHeld() const;
+    bool IsMoveAnimationBlockedByUi() const;
+    void UpdateMoveAnimationByInput();
+
     // --- 定数パラメータ ---
-    static constexpr float MOVE_TIME_NORMAL = 0.12f;
+    static constexpr float MOVE_TIME_NORMAL = 0.09f;
     static constexpr float MOVE_TIME_DASH = 0.06f;
     static constexpr int CLEAR_VISION_LOD_DISTANCE = 15;
+
+protected:
+    std::string GetMoveEndAnimation() const override;
 
 public:
     // 基本ライフサイクル

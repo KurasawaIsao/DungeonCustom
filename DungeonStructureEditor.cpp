@@ -467,8 +467,8 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
                 DungeonThemeDatabase::Reload();
             }
 
-            const auto& themes = DungeonThemeDatabase::GetAllThemes();
-            const DungeonThemeData& currentTheme = DungeonThemeDatabase::GetThemeOrDefault(f.themeId);
+            const auto& themes = DungeonThemeDatabase::GetAll();
+            const DungeonThemeData& currentTheme = DungeonThemeDatabase::GetOrDefault(f.themeId);
             std::string themePreview = currentTheme.displayName.empty() ? currentTheme.id : currentTheme.displayName;
             if (ImGui::BeginCombo("Floor Theme", themePreview.c_str())) {
                 for (const auto& theme : themes) {

@@ -3,6 +3,7 @@
 #include "Vector2Int.h"
 #include "Room.h"
 #include "Vector3.h"
+#include "MapObject.h"
 #include <string>
 
 class Unit;
@@ -80,6 +81,7 @@ public:
 
     void SetAllActive(bool active);
     void SetActiveRect(int left, int top, int right, int bottom, bool active);
+    void ExpandActiveAreaWithWall(int padding);
 
     inline TileType GetTile(int x, int y) const
     {
@@ -101,14 +103,18 @@ public:
 
     bool IsWalkable(int x, int y) const
     {
+        if (!IsInside(x, y)) return false;
+
+        MapObject* obj = m_GridObjects[y * m_Width + x];
+        if (obj && obj->BlocksMovement()) return false;
+
         TileType t = GetTile(x, y);
         return (t == TileType::Floor || t == TileType::Stair || t == TileType::Corridor);
     }
 
     bool IsWalkable(Vector2Int xy) const
     {
-        TileType t = GetTile(xy.x, xy.y);
-        return (t == TileType::Floor || t == TileType::Stair || t == TileType::Corridor);
+        return IsWalkable(xy.x, xy.y);
     }
 
     bool IsWalkable(TileType t) const

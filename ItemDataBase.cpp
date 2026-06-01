@@ -497,12 +497,17 @@ void ItemDatabase::Init()
     ItemTableDatabase::LoadAll("DungeonData\\ItemTables\\");
 }
 // 全アイテムデータを取得
-std::vector<ItemData> ItemDatabase::GetAllData() {
+std::vector<ItemData> ItemDatabase::GetAll() {
     std::vector<ItemData> list;
     for (auto& pair : m_Items) {
         list.push_back(pair.second);
     }
     return list;
+}
+
+const std::vector<std::string>& ItemDatabase::GetAllIds()
+{
+    return m_ItemIDs;
 }
 
 const ItemData* ItemDatabase::Get(const std::string& id)

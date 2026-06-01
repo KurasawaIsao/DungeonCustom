@@ -21,6 +21,9 @@ public:
     // プレイヤーが上に乗った時の処理
     virtual void OnStepped(class Player* player) {}
 
+    // 祠など、床上にあるが壁と同じく通行を塞ぐオブジェクトだけ true を返す。
+    virtual bool BlocksMovement() const { return false; }
+
     // 攻撃された時の処理
     virtual void OnAttacked() {}
 

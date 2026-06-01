@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "camera.h"
 #include"scene.h"
+#include <algorithm>
 
 void Scene::Init()
 {
@@ -53,25 +54,44 @@ void Scene::Draw()
 {
 
 	Camera* camera = GetGameObject<Camera>();
-	if (camera != nullptr)
+	const bool hasCamera = (camera != nullptr);
+	Vector3 camposition;
+	Vector3 camForward;
+	if (hasCamera)
 	{
-		// 半透明やビルボードを含む 3D オブジェクトは、カメラから遠い順に描く。
-		// layer 1 だけを並べ替え、背景や UI の描画順は固定する。
-		Vector3 camposition = camera->GetPosition();
-		Vector3 camForward = camera->GetForward();
-
-
-		m_GameObject[1].sort([&](GameObject* obj1, GameObject* obj2)
-			{
-				return obj1->GetZ(camposition,camForward) > obj2->GetZ(camposition, camForward);
-			})
-			;
+		camposition = camera->GetPosition();
+		camForward = camera->GetForward();
 	}
-	
-
 
 	for (int i = 0; i < 3; i++)
 	{
+		if (i == 1 && hasCamera)
+		{
+			std::vector<GameObject*> sortTargets;
+
+			for (auto gameobject : m_GameObject[i])
+			{
+				// マップなどの土台描画は先に固定順で描き、ユニットやエフェクトだけ距離順にする。
+				if (!gameobject->UsesCameraSort())
+				{
+					gameobject->Draw();
+					continue;
+				}
+				sortTargets.push_back(gameobject);
+			}
+
+			std::sort(sortTargets.begin(), sortTargets.end(), [&](GameObject* obj1, GameObject* obj2)
+				{
+					return obj1->GetZ(camposition, camForward) > obj2->GetZ(camposition, camForward);
+				});
+
+			for (auto gameobject : sortTargets)
+			{
+				gameobject->Draw();
+			}
+			continue;
+		}
+
 		for (auto gameobject : m_GameObject[i])
 		{
 			gameobject->Draw();

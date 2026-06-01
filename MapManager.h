@@ -93,6 +93,11 @@ public:
         }
 
 
+        if (currentMap)
+        {
+            // 非表示扱いのマップ外マスを、境界から10マスぶん壁として描画・判定できるようにする。
+            currentMap->ExpandActiveAreaWithWall(10);
+        }
         MapGenerator::SpawnPlayerInRoom();
     }
 

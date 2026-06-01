@@ -229,7 +229,7 @@ void SpawnTableEditor::DrawIDCombo(TableCategory category, std::string& ioId)
     {
         if (category == TableCategory::Item)
         {
-            for (const auto& item : ItemDatabase::GetAllData())
+            for (const auto& item : ItemDatabase::GetAll())
             {
                 if (ImGui::Selectable(item.name.c_str(), ioId == item.id))
                     ioId = item.id;
@@ -245,7 +245,7 @@ void SpawnTableEditor::DrawIDCombo(TableCategory category, std::string& ioId)
         }
         else if (category == TableCategory::Trap)
         {
-            for (const auto& id : TrapDatabase::GetAllIDs())
+            for (const auto& id : TrapDatabase::GetAllIds())
             {
                 const TrapData* data = TrapDatabase::Get(id);
                 if (!data) continue;

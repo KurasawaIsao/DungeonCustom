@@ -101,6 +101,8 @@ protected:
     bool HasKnockbackImpactDamage() const;
     void ApplyKnockbackImpactDamage();
     void ClearKnockbackImpactDamage();
+    // 移動完了後に戻すアニメーションを派生クラス側で調整できるようにする。
+    virtual std::string GetMoveEndAnimation() const;
 
 protected:
     std::string m_Name = u8"ユニット";

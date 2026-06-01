@@ -8,9 +8,36 @@
 #include "Trap.h"
 #include "TrapDataBase.h"
 #include "Shrine.h"
+#include "Enemy.h"
+#include "EnemyDatabase.h"
+#include "UnitManager.h"
 #include <fstream>
 #include "external/json.hpp"
 using json = nlohmann::json;
+
+namespace
+{
+    void PlaceFixedEnemyFromJson(MapData* map, Scene* scene, const json& j, const Vector2Int& offset)
+    {
+        if (!map || !scene) return;
+
+        Vector2Int pos{
+            offset.x + j["x"].get<int>(),
+            offset.y + j["y"].get<int>()
+        };
+        if (!map->IsInside(pos) || !map->IsWalkable(pos) || map->GetObjectAt(pos) || map->GetUnitAt(pos.x, pos.y)) return;
+
+        const std::string id = j["id"].get<std::string>();
+        const EnemyData* data = EnemyDatabase::Get(id);
+        if (!data) return;
+
+        // 固定配置の敵はマップ生成中に置くため、現在マップ参照に依存しない初期配置APIを使う。
+        Enemy* enemy = scene->AddGameObject<Enemy>(1);
+        enemy->ApplyData(*data);
+        enemy->SetInitGridPos(pos);
+        UnitManager::Instance()->RegisterEnemy(enemy);
+    }
+}
 std::unique_ptr<MapData> MapLoader::LoadFromFile(const std::string& path, Scene* scene)
 {
     std::ifstream ifs(path);
@@ -116,6 +143,11 @@ std::unique_ptr<MapData> MapLoader::LoadFromFile(const std::string& path, Scene*
             shrine->Init();
             shrine->Setup(pos); 
             map->AddMapObject(shrine, pos.x, pos.y);
+        }
+    }
+    if (root.contains("enemies")) {
+        for (const auto& j : root["enemies"]) {
+            PlaceFixedEnemyFromJson(map.get(), scene, j, { 0, 0 });
         }
     }
 
@@ -225,6 +257,11 @@ void MapLoader::InsertFixedRoom(MapData* targetMap, const std::string& path, Vec
             shrine->Init();
             shrine->Setup(worldGridPos);
             targetMap->AddMapObject(shrine, worldGridPos.x, worldGridPos.y);
+        }
+    }
+    if (root.contains("enemies")) {
+        for (const auto& j : root["enemies"]) {
+            PlaceFixedEnemyFromJson(targetMap, scene, j, offset);
         }
     }
 

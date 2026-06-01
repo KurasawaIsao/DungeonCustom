@@ -12,6 +12,8 @@ public:
     void Build(const MapData& map);
     void Update() override {};
     void Draw() override;
+    // マップは3D描画の土台なので、ユニットやエフェクトの距離ソートに混ぜない。
+    bool UsesCameraSort() const override { return false; }
     void Uninit() override;
     void UpdateTile(int x, int y, TileType type);
     void Clear();

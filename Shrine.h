@@ -24,5 +24,6 @@ public:
     Vector2Int GetGridPos() const { return m_GridPos; }
 
     void OnStepped(class Player* player) override;
+    bool BlocksMovement() const override { return true; }
     void OnAttacked() override;
 };

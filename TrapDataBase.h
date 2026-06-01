@@ -9,7 +9,8 @@ public:
     static const TrapData* GetRandom();
     static const TrapData* DrawFromTable(const std::string& tableId);
     static const TrapData* Get(const std::string& id);
-    static const std::vector<std::string>& GetAllIDs() { return m_TrapIDs; }
+    static const std::unordered_map<std::string, TrapData>& GetAll() { return m_Traps; }
+    static const std::vector<std::string>& GetAllIds() { return m_TrapIDs; }
 
 private:
     static std::unordered_map<std::string, TrapData> m_Traps;
