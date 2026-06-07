@@ -7,6 +7,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+
+namespace
+{
+    // マップ本体の外側に追加で敷く壁の厚み。
+    constexpr int kOuterWallPadding = 10;
+}
 ModelRenderer* MapRenderer::s_FloorModel = nullptr;
 ModelRenderer* MapRenderer::s_WallModel = nullptr;
 ModelRenderer* MapRenderer::s_StairModel = nullptr;
@@ -95,6 +101,7 @@ void MapRenderer::Build(const MapData& map)
 
     // 領域を確保
     m_AllMatrices.assign(m_Width * m_Height, XMMatrixIdentity());
+    m_OuterWallTiles.clear();
     m_TileTypes.assign(m_Width * m_Height, TileType::Wall);
     m_ActiveTiles.assign(m_Width * m_Height, false);
     m_ShopMatrices.clear();
@@ -127,11 +134,41 @@ void MapRenderer::Build(const MapData& map)
         XMMATRIX trans = XMMatrixTranslation(cx, 0.03f, cz);
         m_ShopMatrices.push_back(scale * trans);
     }
+    BuildOuterWallTiles();
 
     BuildGridVertices();
     CreateGridVertexBuffer();
 }
 
+void MapRenderer::BuildOuterWallTiles()
+{
+    m_OuterWallTiles.clear();
+
+    // マップエディタでは編集範囲を見やすくするため、範囲外の壁を追加しない。
+    if (m_IsEditor) return;
+    if (m_Width <= 0 || m_Height <= 0) return;
+
+    const int minX = -kOuterWallPadding;
+    const int minY = -kOuterWallPadding;
+    const int maxX = m_Width + kOuterWallPadding;
+    const int maxY = m_Height + kOuterWallPadding;
+    const int outerWidth = maxX - minX;
+    const int outerHeight = maxY - minY;
+    const int outerTileCount = outerWidth * outerHeight - m_Width * m_Height;
+    m_OuterWallTiles.reserve((std::max)(0, outerTileCount));
+
+    for (int y = minY; y < maxY; ++y)
+    {
+        for (int x = minX; x < maxX; ++x)
+        {
+            const bool isInsideMap = x >= 0 && x < m_Width && y >= 0 && y < m_Height;
+            if (isInsideMap) continue;
+
+            // マップ範囲外の座標だけを、表示専用の壁タイルとして追加する。
+            m_OuterWallTiles.push_back({ x, y });
+        }
+    }
+}
 void MapRenderer::UpdateTile(int x, int y, TileType type)
 {
     if (x < 0 || x >= m_Width || y < 0 || y >= m_Height) return;
@@ -139,7 +176,7 @@ void MapRenderer::UpdateTile(int x, int y, TileType type)
     int index = y * m_Width + x;
 
     // 行列を計算して上書き
-    m_AllMatrices[index] = XMMatrixTranslation(x * TILE_DISTANCE, 0.0f, y * TILE_DISTANCE);
+    m_AllMatrices[index] = XMMatrixTranslation(static_cast<float>(x * TILE_DISTANCE), 0.0f, static_cast<float>(y * TILE_DISTANCE));
     // タイプを更新
     m_TileTypes[index] = type;
 }
@@ -153,6 +190,14 @@ void MapRenderer::Draw()
     {
         Renderer::SetWorldMatrix(shopMatrix);
         s_ShopFloorModel->Draw();
+    }
+
+    // マップ本体の外側10マス分を壁として描画する。
+    for (const auto& outerWallTile : m_OuterWallTiles)
+    {
+        XMMATRIX matrix = XMMatrixTranslation(static_cast<float>(outerWallTile.x * TILE_DISTANCE), 0.0f, static_cast<float>(outerWallTile.y * TILE_DISTANCE));
+        Renderer::SetWorldMatrix(matrix);
+        s_WallModel->Draw();
     }
 
     for (int i = 0; i < (int)m_AllMatrices.size(); i++)
@@ -200,6 +245,7 @@ void MapRenderer::Uninit()
 void MapRenderer::Clear()
 {
     m_AllMatrices.clear();
+    m_OuterWallTiles.clear();
     m_TileTypes.clear();
     m_ActiveTiles.clear();
     m_ShopMatrices.clear();
@@ -235,6 +281,11 @@ void MapRenderer::BuildGridVertices()
     const float tileSize = static_cast<float>(TILE_DISTANCE);
     const float half = tileSize * 0.5f;
     const float gridY = 0.08f;
+
+    // グリッド線の最大本数から頂点数を先に確保し、push_back中の再確保を避ける。
+    const size_t maxGridLineCount = static_cast<size_t>(m_Width + 1) * static_cast<size_t>(m_Height)
+        + static_cast<size_t>(m_Height + 1) * static_cast<size_t>(m_Width);
+    m_GridVertices.reserve(maxGridLineCount * 2);
 
     for (int x = 0; x <= m_Width; ++x)
     {

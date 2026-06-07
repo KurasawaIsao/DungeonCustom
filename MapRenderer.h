@@ -20,6 +20,7 @@ public:
     void SetEditor(bool editor) { m_IsEditor = editor; }
     static void SetTheme(const std::string& themeId);
 private:
+    void BuildOuterWallTiles();
     void BuildGridVertices();
     void CreateGridVertexBuffer();
     void DrawGrid();
@@ -31,6 +32,8 @@ private:
     bool m_IsEditor = false;
     // 全マスの行列を保持
     std::vector<XMMATRIX> m_AllMatrices;
+    // マップ範囲外に敷く外周壁のグリッド座標を保持
+    std::vector<Vector2Int> m_OuterWallTiles;
     // 各マスの現在のタイプを保持（Draw時の振り分け用）
     std::vector<TileType> m_TileTypes;
     std::vector<bool> m_ActiveTiles;
