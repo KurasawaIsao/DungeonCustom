@@ -3,21 +3,21 @@
 
 class TurnManager : public GameObject
 {
-public:
+private:
+    // ターンは「入力」「攻撃/特技」「移動」「移動後処理」に分けて進める。
+    // 1フレームで全て進めず、演出や補間移動が終わるまで各フェーズで待つ。
     enum class Phase
     {
-        PlayerTurn,
-        EnemyAction,
-        EnemyMove,
-        EnemyPostMoveAction,
-        AllyAction,
-        AllyMove,
-        MoveResolution
+        PlayerTurn,          // プレイヤーの入力と行動を受け付ける。
+        EnemyAction,         // 敵/仲間の攻撃・特技を1体ずつ処理する。
+        EnemyMove,           // 敵/仲間の移動を処理する。
+        EnemyPostMoveAction, // 倍速/三倍速など、移動後に攻撃できるユニットを処理する。
+        MoveResolution       // StartMove の補間移動が終わるまで待つ。
     };
 
-private:
     static TurnManager* instance;
 
+    // 現在どの処理段階で止まっているか。Update() はこの値を見て少しずつ進める。
     Phase m_Phase = Phase::PlayerTurn;
 
     int m_TurnCount = 0;
@@ -52,7 +52,6 @@ public:
     void Draw() override {}
     void Uninit() override { if (instance == this) instance = nullptr; }
 
-    void ResetTurnCount() { m_TurnCount = 0; }
     void ResetDungeonState()
     {
         m_Phase = Phase::PlayerTurn;
@@ -64,19 +63,22 @@ public:
         m_WindWarning100Shown = false;
         m_WindWarning50Shown = false;
     }
+    // プレイヤー入力待ちへ戻る時の初期化。
     void StartPlayerTurn();
+    // プレイヤー行動後、敵/仲間へターン予算を配って敵行動フェーズへ入る。
     void StartEnemyTurn();
+    // 全ユニットの処理が終わった時、ターン数・風制限・自然湧きを処理する。
     void FinishTurnCycle();
+    // 現在ターンとフロア設定を見て、自然湧きする敵を生成する。
     void SpawnEnemy();
     void SetShopTheftMode(bool enabled) { m_ShopTheftMode = enabled; }
     bool IsShopTheftMode() const { return m_ShopTheftMode; }
     void PauseTurnProgression() { m_IsPaused = true; }
     void ResumeTurnProgression() { m_IsPaused = false; }
-    bool IsTurnProgressionPaused() const { return m_IsPaused; }
 
     void Update() override;
+    // Shiftダッシュのような即時移動後、敵ターンを入力待ちまでまとめて解決する。
     void ResolveAfterPlayerInstantMove();
 
-    Phase GetPhase() const { return m_Phase; }
     int GetTurnCount() const { return m_TurnCount; }
 };

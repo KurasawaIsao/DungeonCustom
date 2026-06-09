@@ -1,6 +1,7 @@
 #include "ConfirmWindow.h"
 #include "main.h" 
 #include "input.h"
+#include "EffectManager.h"
 
 void ConfirmWindow::Init() {
 
@@ -32,10 +33,12 @@ void ConfirmWindow::Update() {
     {
         if (Input::GetKeyTrigger(VK_LEFT))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_Yes = !m_Yes;
         }
         else if (Input::GetKeyTrigger(VK_RIGHT))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_Yes = !m_Yes;
         }
 
@@ -47,7 +50,14 @@ void ConfirmWindow::Update() {
         {
             m_Arrow->SetPosition(Vector3(640.0f, 317.0f, 0.0f)); 
         }
-        if (Input::GetKeyTrigger('Z'))
+        if (Input::GetKeyTrigger('X'))
+        {
+            // Xキャンセルは「いいえ」を選択した状態で確認を終了する。
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_Yes = false;
+            SetDecided(true);
+        }
+        else if (Input::GetKeyTrigger('Z'))
         {
             SetDecided(true);
         }

@@ -217,6 +217,8 @@ void Unit::SetTriggerAnimation(const std::string& animName, float speed, bool wa
         return;
     }
 
+    OnTriggerAnimationStarted(animName);
+
     // 攻撃などはターン進行を待たせるが、鉄球の衝突ダメージなどは見た目だけ再生できるようにする。
     if (waitForAnimation) m_IsActingAnimation = true;
     m_IsAnimLooping = false; 
@@ -570,7 +572,7 @@ int Unit::CalcDamage(int atk, int def, float atkRate, float defRate)
 bool Unit::IsDiagonalMoveBlocked(Vector2Int cur, Vector2Int dir, MapData* map)
 {
     // 斜め移動でなければ通す
-    if (abs(dir.x) + abs(dir.y) != 2)
+    if (dir.Manhattan(Vector2Int(0, 0)) != 2)
         return false;
 
     Vector2Int check1(cur.x + dir.x, cur.y);
@@ -634,7 +636,7 @@ void Unit::StartMove(const Vector2Int& target, float moveTime)
     else if (dir.x == 0 && dir.y == 0) {
         invalidTarget = true;
     }
-    else if (abs(dir.x) > 1 || abs(dir.y) > 1) {
+    else if (dir.Chebyshev(Vector2Int(0, 0)) > 1) {
         invalidTarget = true;
     }
     else if (IsDiagonalMoveBlocked(m_GridPos, dir, map)) {
@@ -691,7 +693,7 @@ void Unit::RequestMove(const Vector2Int& target)
         LookAt(dir);
     }
     if (!map || !map->IsInBounds(target) || !map->IsWalkable(target)) return;
-    if (abs(dir.x) > 1 || abs(dir.y) > 1) return;
+    if (dir.Chebyshev(Vector2Int(0, 0)) > 1) return;
     if (IsDiagonalMoveBlocked(m_GridPos, dir, map)) return;
     if (um && um->GetUnitAt(target)) return;
 
@@ -710,7 +712,7 @@ bool Unit::RequestMoveBool(const Vector2Int& target)
     }
 
     if (!map || !map->IsInBounds(target) || !map->IsWalkable(target)) return false;
-    if (abs(dir.x) > 1 || abs(dir.y) > 1) return false;
+    if (dir.Chebyshev(Vector2Int(0, 0)) > 1) return false;
     if (IsDiagonalMoveBlocked(m_GridPos, dir, map)) return false;
 
     Unit* unit = um ? um->GetUnitAt(target) : nullptr;

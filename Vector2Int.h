@@ -75,25 +75,52 @@ public:
 		float magSq = x * x + y * y;
 		if (magSq > 0.0f)
 		{
-			float oneOverMag = 1.0f / sqrt(magSq);
+			float oneOverMag = 1.0f / sqrtf(magSq);
 			x *= oneOverMag;
 			y *= oneOverMag;
 		}
 	}
 
-	static float Distance(const Vector2Int& a, const Vector2Int& b) {
-		float dx = static_cast<float>(a.x - b.x);
-		float dy = static_cast<float>(a.y - b.y);
-		return sqrt(dx * dx + dy * dy);
-	}
-
 	float Length()const
 	{
-		return x * x + y * y;
+		return static_cast<float>(x * x + y * y);
 	}
+
+	// 長さ（平方根付き）を返す。グリッド差分の実距離を見たい時に使う。
+	float LengthSqrt() const
+	{
+		return sqrtf(Length());
+	}
+
+	// 2点間のユークリッド距離を返す。
+	static float Distance(const Vector2Int& a, const Vector2Int& b) {
+		return (a - b).LengthSqrt();
+	}
+
+	// 上下左右だけで数える距離を返す。経路探索の優先度付けに使う。
 	int Manhattan(const Vector2Int& other) const
 	{
 		return abs(x - other.x) + abs(y - other.y);
+	}
+
+	// 上下左右だけで数える距離を、static関数としても呼べるようにする。
+	static int ManhattanDistance(const Vector2Int& a, const Vector2Int& b)
+	{
+		return a.Manhattan(b);
+	}
+
+	// 斜め移動を1歩として数える距離を返す。隣接判定や視界範囲に使う。
+	int Chebyshev(const Vector2Int& other) const
+	{
+		int dx = abs(x - other.x);
+		int dy = abs(y - other.y);
+		return dx > dy ? dx : dy;
+	}
+
+	// 斜め移動を1歩として数える距離を、static関数としても呼べるようにする。
+	static int ChebyshevDistance(const Vector2Int& a, const Vector2Int& b)
+	{
+		return a.Chebyshev(b);
 	}
 };
 #endif

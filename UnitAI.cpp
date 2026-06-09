@@ -44,6 +44,25 @@ namespace
         return (std::min)(1.0f, probability);
     }
 
+
+    void ClearPlayerMoveRunHoldIfSkillTargets(Unit* target, const std::vector<Unit*>& collectedTargets)
+    {
+        // 敵の状態異常特技などがプレイヤーへ当たる時は、移動継続用のRunを残さない。
+        Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
+        if (!player) return;
+
+        if (target == player) {
+            player->ClearMoveRunHold();
+            return;
+        }
+
+        for (Unit* unit : collectedTargets) {
+            if (unit == player) {
+                player->ClearMoveRunHold();
+                return;
+            }
+        }
+    }
     bool IsSkillConditionMet(UnitAI& ai, Unit& self, Unit* target, const Skill& skill)
     {
         switch (skill.condition) {
@@ -64,10 +83,7 @@ bool UnitAI::CanSee(Unit& self, Unit* target, MapData* map, int visionRange)
 
     Vector2Int selfPos = self.GetGridPos();
     Vector2Int targetPos = target->GetGridPos();
-    int dx = abs(targetPos.x - selfPos.x);
-    int dy = abs(targetPos.y - selfPos.y);
-    int dist = (std::max)(dx, dy);
-    if (dist > visionRange) return false;
+    if (Vector2Int::ChebyshevDistance(targetPos, selfPos) > visionRange) return false;
 
     Room* selfRoom = map->GetRoomAt(selfPos);
     if (selfRoom && map->GetRoomAt(targetPos) == selfRoom) return true;
@@ -124,6 +140,7 @@ bool UnitAI::ExecuteSkill(Unit& self, Unit* target) {
             }
 
             MessageLog::Instance().AddMessage(self.GetName() + u8"の" + skill.name + u8"！");
+            ClearPlayerMoveRunHoldIfSkillTargets(target, collectedTargets);
             if (ctx.targetType == EffectTargetType::Single) skill.effect->Apply(ctx);
             else {
                 for (Unit* unit : collectedTargets) {
@@ -147,21 +164,18 @@ bool UnitAI::IsAdjacent(Unit& self, Unit* target)
 
     Vector2Int p = target->GetGridPos();
     Vector2Int e = self.GetGridPos();
+    Vector2Int dir = p - e;
+    int chebyshev = dir.Chebyshev(Vector2Int(0, 0));
+    int manhattan = dir.Manhattan(Vector2Int(0, 0));
 
-    int dx = p.x - e.x;
-    int dy = p.y - e.y;
-
-    int adx = abs(dx);
-    int ady = abs(dy);
-
-    if (adx == 0 && ady == 0) return false;
+    if (chebyshev == 0) return false;
 
     // 直交隣接 (上下左右)
-    if (adx + ady == 1) return true;
+    if (manhattan == 1) return true;
 
-    if (adx == 1 && ady == 1) {
+    if (chebyshev == 1 && manhattan == 2) {
         MapData* map = MapManager::Instance()->GetCurrentMap();
-        if (map && self.IsDiagonalMoveBlocked(e, { dx, dy }, map)) return false;
+        if (map && self.IsDiagonalMoveBlocked(e, dir, map)) return false;
         return true;
     }
 
@@ -174,19 +188,17 @@ bool UnitAI::IsAttackAdjacent(Unit& self, Unit* target, MapData* map)
 
     Vector2Int p = target->GetGridPos();
     Vector2Int e = self.GetGridPos();
+    Vector2Int dir = p - e;
+    int chebyshev = dir.Chebyshev(Vector2Int(0, 0));
+    int manhattan = dir.Manhattan(Vector2Int(0, 0));
 
-    int dx = p.x - e.x;
-    int dy = p.y - e.y;
-    int adx = abs(dx);
-    int ady = abs(dy);
+    if (chebyshev == 0) return false;
+    if (manhattan == 1) return true;
 
-    if (adx == 0 && ady == 0) return false;
-    if (adx + ady == 1) return true;
-
-    if (adx == 1 && ady == 1) {
+    if (chebyshev == 1 && manhattan == 2) {
         if (!map) map = MapManager::Instance()->GetCurrentMap();
         if (!map) return false;
-        return map->IsWalkable({ e.x + dx, e.y }) && map->IsWalkable({ e.x, e.y + dy });
+        return map->IsWalkable({ e.x + dir.x, e.y }) && map->IsWalkable({ e.x, e.y + dir.y });
     }
 
     return false;
@@ -314,10 +326,7 @@ std::vector<Vector2Int> UnitAI::BFSPath(Unit& self, const Vector2Int& start, con
                 Vector2Int nextA = cur + a;
                 Vector2Int nextB = cur + b;
 
-                int distA = abs(goal.x - nextA.x) + abs(goal.y - nextA.y);
-                int distB = abs(goal.x - nextB.x) + abs(goal.y - nextB.y);
-
-                return distA < distB;
+                return goal.Manhattan(nextA) < goal.Manhattan(nextB);
             });
 
         // ★ ソート済み方向で探索
@@ -331,7 +340,6 @@ std::vector<Vector2Int> UnitAI::BFSPath(Unit& self, const Vector2Int& start, con
 
             if (next != goal)
             {
-                // 修正ポイント：自分と同勢力のユニットがいる場合は避ける
                 Unit* existingUnit = UnitManager::Instance()->GetUnitAt(next);
                 if (existingUnit) {
                     bool isSameFaction = false;

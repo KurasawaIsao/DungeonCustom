@@ -21,6 +21,7 @@ enum class UIState
     ItemMenu,
     ItemCommand,
     AllyMenu,
+    AllyDismissConfirm,
     GroundMenu,
     PotMenu,
     RecruitConfirm,
@@ -48,6 +49,7 @@ private:
     int m_ItemCommandCursor = 0;
     int m_AllyCursor = 0;
     int m_AllyCommandCursor = 0;
+    int m_AllyDismissConfirmCursor = 1;
     int m_GroundCursor = 0;
     int m_MessageHistoryCursor = 0;
     int m_ShrineConfirmCursor = 0;
@@ -66,6 +68,7 @@ private:
     int m_RecruitDismissCursor = 0;
     bool m_BlockRecruitDismiss = false;
     Ally* m_FocusedAlly = nullptr;
+    Ally* m_AllyDismissTarget = nullptr;
     bool m_AllyCameraFocusActive = false;
 
 public:
@@ -105,6 +108,7 @@ private:
     void DrawItemMenu(Player* player);
     void DrawItemCommandMenu(Player* player);
     void DrawAllyMenu();
+    void DrawAllyDismissConfirmUI();
     void DrawGroundMenu(Player* player);
     void DrawMessageHistoryUI();
     void DrawRenameUI(Player* player);

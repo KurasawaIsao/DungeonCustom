@@ -17,15 +17,6 @@ namespace
         return p.y * width + p.x;
     }
 
-    int ChebyshevDistance(const Vector2Int& a, const Vector2Int& b)
-    {
-        return (std::max)(abs(a.x - b.x), abs(a.y - b.y));
-    }
-
-    int ManhattanDistance(const Vector2Int& a, const Vector2Int& b)
-    {
-        return abs(a.x - b.x) + abs(a.y - b.y);
-    }
 
     bool IsEnemy(Unit& unit)
     {
@@ -113,7 +104,7 @@ void ChaseAI::MoveOnlyWithTarget(Unit& self, Unit* target, MapData* map)
     }
 
     bool selfMovedOutsidePath = (m_LastSelfPos.x != -999 && selfPos != m_LastSelfPos);
-    bool nextStepInvalid = (!path.empty() && ChebyshevDistance(path.front(), selfPos) != 1);
+    bool nextStepInvalid = (!path.empty() && Vector2Int::ChebyshevDistance(path.front(), selfPos) != 1);
     // ターゲット位置・自分の位置・次の一歩がずれた時だけ経路を作り直す。
     if (path.empty() || targetPos != m_LastTargetPos || selfMovedOutsidePath || nextStepInvalid) {
         path = BFSPathToAny(self, selfPos, goals, map);
@@ -141,6 +132,7 @@ std::vector<Vector2Int> ChaseAI::BuildPlayerFollowGoals(Player* player, bool all
     if (!player) return goals;
 
     Vector2Int playerPos = player->GetGridPos();
+    // プレイヤーの移動方向から前後の立ち位置を作り、味方が正面に詰まり続けるのを避ける。
     Vector2Int moveDir = playerPos - player->GetPreviousGridPos();
     Vector2Int dir = NormalizeDir(moveDir);
     if (dir.x == 0 && dir.y == 0) {
@@ -189,6 +181,7 @@ std::vector<Vector2Int> ChaseAI::BuildAdjacentGoals(Unit& self, Unit* target, Ma
     };
 
     if (preferPlayerRear) {
+        // プレイヤー追従時は隣接8マスより先に、前後ライン上の候補を優先する。
         if (auto* player = dynamic_cast<Player*>(target)) {
             bool allowExtendedLine = dynamic_cast<Ally*>(&self) != nullptr;
             for (const auto& goal : BuildPlayerFollowGoals(player, allowExtendedLine)) {
@@ -205,13 +198,14 @@ std::vector<Vector2Int> ChaseAI::BuildAdjacentGoals(Unit& self, Unit* target, Ma
     }
 
     Vector2Int selfPos = self.GetGridPos();
+    // 候補が複数ある時は、自分から近く、かつ直交寄りの位置を先に試す。
     std::sort(adjacentGoals.begin(), adjacentGoals.end(), [&](const Vector2Int& a, const Vector2Int& b) {
-        int distA = ManhattanDistance(a, selfPos);
-        int distB = ManhattanDistance(b, selfPos);
+        int distA = Vector2Int::ManhattanDistance(a, selfPos);
+        int distB = Vector2Int::ManhattanDistance(b, selfPos);
         if (distA != distB) return distA < distB;
 
-        int cardinalA = ManhattanDistance(a, targetPos);
-        int cardinalB = ManhattanDistance(b, targetPos);
+        int cardinalA = Vector2Int::ManhattanDistance(a, targetPos);
+        int cardinalB = Vector2Int::ManhattanDistance(b, targetPos);
         return cardinalA < cardinalB;
     });
 
@@ -250,14 +244,15 @@ std::vector<Vector2Int> ChaseAI::BFSPathToAny(Unit& self, const Vector2Int& star
 
         std::vector<Vector2Int> dirs(baseDirs, baseDirs + 8);
 
+        // ゴールに近づきやすい方向から探索し、同じ距離なら自然な経路が出やすいようにする。
         std::sort(dirs.begin(), dirs.end(), [&](const Vector2Int& a, const Vector2Int& b) {
             Vector2Int nextA = cur + a;
             Vector2Int nextB = cur + b;
             int distA = INT_MAX;
             int distB = INT_MAX;
             for (const auto& goal : activeGoals) {
-                distA = (std::min)(distA, ManhattanDistance(goal, nextA));
-                distB = (std::min)(distB, ManhattanDistance(goal, nextB));
+                distA = (std::min)(distA, Vector2Int::ManhattanDistance(goal, nextA));
+                distB = (std::min)(distB, Vector2Int::ManhattanDistance(goal, nextB));
             }
             return distA < distB;
         });
@@ -309,7 +304,7 @@ bool ChaseAI::CanStepOn(Unit& self, const Vector2Int& pos, MapData* map) const
 bool ChaseAI::TryStartMove(Unit& self, const Vector2Int& next, MapData* map)
 {
     if (!map || !map->IsInBounds(next) || !map->IsWalkable(next)) return false;
-    if (ChebyshevDistance(next, self.GetGridPos()) != 1) return false;
+    if (Vector2Int::ChebyshevDistance(next, self.GetGridPos()) != 1) return false;
     if (UnitManager::Instance()->GetUnitAt(next)) return false;
 
     Vector2Int moveDir = next - self.GetGridPos();

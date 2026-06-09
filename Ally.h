@@ -58,10 +58,13 @@ public:
     AllyAIMode GetAIMode() const { return m_AIMode; }
     const char* GetAIModeName() const;
     void SetAIMode(AllyAIMode mode);
+    void DismissFromParty();
 
 private:
     bool CanRecognizePlayer(class Player* player, class MapData* map);
     bool CanKeepRecognizedPlayer(class Player* player, class MapData* map);
     bool UpdatePlayerRecognition(class Player* player, class MapData* map);
+    // —×Ú‚µ‚Ä‚¢‚é“G‚Ì‚¤‚¿A’‡ŠÔ‚ªUŒ‚‘ÎÛ‚É‚Å‚«‚é‘Šè‚¾‚¯‚ğ•Ô‚·B
+    class Enemy* FindAdjacentHostileEnemy();
     class Enemy* FindVisibleEnemy(class MapData* map);
 };

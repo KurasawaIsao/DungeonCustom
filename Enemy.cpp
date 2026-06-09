@@ -96,16 +96,9 @@ namespace
         // プレイヤーの視界表示と同じ、現在フロアの viewDistance を敵の部屋外索敵にも使う。
         return (std::max)(0, mapManager->GetCurrentFloorData().viewDistance);
     }
-    int GetChebyshevDistance(const Vector2Int& from, const Vector2Int& to)
-    {
-        int dx = abs(to.x - from.x);
-        int dy = abs(to.y - from.y);
-        return (std::max)(dx, dy);
-    }
-
     bool IsWithinVisionRange(const Vector2Int& centerPos, const Vector2Int& targetPos, int visionRange)
     {
-        return GetChebyshevDistance(centerPos, targetPos) <= visionRange;
+        return Vector2Int::ChebyshevDistance(centerPos, targetPos) <= visionRange;
     }
 
     bool IsInsideRoomMargin(const Room& room, const Vector2Int& targetPos, MapData* map, int visionRange)
@@ -209,30 +202,32 @@ void Enemy::Init()
 
     PlayAnimation("Idle", 1.0f);
 }
+bool Enemy::IsVisibleForPlayerUpdate(Player* player) const
+{
+    // エディタプレビューやプレイヤー未生成時は、確認用表示を優先して常に更新する。
+    if (!player || m_EditorPreviewOnly) return true;
+
+    bool visibleToPlayer = false;
+    if (IsAnimatingMove()) {
+        // 移動中は到達グリッドだけで判定すると表示が先に消えるため、開始位置と見た目位置を確認する。
+        visibleToPlayer =
+            player->IsInView(WorldToGridForView(m_MoveStartPos)) ||
+            player->IsInView(WorldToGridForView(GetVisualPosition()));
+    }
+    else {
+        visibleToPlayer = player->IsInView(GetGridPos());
+    }
+
+    // 攻撃や被弾などの演出中は、視界外でも演出完了まで更新・描画を続ける。
+    return visibleToPlayer || m_IsActingAnimation;
+}
+
 void Enemy::Draw()
 {
     if (!m_AnimationModel)return;
     Player* player = UnitManager::Instance()->GetPlayer();
-    if (player && !m_EditorPreviewOnly) {
-        bool visibleToPlayer = false;
-        if (IsAnimatingMove()) {
-            // 移動中は確定済みの到達グリッドではなく、開始位置と現在の見た目位置で視界判定する。
-            visibleToPlayer =
-                player->IsInView(WorldToGridForView(m_MoveStartPos)) ||
-                player->IsInView(WorldToGridForView(GetVisualPosition()));
-        }
-        else {
-            visibleToPlayer = player->IsInView(GetGridPos());
-        }
-        if (!visibleToPlayer && m_IsActingAnimation) {
-            visibleToPlayer = true;
-        }
-
-        // 視界外の敵は描画を省き、表示負荷を抑える。
-        if (!visibleToPlayer) {
-            return;
-        }
-    }
+    // 視界外の敵は描画を省き、表示負荷を抑える。
+    if (!IsVisibleForPlayerUpdate(player)) return;
 
     Vector3 visualPos = GetVisualPosition();
     Vector3 visualRot = GetVisualRotation();
@@ -263,24 +258,8 @@ void Enemy::Update()
 {
     RepairInvalidGridPos("Enemy::Update");
     Player* player = UnitManager::Instance()->GetPlayer();
-    bool isInPlayerView = true;
-    if (player && !m_EditorPreviewOnly) {
-        if (IsAnimatingMove()) {
-            // 移動中は到達地点のLODを先取りせず、見た目が視界に入ってから更新する。
-            isInPlayerView =
-                player->IsInView(WorldToGridForView(m_MoveStartPos)) ||
-                player->IsInView(WorldToGridForView(GetVisualPosition()));
-        }
-        else {
-            isInPlayerView = player->IsInView(GetGridPos());
-        }
-
-        // 視界外の敵は描画を省き、表示負荷を抑える。
-        if (isInPlayerView || m_IsActingAnimation) {
-            UpdateAnimation();
-        }
-    }
-    else {
+    // 描画と同じ視界判定を使い、見えていない敵のアニメ更新を省く。
+    if (IsVisibleForPlayerUpdate(player)) {
         UpdateAnimation();
     }
 
@@ -587,9 +566,7 @@ bool Enemy::UpdateNap()
     auto enteredAdjacent = [&](Unit* unit) -> bool {
         if (!unit) return false;
         Vector2Int pos = unit->GetGridPos();
-        int dx = abs(pos.x - ePos.x);
-        int dy = abs(pos.y - ePos.y);
-        return (std::max)(dx, dy) <= 1;
+        return Vector2Int::ChebyshevDistance(pos, ePos) <= 1;
     };
 
     bool shouldWakeUp = false;
@@ -606,11 +583,7 @@ bool Enemy::UpdateNap()
                     shouldWakeUp = true;
                     break;
                 }
-                if (enteredSameRoom(player))
-                {
-                    shouldWakeUp = true;
-                    break;
-                }
+
             }
         }
         break;
@@ -763,15 +736,18 @@ void Enemy::Attack()
     MessageLog::Instance().Clear();
 
     Vector2Int targetPos = m_GridPos + m_FacingDir;
-    if (abs(m_FacingDir.x) == 1 && abs(m_FacingDir.y) == 1) {
-        MapData* map = MapManager::Instance()->GetCurrentMap();
+    MapData* map = MapManager::Instance()->GetCurrentMap();
+    UnitManager* units = UnitManager::Instance();
+    if (!units) return;
+
+    if (m_FacingDir.Chebyshev(Vector2Int(0, 0)) == 1 && m_FacingDir.Manhattan(Vector2Int(0, 0)) == 2) {
         if (map && IsDiagonalMoveBlocked(m_GridPos, m_FacingDir, map)) {
             EndTurn();
             return;
         }
     }
 
-    Unit* target = UnitManager::Instance()->GetUnitAt(targetPos);
+    Unit* target = units->GetUnitAt(targetPos);
 
 	// 無差別攻撃AI取得
     const bool attacksAnyUnit = dynamic_cast<BerserkAI*>(currentAI) != nullptr;
@@ -792,28 +768,25 @@ void Enemy::Attack()
     }
 
     if (!target) {
-        MapData* map = MapManager::Instance()->GetCurrentMap();
         Unit* bestTarget = nullptr;
         int bestDist = 999999;
 
         auto consider = [&](Unit* candidate) {
             if (!canAttackTarget(candidate)) return;
             Vector2Int dir = candidate->GetGridPos() - m_GridPos;
-            int adx = abs(dir.x);
-            int ady = abs(dir.y);
-            if (adx == 0 && ady == 0) return;
-            if (adx > 1 || ady > 1) return;
-            if (adx == 1 && ady == 1 && map && IsDiagonalMoveBlocked(m_GridPos, dir, map)) return;
+            int chebyshev = dir.Chebyshev(Vector2Int(0, 0));
+            int manhattan = dir.Manhattan(Vector2Int(0, 0));
+            if (chebyshev == 0) return;
+            if (chebyshev > 1) return;
+            if (chebyshev == 1 && manhattan == 2 && map && IsDiagonalMoveBlocked(m_GridPos, dir, map)) return;
 
-            int score = adx + ady;
+            int score = manhattan;
             if (score < bestDist) {
                 bestDist = score;
                 bestTarget = candidate;
             }
         };
 
-        UnitManager* units = UnitManager::Instance();
-        if (!units) return;
         consider(units->GetPlayer());
         for (Ally* ally : units->GetAllies()) {
             consider(ally);
@@ -864,7 +837,8 @@ void Enemy::DropItem()
     float roll = GameRandom::Value();
     if (roll > m_Data.dropRate) return;
 
-    MapData* map = MapManager::Instance()->GetCurrentMap();
+    MapManager* mapManager = MapManager::Instance();
+    MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
     if (!map) return;
 
     // 落とすアイテム判定
@@ -875,7 +849,7 @@ void Enemy::DropItem()
     }
     else {
         // 固定がない場合、現在の階層のテーブルから抽選
-        FloorData floor = MapManager::Instance()->GetCurrentFloorData();
+        FloorData floor = mapManager->GetCurrentFloorData();
         itemToDrop = ItemDatabase::DrawFromTable(floor.itemTableId);
     }
 
@@ -883,7 +857,7 @@ void Enemy::DropItem()
 
     auto* itemObj = Manager::GetScene()->AddGameObject<Item>(1);
     ItemInstance inst(itemToDrop);
-    inst.InitIdentify(MapManager::Instance() ? MapManager::Instance()->GetDungeonData().IsBlessOrCurseEnabled() : true);
+    inst.InitIdentify(mapManager ? mapManager->GetDungeonData().IsBlessOrCurseEnabled() : true);
     //回数設定
     if (itemToDrop->type == ItemType::Weapon || itemToDrop->type == ItemType::Shield)
     {

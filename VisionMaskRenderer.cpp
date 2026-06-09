@@ -8,6 +8,7 @@
 #include "MapData.h"
 #include "UnitManager.h"
 #include "Player.h"
+#include "Vector2.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
@@ -17,13 +18,13 @@ namespace
 {
     float Distance2D(float ax, float ay, float bx, float by)
     {
-        const float dx = ax - bx;
-        const float dy = ay - by;
-        return std::sqrt(dx * dx + dy * dy);
+        // 画面上の距離を求め、円形マスクやぼかし幅の判定に使う。
+        return (Vector2(ax, ay) - Vector2(bx, by)).LengthSqrt();
     }
 
     bool IsDenseCorridorArea(MapData* map, const Vector2Int& pos)
     {
+        // 通路タイルでも広い塊になっている場所は、部屋のようにまとめて見せる。
         if (!map || !map->IsInside(pos) || map->GetTile(pos.x, pos.y) != TileType::Corridor) return false;
 
         const int mapW = map->GetWidth();
@@ -45,6 +46,7 @@ namespace
 
         while (!stack.empty())
         {
+            // 連結している通路を探索し、通路の数と外接範囲を集計する。
             const Vector2Int current = stack.back();
             stack.pop_back();
             if (!map->IsInside(current)) continue;
@@ -77,6 +79,7 @@ namespace
         const int width = right - left;
         const int height = bottom - top;
         const int area = (std::max)(1, width * height);
+        // 一定以上の広さと密度があれば、単なる細い通路ではなく部屋状の領域として扱う。
         return width >= 3 && height >= 3 && count >= 9 && count * 10 >= area * 6;
 
         return false;
@@ -84,6 +87,7 @@ namespace
 
     bool IsRoomLikeTile(MapData* map, const Vector2Int& pos)
     {
+        // 床・階段・部屋所属の通路・広い通路塊を、部屋として明るくする対象に含める。
         if (!map || !map->IsInside(pos)) return false;
 
         const TileType tile = map->GetTile(pos.x, pos.y);
@@ -104,6 +108,7 @@ namespace
     }
 }
 
+// 視界マスク用のCPUバッファ、GPUテクスチャ、全画面ポリゴンを初期化する。
 void VisionMaskRenderer::Init()
 {
     pixels.assign(MASK_WIDTH * MASK_HEIGHT, 0x00000000);
@@ -111,6 +116,7 @@ void VisionMaskRenderer::Init()
     maskPoly.Init(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, nullptr, 1.0f);
 }
 
+// 毎フレームCPUから書き換えるため、動的なマスクテクスチャを作成する。
 void VisionMaskRenderer::CreateTexture()
 {
     ReleaseTexture();
@@ -138,12 +144,14 @@ void VisionMaskRenderer::CreateTexture()
     }
 }
 
+// DirectXリソースを解放し、二重解放を避けるためポインタをnullptrへ戻す。
 void VisionMaskRenderer::ReleaseTexture()
 {
     if (srv) { srv->Release(); srv = nullptr; }
     if (tex) { tex->Release(); tex = nullptr; }
 }
 
+// 現在の階層設定とプレイヤー状態から、視界マスクが必要か判定する。
 bool VisionMaskRenderer::ShouldDrawMask(int& outViewDistance) const
 {
     MapManager* mapManager = MapManager::Instance();
@@ -161,6 +169,7 @@ bool VisionMaskRenderer::ShouldDrawMask(int& outViewDistance) const
     return true;
 }
 
+// 3Dワールド座標をカメラで投影し、スクリーン座標へ変換する。
 bool VisionMaskRenderer::WorldToScreen(const Vector3& world, float& outX, float& outY) const
 {
     Scene* scene = Manager::GetScene();
@@ -181,6 +190,7 @@ bool VisionMaskRenderer::WorldToScreen(const Vector3& world, float& outX, float&
     return true;
 }
 
+// 移動演出中などに使う一時的な視界中心を設定する。
 void VisionMaskRenderer::SetFocusOverride(const Vector2Int& gridPos, const Vector3& worldPos)
 {
     focusGridPos = gridPos;
@@ -188,11 +198,13 @@ void VisionMaskRenderer::SetFocusOverride(const Vector2Int& gridPos, const Vecto
     hasFocusOverride = true;
 }
 
+// 一時的な視界中心を解除し、通常のプレイヤー位置基準に戻す。
 void VisionMaskRenderer::ClearFocusOverride()
 {
     hasFocusOverride = false;
 }
 
+// 視界距離を、画面上に描く円形マスクの中心と半径へ変換する。
 bool VisionMaskRenderer::GetMaskCircle(const Vector3& focusWorld, int viewDistance, float& outCenterX, float& outCenterY, float& outRadius) const
 {
     Vector3 centerWorld = focusWorld;
@@ -213,6 +225,7 @@ bool VisionMaskRenderer::GetMaskCircle(const Vector3& focusWorld, int viewDistan
     const bool hasX = WorldToScreen(centerWorld + Vector3(radiusWorld, 0.0f, 0.0f), xEdgeX, xEdgeY);
     const bool hasZ = WorldToScreen(centerWorld + Vector3(0.0f, 0.0f, radiusWorld), zEdgeX, zEdgeY);
 
+    // カメラ角度で画面上の半径が変わるため、X/Z方向の投影距離から大きい方を採用する。
     float radius = 48.0f;
     if (hasX) radius = (std::max)(radius, Distance2D(outCenterX, outCenterY, xEdgeX, xEdgeY));
     if (hasZ) radius = (std::max)(radius, Distance2D(outCenterX, outCenterY, zEdgeX, zEdgeY));
@@ -221,6 +234,7 @@ bool VisionMaskRenderer::GetMaskCircle(const Vector3& focusWorld, int viewDistan
     return true;
 }
 
+// 通路上で使う円形マスクをCPU側ピクセルへ作成する。
 void VisionMaskRenderer::BuildMask(float centerX, float centerY, float radius)
 {
     const float edgeWidth = 24.0f;
@@ -249,6 +263,7 @@ void VisionMaskRenderer::BuildMask(float centerX, float centerY, float radius)
     }
 }
 
+// グリッド範囲を画面上の外接矩形へ変換する。
 bool VisionMaskRenderer::GetGridAreaScreenRect(int left, int top, int right, int bottom, ScreenRect& outRect) const
 {
     const float halfTile = (float)TILE_DISTANCE * 0.5f;
@@ -300,6 +315,7 @@ bool VisionMaskRenderer::GetGridAreaScreenRect(int left, int top, int right, int
     return outRect.left < outRect.right && outRect.top < outRect.bottom;
 }
 
+// グリッド範囲を画面上の四角形として取得し、斜め投影された形を保つ。
 bool VisionMaskRenderer::GetGridAreaScreenQuad(int left, int top, int right, int bottom, ScreenQuad& outQuad) const
 {
     const float halfTile = (float)TILE_DISTANCE * 0.5f;
@@ -346,6 +362,7 @@ bool VisionMaskRenderer::GetGridAreaScreenQuad(int left, int top, int right, int
     return outQuad.bounds.left < outQuad.bounds.right && outQuad.bounds.top < outQuad.bounds.bottom;
 }
 
+// 指定した画面矩形の内側を透明化し、端だけ滑らかに暗く戻す。
 void VisionMaskRenderer::ClearScreenRectSmooth(const ScreenRect& rect)
 {
     const float edgeWidth = 8.0f;
@@ -378,6 +395,7 @@ void VisionMaskRenderer::ClearScreenRectSmooth(const ScreenRect& rect)
     }
 }
 
+// 指定した画面四角形の内側を透明化し、端だけ滑らかに暗く戻す。
 void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
 {
     const float edgeWidth = 8.0f;
@@ -398,6 +416,7 @@ void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
 
     auto contains = [&](const ScreenPoint& p) -> bool
         {
+            // 四角形の全辺に対して同じ側にある点だけを内側として扱う。
             bool hasPositive = false;
             bool hasNegative = false;
             for (int i = 0; i < 4; ++i)
@@ -412,6 +431,7 @@ void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
 
     auto distanceToSegment = [](const ScreenPoint& p, const ScreenPoint& a, const ScreenPoint& b) -> float
         {
+            // 外側の点は一番近い辺までの距離でぼかしアルファを決める。
             const float vx = b.x - a.x;
             const float vy = b.y - a.y;
             const float wx = p.x - a.x;
@@ -453,6 +473,7 @@ void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
     }
 }
 
+// 部屋や部屋扱いの領域をまとめて明るくする視界マスクを作成する。
 void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& centerPos, int viewDistance)
 {
     std::fill(pixels.begin(), pixels.end(), (MAX_ALPHA << 24));
@@ -462,6 +483,7 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
 
     auto findConnectedRoomBounds = [](MapData* map, const Vector2Int& start, int& outLeft, int& outTop, int& outRight, int& outBottom) -> bool
     {
+        // Room情報を持たない広い通路塊も、連結範囲を探して一つの部屋扱いにする。
         if (!IsRoomLikeTile(map, start)) return false;
 
         const int mapW = map->GetWidth();
@@ -482,6 +504,7 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
 
         while (!stack.empty())
         {
+            // 連結している通路を探索し、通路の数と外接範囲を集計する。
             const Vector2Int current = stack.back();
             stack.pop_back();
             if (!map->IsInside(current)) continue;
@@ -514,6 +537,7 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
 
     auto clearGridArea = [this](int left, int top, int right, int bottom)
     {
+        // 範囲全体を一つの四角形として消せない場合は、タイル単位に分けて消す。
         if (left >= right || top >= bottom) return;
 
         ScreenQuad quad{};
@@ -544,6 +568,7 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
 
     if (room)
     {
+        // 通常の部屋では、部屋全体と視界距離分の周辺を明るくする。
         const Vector2Int roomPos = room->GetPosition();
         const Vector2Int roomSize = room->GetSize();
         const int roomLeft = (std::max)(0, roomPos.x);
@@ -559,6 +584,7 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
     }
     else if (IsRoomLikeTile(map, centerPos))
     {
+        // Room情報がない部屋状領域では、探索した連結範囲を部屋として扱う。
         int roomLeft = centerPos.x;
         int roomTop = centerPos.y;
         int roomRight = centerPos.x + 1;
@@ -574,10 +600,12 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
     }
     else
     {
+        // 細い通路では、プレイヤーを中心に視界距離分の矩形だけを明るくする。
         clearGridArea(viewLeft, viewTop, viewRight, viewBottom);
     }
 }
 
+// CPU側のマスク画像をGPUテクスチャへ転送する。
 void VisionMaskRenderer::ApplyToGPU()
 {
     if (!tex) return;
@@ -602,6 +630,7 @@ void VisionMaskRenderer::ApplyToGPU()
     Renderer::GetDeviceContext()->Unmap(tex, 0);
 }
 
+// 現在のプレイヤー位置と階層設定に合わせて視界マスクを描画する。
 void VisionMaskRenderer::Draw()
 {
     int viewDistance = 2;
@@ -619,10 +648,12 @@ void VisionMaskRenderer::Draw()
 
     if (map->GetRoomAt(centerPos) != nullptr || IsRoomLikeTile(map, centerPos))
     {
+        // 部屋では部屋全体が見えるよう、グリッド範囲ベースのマスクを使う。
         BuildRoomAndViewMask(map, centerPos, viewDistance);
     }
     else
     {
+        // 通路ではプレイヤー周辺だけが見えるよう、画面上の円形マスクを使う。
         float centerX = SCREEN_WIDTH * 0.5f;
         float centerY = SCREEN_HEIGHT * 0.5f;
         float radius = 64.0f;
@@ -633,12 +664,14 @@ void VisionMaskRenderer::Draw()
 
     if (!srv) return;
 
+    // マスクは画面へ重ねるため、深度判定を切ってから描画する。
     Renderer::SetDepthEnable(false);
     maskPoly.SetTexture(srv);
     maskPoly.Draw();
     Renderer::SetDepthEnable(true);
 }
 
+// 確保したGPUリソースと全画面ポリゴンを解放する。
 void VisionMaskRenderer::Uninit()
 {
     ReleaseTexture();

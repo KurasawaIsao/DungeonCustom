@@ -55,7 +55,7 @@ public:
             if (!unit) return false;
             if (ctx.source == EffectSourceType::Skill && !IsValidSkillTargetForUser(ctx.user, unit)) return false;
             Vector2Int p = unit->GetGridPos();
-            int dist = (std::max)(std::abs(p.x - center.x), std::abs(p.y - center.y));
+            int dist = Vector2Int::ChebyshevDistance(p, center);
 
             switch (ctx.targetType)
             {
@@ -74,13 +74,13 @@ public:
                 if (unit == ctx.user) return false;
                 if (userRoom && map->GetRoomAt(p) == userRoom) return true;
 
-                int userDist = (std::max)(std::abs(p.x - userCenter.x), std::abs(p.y - userCenter.y));
+                int userDist = Vector2Int::ChebyshevDistance(p, userCenter);
                 return userDist <= radius && UnitAI::HasLineOfSight(userCenter, p, map);
             }
             case EffectTargetType::UserAround8:
             {
                 // 使用者を中心とした周囲8マス。中心マスは対象外。
-                int aroundDist = (std::max)(std::abs(p.x - userCenter.x), std::abs(p.y - userCenter.y));
+                int aroundDist = Vector2Int::ChebyshevDistance(p, userCenter);
                 return unit != ctx.user && aroundDist == 1;
             }
             default:

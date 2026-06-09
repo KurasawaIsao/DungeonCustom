@@ -199,9 +199,7 @@ std::vector<std::pair<int, int>> CorridorGenerator::BuildMST(const std::vector<R
                 if (used[j]) continue;
                 const Vector2Int cj = centers[j];
 
-                float dx = (float)(ci.x - cj.x);
-                float dy = (float)(ci.y - cj.y);
-                float dist = dx * dx + dy * dy;
+                float dist = (ci - cj).Length();
 
                 if (bestDist < 0 || dist < bestDist)
                 {
@@ -272,7 +270,7 @@ bool CorridorGenerator::DigProtectedCorridor(Room& a, Room& b)
 
     auto scoreDoor = [](const DoorCandidate& door, const Vector2Int& target)
     {
-        return std::abs(door.outside.x - target.x) + std::abs(door.outside.y - target.y);
+        return door.outside.Manhattan(target);
     };
 
     std::stable_sort(doorsA.begin(), doorsA.end(), [&](const DoorCandidate& lhs, const DoorCandidate& rhs)

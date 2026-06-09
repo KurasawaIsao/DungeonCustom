@@ -120,6 +120,11 @@ void ShopUI::DrawGameUI()
 
 void ShopUI::OpenShopBuyMenu(Item* item)
 {
+    // 商品確認を開く時は、移動継続用のRunを解除して待機状態へ戻す。
+    if (Player* player = Manager::GetScene()->GetGameObject<Player>()) {
+        player->ClearMoveRunHold();
+    }
+
     m_ShopItemTarget = item;
     m_ForcedCheckout = false;
     m_SelectedChoice = 0;
@@ -128,6 +133,11 @@ void ShopUI::OpenShopBuyMenu(Item* item)
 
 void ShopUI::OpenShopTradeMenu(bool forcedCheckout, Enemy* waitForKeeper)
 {
+    // 店番や店外の精算確認を開く時も、移動モーションを継続させない。
+    if (Player* player = Manager::GetScene()->GetGameObject<Player>()) {
+        player->ClearMoveRunHold();
+    }
+
     m_ShopItemTarget = nullptr;
     m_ForcedCheckout = forcedCheckout;
     m_ConfirmMessageShown = false;
@@ -310,8 +320,16 @@ void ShopUI::DrawShopBuyUI(Player* player)
         return;
     }
 
-    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN)) m_SelectedChoice = 1 - m_SelectedChoice;
-    if (Input::GetKeyTrigger('X')) m_SelectedChoice = 1;
+    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_SelectedChoice = 1 - m_SelectedChoice;
+    }
+    if (Input::GetKeyTrigger('X'))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_SelectedChoice = 1;
+    }
 
     const ItemInstance& inst = m_ShopItemTarget->GetInstance();
     const int price = inst.GetBuyPrice();
@@ -385,8 +403,16 @@ void ShopUI::DrawShopBuyUI(Player* player)
         m_ConfirmMessageShown = true;
     }
 
-    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN)) m_SelectedChoice = 1 - m_SelectedChoice;
-    if (Input::GetKeyTrigger('X')) m_SelectedChoice = 1;
+    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_SelectedChoice = 1 - m_SelectedChoice;
+    }
+    if (Input::GetKeyTrigger('X'))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_SelectedChoice = 1;
+    }
 
     if (Input::GetKeyTrigger('Z') || Input::GetKeyTrigger('X'))
     {

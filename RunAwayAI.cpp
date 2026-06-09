@@ -13,10 +13,6 @@ namespace
     constexpr int kCorridorSearchRadius = 8;
     constexpr int kQuietUnitDistance = 3;
 
-    int ChebyshevDistance(const Vector2Int& a, const Vector2Int& b)
-    {
-        return (std::max)(abs(a.x - b.x), abs(a.y - b.y));
-    }
 
     bool IsPlainCorridor(MapData* map, const Vector2Int& pos)
     {
@@ -26,13 +22,14 @@ namespace
             && map->GetRoomAt(pos) == nullptr;
     }
 
+    // 指定位置から一番近い危険/混雑位置までの距離を返す。逃走先の安全度評価に使う。
     int MinDistanceToAny(const Vector2Int& pos, const std::vector<Vector2Int>& positions)
     {
         if (positions.empty()) return kCorridorSearchRadius + kQuietUnitDistance + 1;
 
         int best = INT_MAX;
         for (const Vector2Int& p : positions) {
-            best = (std::min)(best, ChebyshevDistance(pos, p));
+            best = (std::min)(best, Vector2Int::ChebyshevDistance(pos, p));
         }
         return best;
     }
@@ -43,6 +40,7 @@ namespace
         return unit && unit != &self;
     }
 
+    // 脅威として避けたい位置と、単に混雑として避けたい位置を分けて集める。
     void CollectAvoidPositions(Unit& self, std::vector<Vector2Int>& hostilePositions, std::vector<Vector2Int>& unitPositions)
     {
         UnitManager* um = UnitManager::Instance();
@@ -67,6 +65,7 @@ namespace
         }
     }
 
+    // 近くの通路までの距離をBFSで探す。requireQuiet=trueなら、他ユニットから離れた通路だけを採用する。
     int FindNearestCorridorDistance(Unit& self, const Vector2Int& start, MapData* map, const std::vector<Vector2Int>& unitPositions, bool requireQuiet)
     {
         if (!map || !map->IsInBounds(start) || !map->IsWalkable(start)) return -1;
@@ -142,8 +141,8 @@ void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, M
         {1,1}, {1,-1}, {-1,1}, {-1,-1}
     };
 
-    int currentThreatDist = threat ? ChebyshevDistance(current, threatPos) : 0;
-    int currentSafeDist = safeTarget ? ChebyshevDistance(current, safePos) : 0;
+    int currentThreatDist = threat ? Vector2Int::ChebyshevDistance(current, threatPos) : 0;
+    int currentSafeDist = safeTarget ? Vector2Int::ChebyshevDistance(current, safePos) : 0;
     // 脅威・他ユニット・通路までの近さを点数化し、一番安全そうな隣接マスを選ぶ。
     std::vector<Vector2Int> hostilePositions;
     std::vector<Vector2Int> unitPositions;
@@ -158,8 +157,9 @@ void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, M
         if (!CanStepOn(self, next, map)) continue;
         if (self.IsDiagonalMoveBlocked(current, dir, map)) continue;
 
-        int threatDist = threat ? ChebyshevDistance(next, threatPos) : currentThreatDist;
-        int safeDist = safeTarget ? ChebyshevDistance(next, safePos) : currentSafeDist;
+        // 各候補マスについて、脅威・安全目標・混雑・通路への近さをまとめて評価する。
+        int threatDist = threat ? Vector2Int::ChebyshevDistance(next, threatPos) : currentThreatDist;
+        int safeDist = safeTarget ? Vector2Int::ChebyshevDistance(next, safePos) : currentSafeDist;
         int hostileDist = MinDistanceToAny(next, hostilePositions);
         int unitDist = MinDistanceToAny(next, unitPositions);
         int quietCorridorDist = FindNearestCorridorDistance(self, next, map, unitPositions, true);

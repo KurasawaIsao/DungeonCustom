@@ -9,6 +9,7 @@
 #include <algorithm>
 
 class Enemy;
+class MapData;
 
 struct InventoryItem
 {
@@ -55,19 +56,30 @@ private:
     std::vector<Enemy*> m_KnownDashAdjacentEnemies;
     bool m_InputEnable = true;
     bool m_StairConfirmed = false;
+    // 移動中に次の方向入力が入った時、1マス移動の切れ目でRunを維持する。
+    bool m_KeepRunAfterMove = false;
 
-    // 方向キーを押し続けている間は、移動のつなぎで走りモーションを維持する。
-    bool IsMoveAnimationInputHeld() const;
-    bool IsMoveAnimationBlockedByUi() const;
-    void UpdateMoveAnimationByInput();
 
     // --- 定数パラメータ ---
     static constexpr float MOVE_TIME_NORMAL = 0.09f;
     static constexpr float MOVE_TIME_DASH = 0.06f;
     static constexpr int CLEAR_VISION_LOD_DISTANCE = 15;
 
+    Vector2Int GetDirectionalMoveInput() const;
+    bool CanKeepRunAfterMoveInput();
+    void RecordMoveInputDuringMove();
+    // Shiftダッシュ中に毎歩使う判定は、MapDataを渡して同じマップ取得を繰り返さない。
+    bool CanInstantDashStep(const Vector2Int& dir, MapData* map);
+    bool IsInstantDashStopTile(const Vector2Int& gridPos, MapData* map);
+    bool IsCorridorIntersectionTile(const Vector2Int& gridPos, MapData* map);
+    bool IsVisibleTrapAt(const Vector2Int& gridPos, MapData* map);
+    bool IsItemAt(const Vector2Int& gridPos, MapData* map);
+    bool IsItemAdjacent(const Vector2Int& gridPos, MapData* map);
+    bool ShouldStopDashForRoomEnemyAdjacent(MapData* map);
+
 protected:
     std::string GetMoveEndAnimation() const override;
+    void OnTriggerAnimationStarted(const std::string& animName) override;
 
 public:
     // 基本ライフサイクル
@@ -82,7 +94,7 @@ public:
     void Move(const Vector2Int& dir);
     void ExecuteConfusionAction();
     bool TryConfusionMove(const Vector2Int& dir);
-    bool CanConfusionAttack(const Vector2Int& dir);
+
     void FaceDirection(const Vector2Int& dir);
     void ExecuteInstantDash(const Vector2Int& dir);
     bool CanInstantDashStep(const Vector2Int& dir);
@@ -93,7 +105,7 @@ public:
     bool IsItemAdjacent(const Vector2Int& gridPos);
     bool HasNewDashAdjacentEnemy();
     void UpdateKnownDashAdjacentEnemies();
-    bool ShouldStopDashForEnemyAdjacent();
+
     bool ShouldStopDashForRoomEnemyAdjacent();
     bool IsEnemyAdjacent();
     void InstantMoveTo(const Vector2Int& gridPos, bool suppressObjectStep = false);
@@ -103,6 +115,7 @@ public:
     void ShootArrow(int index);
     void EquipItem(int index);
     void EndTurn();
+    void ClearMoveRunHold(bool playDefaultIfIdle = true);
 
     // 装備操作
     void UnequipWeapon();
