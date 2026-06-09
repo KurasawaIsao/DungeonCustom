@@ -20,8 +20,18 @@ namespace
     void ValidateFloorData(const FloorData& floor, int floorIndex)
     {
         const std::string label = "floor " + std::to_string(floorIndex + 1);
-        if (!floor.themeId.empty() && !DungeonThemeDatabase::Exists(floor.themeId))
+        if (floor.themeSelectionMode == ThemeSelectionMode::Fixed && !floor.themeId.empty() && !DungeonThemeDatabase::Exists(floor.themeId))
             LogDataWarning("Unknown themeId in " + label + ": " + floor.themeId);
+        if (floor.themeSelectionMode == ThemeSelectionMode::RandomCandidates)
+        {
+            if (floor.themeCandidates.empty())
+                LogDataWarning("No theme candidates in " + label);
+            for (const std::string& themeId : floor.themeCandidates)
+            {
+                if (!DungeonThemeDatabase::Exists(themeId))
+                    LogDataWarning("Unknown theme candidate in " + label + ": " + themeId);
+            }
+        }
         if (floor.width <= 0 || floor.height <= 0)
             LogDataWarning("Invalid map size in " + label);
         if (floor.minRoomCount > floor.maxRoomCount)
@@ -67,7 +77,16 @@ bool DungeonDataIO::LoadFromFile(const std::string& path, DungeonData& outData)
     for (const auto& f : root["floors"])
     {
         FloorData floor{};
+        floor.themeSelectionMode = (ThemeSelectionMode)f.value("themeSelectionMode", (int)ThemeSelectionMode::Fixed);
         floor.themeId = f.value("themeId", "default");
+        floor.themeCandidates.clear();
+        if (f.contains("themeCandidates") && f["themeCandidates"].is_array())
+        {
+            for (const auto& themeId : f["themeCandidates"])
+            {
+                if (themeId.is_string()) floor.themeCandidates.push_back(themeId.get<std::string>());
+            }
+        }
         floor.width = f.value("width", 50);
         floor.height = f.value("height", 50);
         floor.useRandomMapSize = f.value("useRandomMapSize", false);
@@ -145,7 +164,9 @@ bool DungeonDataIO::SaveToFile(const std::string& path, const DungeonData& data)
     {
         const FloorData& f = data.GetFloor(i);
         json jf;
+        jf["themeSelectionMode"] = (int)f.themeSelectionMode;
         jf["themeId"] = f.themeId;
+        jf["themeCandidates"] = f.themeCandidates;
         jf["width"] = f.width;
         jf["height"] = f.height;
         jf["useRandomMapSize"] = f.useRandomMapSize;

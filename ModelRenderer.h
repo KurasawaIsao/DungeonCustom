@@ -72,6 +72,7 @@ public:
 
 	void Load( const char *FileName );
 	void Draw() override;
+	void Draw(bool suppressSpecular);
 
 	ID3D11Buffer* GetVertexBuffer() { return m_Model->VertexBuffer; }
 

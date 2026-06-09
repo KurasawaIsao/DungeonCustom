@@ -78,6 +78,33 @@ void Player::Init() {
     m_Name = u8"プレイヤー";
 }
 
+void Player::OnTurnStart() {
+    // 10ターン分の速度を使い切った次のターンから、基礎速度へ戻す。
+    if (m_HasTemporaryTurnSpeed && m_TemporaryTurnSpeedTurns <= 0) {
+        ResetTurnSpeedToBase();
+        m_HasTemporaryTurnSpeed = false;
+    }
+
+    BeginTurnActions();
+
+    // このターンは変更後の速度で行動するため、予算計算後に残りターンを減らす。
+    if (m_HasTemporaryTurnSpeed && m_TemporaryTurnSpeedTurns > 0) {
+        --m_TemporaryTurnSpeedTurns;
+    }
+}
+
+void Player::RefreshTemporaryTurnSpeed(int turns) {
+    // 速度変化を重ね掛けした場合は、効果時間を指定ターン数へ更新する。
+    m_TemporaryTurnSpeedTurns = (std::max)(0, turns);
+    m_HasTemporaryTurnSpeed = m_TemporaryTurnSpeedTurns > 0;
+}
+
+void Player::ClearTemporaryTurnSpeed() {
+    // 等速へ戻された場合は、次ターンの自動解除待ちを残さない。
+    m_TemporaryTurnSpeedTurns = 0;
+    m_HasTemporaryTurnSpeed = false;
+}
+
 void Player::Update() {
     if (!m_AnimationModel) return;
     UpdateAnimation();

@@ -119,15 +119,64 @@ namespace
         mapManager->AfterUnitMoved(player, true);
     }
 
-    void ApplyFloorTheme(const FloorData& floor)
+    size_t ResolveThemeIndex(const DungeonData& dungeon, const FloorData& floor, int floorIndex, size_t candidateCount)
     {
-        const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(floor.themeId);
+        if (candidateCount == 0) return 0;
+
+        unsigned int seed = 0;
+        if (dungeon.UseGenerationSeed())
+        {
+            // マップ生成とは別の値を混ぜ、テーマ抽選で生成結果が変わらないようにする。
+            seed = MixGenerationSeed(ResolveGenerationSeed(dungeon, floor, floorIndex) ^ 0x51ed270bu);
+        }
+        else
+        {
+            static unsigned int selectionCount = 0;
+            const unsigned int timeSeed = static_cast<unsigned int>(std::time(nullptr));
+            const unsigned int clockSeed = static_cast<unsigned int>(std::clock());
+            seed = MixGenerationSeed(timeSeed ^ (clockSeed << 1) ^ static_cast<unsigned int>(floorIndex) ^ ++selectionCount);
+        }
+        return static_cast<size_t>(seed) % candidateCount;
+    }
+
+    std::string ResolveFloorThemeId(const DungeonData& dungeon, const FloorData& floor, int floorIndex)
+    {
+        if (floor.themeSelectionMode == ThemeSelectionMode::Fixed)
+            return floor.themeId;
+
+        std::vector<std::string> candidates;
+        if (floor.themeSelectionMode == ThemeSelectionMode::RandomCandidates)
+        {
+            for (const std::string& themeId : floor.themeCandidates)
+            {
+                if (DungeonThemeDatabase::Exists(themeId))
+                    candidates.push_back(themeId);
+            }
+        }
+        else
+        {
+            // Themeフォルダから読み込まれた全テーマを抽選候補にする。
+            for (const DungeonThemeData& theme : DungeonThemeDatabase::GetAll())
+                candidates.push_back(theme.id);
+        }
+
+        if (candidates.empty())
+            return floor.themeId;
+
+        return candidates[ResolveThemeIndex(dungeon, floor, floorIndex, candidates.size())];
+    }
+
+    void ApplyFloorTheme(const DungeonData& dungeon, const FloorData& floor, int floorIndex)
+    {
+        const std::string themeId = ResolveFloorThemeId(dungeon, floor, floorIndex);
+        const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(themeId);
 
         // 階層テーマに合わせて、マップモデルとBGMを同時に切り替える。
         MapRenderer::SetTheme(theme.id);
         if (!theme.bgmPath.empty())
             EffectManager::PlayBGM(theme.bgmPath.c_str());
     }
+
     void StartClearEnding(MapManager* mapManager)
     {
         Player* player = Manager::GetScene()->GetGameObject<Player>();
@@ -146,7 +195,7 @@ void MapManager::StartDungeon()
 {
     const FloorData& floor = GetCurrentFloorData();
 
-    ApplyFloorTheme(floor);
+    ApplyFloorTheme(m_DungeonData, floor, m_CurrentFloor);
 
     {
         ScopedGenerationSeed generationSeed(m_DungeonData, floor, m_CurrentFloor);
@@ -189,7 +238,7 @@ void MapManager::ChangeFloor()
 
 	// 現在の階層に応じたマップを生成し、敵やアイテム等を配置させる。
     const FloorData& floor = GetCurrentFloorData();
-    ApplyFloorTheme(floor);
+    ApplyFloorTheme(m_DungeonData, floor, m_CurrentFloor);
     {
         ScopedGenerationSeed generationSeed(m_DungeonData, floor, m_CurrentFloor);
         GenerateNewMap(floor, Manager::GetScene());

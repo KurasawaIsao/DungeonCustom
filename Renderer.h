@@ -108,6 +108,7 @@ public:
 	static void SetWorldMatrix(XMMATRIX WorldMatrix);
 	static void SetViewMatrix(XMMATRIX ViewMatrix);
 	static void SetProjectionMatrix(XMMATRIX ProjectionMatrix);
+	static void SetCameraPosition(const Vector3& Position);
 	static void SetBoneMatrices(const XMMATRIX* matrices, UINT count);
 	static void SetMaterial(MATERIAL Material);
 	static void SetLight(LIGHT Light);

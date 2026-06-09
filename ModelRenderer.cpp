@@ -16,6 +16,11 @@ std::unordered_map<std::string, MODEL*> ModelRenderer::m_ModelPool;
 
 void ModelRenderer::Draw()
 {
+	Draw(false);
+}
+
+void ModelRenderer::Draw(bool suppressSpecular)
+{
 	if (!m_Model) return;
 
 
@@ -35,7 +40,13 @@ void ModelRenderer::Draw()
 	for( unsigned int i = 0; i < m_Model->SubsetNum; i++ )
 	{
 		// マテリアル設定
-		Renderer::SetMaterial(m_Model->SubsetArray[i].Material.Material );
+		MATERIAL material = m_Model->SubsetArray[i].Material.Material;
+		if (suppressSpecular)
+		{
+			// 編集用の床では反射光を出さず、タイル色とグリッドを均一に見せる。
+			material.Specular = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
+		}
+		Renderer::SetMaterial(material);
 
 		// テクスチャ設定
 		if(m_Model->SubsetArray[i].Material.Texture)

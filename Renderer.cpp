@@ -254,6 +254,8 @@ void Renderer::Init()
 	bufferDesc.ByteWidth = sizeof(XMFLOAT4);
 	m_Device->CreateBuffer(&bufferDesc, NULL, &m_CameraBuffer);
 	m_DeviceContext->PSSetConstantBuffers(5, 1, &m_CameraBuffer);
+	// 初回描画でも未初期化値を参照しないよう、カメラ位置を原点で初期化する。
+	SetCameraPosition(Vector3(0.0f, 0.0f, 0.0f));
 
 	m_Device->CreateBuffer(&bufferDesc, NULL, &m_ParameterBuffer);
 	m_DeviceContext->VSSetConstantBuffers(6, 1, &m_ParameterBuffer);
@@ -400,6 +402,13 @@ void Renderer::SetProjectionMatrix(XMMATRIX ProjectionMatrix)
 	XMStoreFloat4x4(&projectionf, XMMatrixTranspose(ProjectionMatrix));
 	m_DeviceContext->UpdateSubresource(m_ProjectionBuffer, 0, NULL, &projectionf, 0, 0);
 
+}
+void Renderer::SetCameraPosition(const Vector3& Position)
+{
+	// 鏡面反射の視線ベクトル計算に使うため、現在のカメラ座標をピクセルシェーダーへ渡す。
+	const XMFLOAT4 cameraPosition(Position.x, Position.y, Position.z, 1.0f);
+	m_DeviceContext->UpdateSubresource(m_CameraBuffer, 0, NULL, &cameraPosition, 0, 0);
+	m_DeviceContext->PSSetConstantBuffers(5, 1, &m_CameraBuffer);
 }
 void Renderer::SetBoneMatrices(const XMMATRIX* matrices, UINT count)
 {

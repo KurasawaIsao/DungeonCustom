@@ -155,6 +155,22 @@ namespace
 
     // プレイヤー移動中でも先に解決すべき戦闘があるかを調べる。
     // これが true の時は一斉移動を待たず、プレイヤーの移動補間を先に終わらせる。
+    // プレイヤーの移動先が、敵の通常攻撃が届く位置になっているかを調べる。
+    bool HasEnemyAttackTargetingPlayer(MapData* map)
+    {
+        if (!map) return false;
+
+        UnitManager* um = UnitManager::Instance();
+        Player* player = um ? um->GetPlayer() : nullptr;
+        if (!player) return false;
+
+        for (Enemy* enemy : um->GetEnemies()) {
+            if (!enemy || enemy->GetHP() <= 0) continue;
+            if (IsAttackAdjacent(enemy, player, map)) return true;
+        }
+        return false;
+    }
+
     bool HasAnyImmediateCombatTarget(MapData* map)
     {
         if (!map) return false;
@@ -200,9 +216,6 @@ void TurnManager::StartEnemyTurn()
     m_Phase = Phase::EnemyAction;
     m_EnemyActionLoopHadProgress = false;
 
-    if (Player* player = UnitManager::Instance()->GetPlayer()) {
-        player->ClearMoveRunHold();
-    }
 
     auto enemies = UnitManager::Instance()->GetEnemies();
     for (Enemy* e : enemies)
@@ -314,6 +327,8 @@ void TurnManager::Update()
     const bool isActionPhase = (m_Phase == Phase::EnemyAction || m_Phase == Phase::EnemyPostMoveAction);
     const bool shouldResolvePlayerMoveBeforeCombat =
         player->IsAnimatingMove() && isActionPhase && HasAnyImmediateCombatTarget(currentMap);
+    const bool shouldClearRunAfterMoveForEnemyAttack =
+        player->IsAnimatingMove() && isActionPhase && HasEnemyAttackTargetingPlayer(currentMap);
     const bool hasActionEffectActive =
         isActionPhase && IsAnyActionEffectActive(player, movementEnemies, movementAllies);
 
@@ -328,7 +343,13 @@ void TurnManager::Update()
 
     // フェーズ判定の前に、待機中の補間移動を1フレーム分だけ進める。
     // プレイヤーだけは「戦闘がない時の一斉移動」を見せるため、条件付きで止める。
-    if (!holdPlayerMoveForSimultaneousMove) UpdateMoveAnimation(player);
+    if (!holdPlayerMoveForSimultaneousMove) {
+        UpdateMoveAnimation(player);
+        // 敵がプレイヤーを攻撃できる位置では、先行させた1マス移動の完了時点でRun継続を切る。
+        if (shouldClearRunAfterMoveForEnemyAttack && !player->IsAnimatingMove()) {
+            player->ClearMoveRunHold();
+        }
+    }
     for (Enemy* e : movementEnemies) UpdateMoveAnimation(e);
     for (Ally* a : movementAllies) UpdateMoveAnimation(a);
     // 演出待ちがない空フェーズは同じフレームで進める。
@@ -382,8 +403,6 @@ void TurnManager::Update()
                 break;
             }
 
-            // 敵の攻撃や特技に入る時は、プレイヤー移動のつなぎ用Runを残さない。
-            if (!player->IsAnimatingMove()) player->ClearMoveRunHold();
 
             bool actionStarted = false;
             // 敵を先に処理し、誰かが攻撃/特技を始めたら仲間処理へ進まず次フレームで続きを見る。
@@ -466,8 +485,6 @@ void TurnManager::Update()
             auto& enemies = um->GetEnemies();
             auto& allies = um->GetAllies();
 
-            // 敵移動フェーズに入った時も、プレイヤーのRun継続はここで切る。
-            if (!player->IsAnimatingMove()) player->ClearMoveRunHold();
 
             // 移動フェーズは攻撃フェーズと違い、同じフレームで全員分を確認する。
             // 実際の見た目は StartMove 後の MoveResolution でまとめて補間される。
@@ -573,8 +590,6 @@ void TurnManager::Update()
             if (IsAnyUnitMoving(player, enemies, allies)) break;
             if (IsAnyActionEffectActive(player, enemies, allies)) break;
 
-            // 移動後の攻撃や特技でも、演出前にプレイヤー側のRun継続を解除する。
-            player->ClearMoveRunHold();
 
             bool actionStarted = false;
             // 移動後攻撃も演出が始まったら1体で止め、次フレーム以降に続きを処理する。

@@ -1,0 +1,9 @@
+{
+    "bgm": "DungeonData\\DungeonThemeSettings\\BGM\\yuukitohuan.wav",
+    "id": "Forest",
+    "models": {
+        "floor": "DungeonData\\DungeonThemeSettings\\MapModel\\RedGround.obj",
+        "wall": "DungeonData\\DungeonThemeSettings\\MapModel\\WoodenWall.obj"
+    },
+    "name": "Forest"
+}
