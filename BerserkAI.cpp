@@ -76,9 +76,10 @@ std::vector<Unit*> BerserkAI::FindVisibleTargets(Unit& self, MapData* map) const
         consider(enemy);
     }
 
+    // 斜め移動も1手として扱い、実際に先に届きやすい相手から狙う。
     std::sort(targets.begin(), targets.end(), [&](Unit* a, Unit* b) {
-        int distA = GetDistance(self.GetGridPos(), a->GetGridPos());
-        int distB = GetDistance(self.GetGridPos(), b->GetGridPos());
+        int distA = Vector2Int::ChebyshevDistance(self.GetGridPos(), a->GetGridPos());
+        int distB = Vector2Int::ChebyshevDistance(self.GetGridPos(), b->GetGridPos());
         return distA < distB;
     });
 
@@ -107,9 +108,11 @@ bool BerserkAI::TryMoveTowardTarget(Unit& self, Unit* target, MapData* map)
         if (unit && unit != &self) continue;
 
         Vector2Int toTarget = targetPos - goal;
-        if (abs(toTarget.x) > 1 || abs(toTarget.y) > 1) continue;
+        // ゴール候補が本当に攻撃可能な隣接マスか確認する。
+        if (toTarget.Chebyshev(Vector2Int(0, 0)) > 1) continue;
         if (self.IsDiagonalMoveBlocked(goal, toTarget, map)) continue;
 
+        // 各候補への経路を調べ、最短で隣接できるマスを採用する。
         std::vector<Vector2Int> path = BFSPath(self, selfPos, goal, map);
         if (path.empty()) continue;
         if (bestPath.empty() || path.size() < bestPath.size()) {
@@ -121,7 +124,7 @@ bool BerserkAI::TryMoveTowardTarget(Unit& self, Unit* target, MapData* map)
 
     Vector2Int next = bestPath.front();
     Vector2Int moveDir = next - selfPos;
-    if (abs(moveDir.x) > 1 || abs(moveDir.y) > 1) return false;
+    if (moveDir.Chebyshev(Vector2Int(0, 0)) > 1) return false;
     if (self.IsDiagonalMoveBlocked(selfPos, moveDir, map)) return false;
     if (UnitManager::Instance()->GetUnitAt(next)) return false;
 
@@ -131,7 +134,3 @@ bool BerserkAI::TryMoveTowardTarget(Unit& self, Unit* target, MapData* map)
     return true;
 }
 
-int BerserkAI::GetDistance(const Vector2Int& a, const Vector2Int& b) const
-{
-    return (std::max)(abs(a.x - b.x), abs(a.y - b.y));
-}

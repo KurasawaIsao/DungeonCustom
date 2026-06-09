@@ -15,20 +15,60 @@ public:
         switch (GameRandom::Range(0, 2))
         {
         case 0:
+        {
             ctx.target->SetActionSpeed(TurnSpeed::Slow);
             ctx.target->SetMoveSpeed(TurnSpeed::Slow);
             MessageLog::Instance().AddMessage(ctx.target->GetName() + u8"は鈍足になった。");
+
+            Player* player = dynamic_cast<Player*>(ctx.target);
+
+            if (player)
+            {
+                // Player だった場合のみ、AddFullness を呼ぶ
+                player->AddFullness(30);
+            }
+            else if (ctx.target)
+            {
+                ctx.target->ConstantDamage(2);
+            }
             break;
+        }
         case 1:
         {
             PoisonEffect poison;
             poison.Apply(ctx);
+
+            Player* player = dynamic_cast<Player*>(ctx.target);
+
+            if (player)
+            {
+                // Player だった場合のみ、AddFullness を呼ぶ
+                player->AddFullness(30);
+            }
+            else if (ctx.target)
+            {
+                ctx.target->ConstantDamage(2);
+            }
+
             break;
         }
         case 2:
         default:
+        {
             ctx.target->SetStatus(Status::Confusion, 5);
+            Player* player = dynamic_cast<Player*>(ctx.target);
+
+            if (player)
+            {
+                // Player だった場合のみ、AddFullness を呼ぶ
+                player->AddFullness(30);
+            }
+            else if (ctx.target)
+            {
+                ctx.target->ConstantDamage(2);
+            }
             break;
+        }
         }
     }
 };

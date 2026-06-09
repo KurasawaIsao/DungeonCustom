@@ -162,14 +162,7 @@ void Ally::Update()
             }
         }
         else {
-            auto enemies = UnitManager::Instance()->GetAdjacentEnemies(*this);
-            Enemy* enemyTarget = nullptr;
-            for (Enemy* enemy : enemies) {
-                if (IsAllyHostileEnemy(enemy)) {
-                    enemyTarget = enemy;
-                    break;
-                }
-            }
+            Enemy* enemyTarget = FindAdjacentHostileEnemy();
             if (enemyTarget) {
                 m_FacingDir = enemyTarget->GetGridPos() - GetGridPos();
             }
@@ -225,8 +218,8 @@ void Ally::UpdateActionPhase()
         return;
     }
 
+    MapData* map = MapManager::Instance()->GetCurrentMap();
     if (m_Status == Status::Confusion) {
-        MapData* map = MapManager::Instance()->GetCurrentMap();
         if (map) UnitAI::ExecuteConfusion(*this, map);
         else ConsumeAllActions();
         return;
@@ -236,19 +229,12 @@ void Ally::UpdateActionPhase()
         ConsumeAllActions();
         return;
     }
-    auto enemies = UnitManager::Instance()->GetAdjacentEnemies(*this);
-    Enemy* adjacentTarget = nullptr;
-    for (Enemy* enemy : enemies) {
-        if (IsAllyHostileEnemy(enemy)) {
-            adjacentTarget = enemy;
-            break;
-        }
-    }
+    Enemy* adjacentTarget = FindAdjacentHostileEnemy();
 
     Enemy* skillTarget = adjacentTarget;
     if (!skillTarget && m_AIMode == AllyAIMode::Wait) {
         // 待機AIはその場から動かないため、視界内の敵を特技だけの候補として拾う。
-        skillTarget = FindVisibleEnemy(MapManager::Instance()->GetCurrentMap());
+        skillTarget = FindVisibleEnemy(map);
     }
 
     if (m_AIMode != AllyAIMode::NoSkill && skillTarget && chaseAI && chaseAI->ExecuteSkill(*this, skillTarget)) {
@@ -293,7 +279,11 @@ void Ally::UpdateMovePhase()
         if (chaseAI) chaseAI->Reset();
         if (patrolAI && map) patrolAI->ResetFromCurrentPos(*this, map);
     }
-    Enemy* visibleEnemy = FindVisibleEnemy(map);
+    Enemy* visibleEnemy = nullptr;
+    if (m_AIMode != AllyAIMode::Retreat) {
+        // 退避AIでは敵へ近づかないため、視界内敵の探索を省く。
+        visibleEnemy = FindVisibleEnemy(map);
+    }
     bool attackableEnemy = visibleEnemy && chaseAI && chaseAI->IsAttackAdjacent(*this, visibleEnemy, map);
     if (attackableEnemy && m_AIMode != AllyAIMode::Retreat) {
         ConsumeAllMoves();
@@ -405,7 +395,7 @@ void Ally::Attack()
     // 攻撃ごとに表示中ログをリセットする。履歴は MessageLog 側に残す。
     MessageLog::Instance().Clear();
     Vector2Int targetPos = m_GridPos + m_FacingDir;
-    if (abs(m_FacingDir.x) == 1 && abs(m_FacingDir.y) == 1) {
+    if (m_FacingDir.Chebyshev(Vector2Int(0, 0)) == 1 && m_FacingDir.Manhattan(Vector2Int(0, 0)) == 2) {
         MapData* map = MapManager::Instance()->GetCurrentMap();
         if (map && IsDiagonalMoveBlocked(m_GridPos, m_FacingDir, map)) {
             EndTurn();
@@ -431,9 +421,18 @@ void Ally::Attack()
 
 void Ally::OnDeath(Unit* attacker) {
     MessageLog::Instance().AddMessage(m_Name + u8"はちからつきた。");
+    DismissFromParty();
+}
+
+void Ally::DismissFromParty()
+{
+    // 仲間一覧から外し、仲間専用の表示物も同時に破棄して安全に退場させる。
     UnitManager::Instance()->RemoveAlly(this);
-    m_AllyMark->SetDestroy();
-    m_AllyMark = nullptr;
+    if (m_AllyMark)
+    {
+        m_AllyMark->SetDestroy();
+        m_AllyMark = nullptr;
+    }
     StopLoopEffect();
     SetDestroy();
 }
@@ -462,6 +461,11 @@ void Ally::Uninit()
 {
     //MapManager及びUnitManagerから自分を削除してから、モデルやエフェクトを解放する。
     UnitManager::Instance()->RemoveAlly(this);
+    if (m_AllyMark)
+    {
+        m_AllyMark->SetDestroy();
+        m_AllyMark = nullptr;
+    }
     StopLoopEffect();
 
     if (m_AnimationModel) {
@@ -499,10 +503,8 @@ bool Ally::CanKeepRecognizedPlayer(Player* player, MapData* map)
 
     Vector2Int selfPos = GetGridPos();
     Vector2Int playerPos = player->GetGridPos();
-    int dx = abs(playerPos.x - selfPos.x);
-    int dy = abs(playerPos.y - selfPos.y);
     int keepRange = kPlayerRecognizeRange + kPlayerRecognizedBonusRange;
-    return (std::max)(dx, dy) <= keepRange;
+    return Vector2Int::ChebyshevDistance(playerPos, selfPos) <= keepRange;
 }
 
 bool Ally::UpdatePlayerRecognition(Player* player, MapData* map)
@@ -524,18 +526,33 @@ bool Ally::UpdatePlayerRecognition(Player* player, MapData* map)
 
     return false;
 }
+Enemy* Ally::FindAdjacentHostileEnemy()
+{
+    UnitManager* units = UnitManager::Instance();
+    if (!units) return nullptr;
+
+    // UnitManager の隣接敵リストから、店主など味方が攻撃しない相手を除外する。
+    for (Enemy* enemy : units->GetAdjacentEnemies(*this)) {
+        if (IsAllyHostileEnemy(enemy)) return enemy;
+    }
+    return nullptr;
+}
+
 Enemy* Ally::FindVisibleEnemy(MapData* map)
 {
     if (!map) return nullptr;
+    UnitManager* units = UnitManager::Instance();
+    if (!units) return nullptr;
 
+    const Vector2Int selfPos = GetGridPos();
     Enemy* nearest = nullptr;
     float nearestDist = 1e9f;
 
-    for (Enemy* enemy : UnitManager::Instance()->GetEnemies()) {
+    for (Enemy* enemy : units->GetEnemies()) {
         if (!IsAllyHostileEnemy(enemy)) continue;
         if (!UnitAI::CanSee(*this, enemy, map, 8)) continue;
 
-        float score = Vector2Int::Distance(GetGridPos(), enemy->GetGridPos());
+        float score = Vector2Int::Distance(selfPos, enemy->GetGridPos());
         if (score < nearestDist) {
             nearestDist = score;
             nearest = enemy;

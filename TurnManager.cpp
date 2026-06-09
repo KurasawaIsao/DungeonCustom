@@ -20,32 +20,37 @@ TurnManager* TurnManager::instance = nullptr;
 // ターン進行を扱うステートマシン。
 // 基本順序は PlayerTurn -> EnemyAction -> EnemyMove -> MoveResolution -> PlayerTurn。
 // 倍速/三倍速は Unit の ActionBudget/MoveBudget を使い、同じフェーズを必要回数だけ回す。
+//
+// 読む時の入口:
+// 1. PlayerTurn でプレイヤー入力を待つ。
+// 2. StartEnemyTurn() で敵/仲間のターン予算を配り、EnemyAction に入る。
+// 3. EnemyAction は攻撃/特技、EnemyMove は移動、MoveResolution は移動アニメ待ちを担当する。
+// 4. 必要なら EnemyPostMoveAction で倍速ユニットの移動後攻撃を解決し、FinishTurnCycle() で次ターンへ戻る。
 
 namespace
 {
+    // 投げたアイテムや矢など、ユニット外の飛翔演出が残っているかを調べる。
     bool IsAnyFlyingObjectActive()
     {
-        for (auto* it : Manager::GetScene()->GetGameObjects<Item>()) {
+        Scene* scene = Manager::GetScene();
+        if (!scene) return false;
+
+        for (auto* it : scene->GetGameObjects<Item>()) {
             if (it->GetIsFlying()) return true;
         }
-        for (auto* obj : Manager::GetScene()->GetGameObjects<FlyingObject>()) {
+        for (auto* obj : scene->GetGameObjects<FlyingObject>()) {
             if (obj->GetIsActive()) return true;
         }
         return false;
     }
 
+    // 補間移動中のユニットだけを1フレーム分進める。
     void UpdateMoveAnimation(Unit* unit)
     {
         if (unit && unit->IsAnimatingMove()) unit->UpdateLerpMove();
     }
 
-    void UpdateAllMoveAnimations(Player* player, const std::vector<Enemy*>& enemies, const std::vector<Ally*>& allies)
-    {
-        UpdateMoveAnimation(player);
-        for (Enemy* e : enemies) UpdateMoveAnimation(e);
-        for (Ally* a : allies) UpdateMoveAnimation(a);
-    }
-
+    // MoveResolution で、誰かの StartMove 補間がまだ残っているか確認する。
     bool IsAnyUnitMoving(Player* player, const std::vector<Enemy*>& enemies, const std::vector<Ally*>& allies)
     {
         if (player && player->IsAnimatingMove()) return true;
@@ -75,6 +80,8 @@ namespace
 
         int budgetBefore = unit->GetActionBudget();
         bool wasActing = unit->IsActing();
+
+        // 行動フェーズの更新。倍速/三倍速の判定はこの後で行う。
         unit->UpdateActionPhase();
 
         // 行動予算の消費は倍速/三倍速の追加処理判定に使うが、それだけではフレームを止めない。
@@ -93,21 +100,21 @@ namespace
         return speed == TurnSpeed::Fast || speed == TurnSpeed::Triple;
     }
 
+    // 通常攻撃できる隣接距離かを調べる。斜めは壁角抜けできる時だけ攻撃可能にする。
     bool IsAttackAdjacent(Unit* self, Unit* target, MapData* map)
     {
         if (!self || !target || !map) return false;
 
         Vector2Int selfPos = self->GetGridPos();
         Vector2Int targetPos = target->GetGridPos();
-        int dx = targetPos.x - selfPos.x;
-        int dy = targetPos.y - selfPos.y;
-        int adx = abs(dx);
-        int ady = abs(dy);
+        Vector2Int dir = targetPos - selfPos;
+        int chebyshev = dir.Chebyshev(Vector2Int(0, 0));
+        int manhattan = dir.Manhattan(Vector2Int(0, 0));
 
-        if (adx == 0 && ady == 0) return false;
-        if (adx + ady == 1) return true;
-        if (adx == 1 && ady == 1) {
-            return !self->IsDiagonalMoveBlocked(selfPos, { dx, dy }, map);
+        if (chebyshev == 0) return false;
+        if (manhattan == 1) return true;
+        if (chebyshev == 1 && manhattan == 2) {
+            return !self->IsDiagonalMoveBlocked(selfPos, dir, map);
         }
         return false;
     }
@@ -136,14 +143,18 @@ namespace
         return false;
     }
 
-        bool ShouldRunPostMoveAction(Unit* unit, MapData* map)
+    bool ShouldRunPostMoveAction(Unit* unit, MapData* map)
     {
+        // 移動後攻撃は「まだ行動予算があり、移動後に攻撃対象がいる」時だけ走らせる。
+        // 等速の通常移動で毎回ここに入るとテンポが崩れるため、倍速系や移動で行動を消費するケースに限定する。
         if (!unit || !unit->CanActThisTurn()) return false;
         if (!HasPostMoveAttackTarget(unit, map)) return false;
         if (dynamic_cast<Ally*>(unit) && !unit->HasMovedThisTurn()) return true;
         return HasExtraMoveSpeed(unit) || unit->HasActionConsumedByMoveThisTurn();
     }
 
+    // プレイヤー移動中でも先に解決すべき戦闘があるかを調べる。
+    // これが true の時は一斉移動を待たず、プレイヤーの移動補間を先に終わらせる。
     bool HasAnyImmediateCombatTarget(MapData* map)
     {
         if (!map) return false;
@@ -188,6 +199,10 @@ void TurnManager::StartEnemyTurn()
     // 敵はこの時点で巡回/追跡などの AI 状態を決め直す。
     m_Phase = Phase::EnemyAction;
     m_EnemyActionLoopHadProgress = false;
+
+    if (Player* player = UnitManager::Instance()->GetPlayer()) {
+        player->ClearMoveRunHold();
+    }
 
     auto enemies = UnitManager::Instance()->GetEnemies();
     for (Enemy* e : enemies)
@@ -278,9 +293,11 @@ void TurnManager::Update()
     // phaseGuard は、同一フレーム内で終わる空フェーズが続いた時の無限ループ保険。
     if (m_IsPaused) return;
 
-    if (Manager::GetScene())
+    Scene* scene = Manager::GetScene();
+    if (scene)
     {
-        if (auto* miniMap = Manager::GetScene()->GetGameObject<MiniMapRenderer>())
+        // ミニマップ確認中はターンを進めない。見回し操作で敵が勝手に動くのを防ぐため。
+        if (auto* miniMap = scene->GetGameObject<MiniMapRenderer>())
         {
             if (miniMap->IsLookMode()) return;
         }
@@ -290,6 +307,7 @@ void TurnManager::Update()
     Player* player = um->GetPlayer();
     if (!player) return;
 
+    // 参照で受けることで、このフレーム中に撃破/勧誘でリストが変わっても最新状態を見続ける。
     auto& movementEnemies = um->GetEnemies();
     auto& movementAllies = um->GetAllies();
     MapData* currentMap = MapManager::Instance()->GetCurrentMap();
@@ -307,9 +325,14 @@ void TurnManager::Update()
         isActionPhase &&
         !shouldResolvePlayerMoveBeforeCombat &&
         !hasActionEffectActive;
+
+    // フェーズ判定の前に、待機中の補間移動を1フレーム分だけ進める。
+    // プレイヤーだけは「戦闘がない時の一斉移動」を見せるため、条件付きで止める。
     if (!holdPlayerMoveForSimultaneousMove) UpdateMoveAnimation(player);
     for (Enemy* e : movementEnemies) UpdateMoveAnimation(e);
     for (Ally* a : movementAllies) UpdateMoveAnimation(a);
+    // 演出待ちがない空フェーズは同じフレームで進める。
+    // ただしバグで無限に進まないよう、最大8段階までに制限する。
     for (int phaseGuard = 0; phaseGuard < 8; ++phaseGuard)
     {
         bool advancePhase = false;
@@ -342,18 +365,29 @@ void TurnManager::Update()
         {
             // 敵/仲間の「攻撃・特技」だけを処理するフェーズ。
             // 移動は EnemyMove へ分けることで、倍速時の行動回数と移動回数を独立して扱える。
+            //
+            // - allChecked は「このフェーズで全員を確認し終えたか」。false なら次フレームも EnemyAction を続ける。
+            // - actionStarted は「今フレームで誰かの攻撃/特技演出が始まったか」。演出を見せるため、その時点で1体だけ処理して止める。
+            // - m_EnemyActionLoopHadProgress は、倍速/三倍速の追加行動をもう一周させるべきか判断するための進捗記録。
             bool allChecked = true;
             auto& enemies = um->GetEnemies();
             auto& allies = um->GetAllies();
 
-            if (player->IsAnimatingMove() && HasAnyImmediateCombatTarget(MapManager::Instance()->GetCurrentMap())) {
+            // 戦闘対象がいる時は、プレイヤーの移動補間を終えてから攻撃を始める。
+            if (player->IsAnimatingMove() && HasAnyImmediateCombatTarget(currentMap)) {
                 break;
             }
             if (IsAnyActionEffectActive(player, enemies, allies)) {
+                // 攻撃演出や飛び道具が残っている間は、次のユニットを動かさない。
                 break;
             }
 
+            // 敵の攻撃や特技に入る時は、プレイヤー移動のつなぎ用Runを残さない。
+            if (!player->IsAnimatingMove()) player->ClearMoveRunHold();
+
             bool actionStarted = false;
+            // 敵を先に処理し、誰かが攻撃/特技を始めたら仲間処理へ進まず次フレームで続きを見る。
+            // 同時に複数の攻撃演出を走らせないための制御。
             for (Enemy* e : enemies)
             {
                 if (!e) continue;
@@ -367,6 +401,8 @@ void TurnManager::Update()
             }
 
             if (!actionStarted) {
+                // 敵側で演出が始まらなかった時だけ仲間の行動を確認する。
+                // 仲間も同じく、演出が始まったら1体で止める。
                 for (Ally* a : allies)
                 {
                     if (!a) continue;
@@ -385,6 +421,8 @@ void TurnManager::Update()
             }
             if (allChecked)
             {
+                // 全員を確認し終えた後、まだ行動予算が残っているユニットがいるかを見る。
+                // 予算が残っていて、かつ今回の周回で実際に行動が進んだ場合だけ、チェックを戻してもう一周する。
                 bool hasExtraAction = false;
                 for (Enemy* e : enemies)
                 {
@@ -400,6 +438,7 @@ void TurnManager::Update()
                 }
 
                 if (hasExtraAction && m_EnemyActionLoopHadProgress) {
+                    // 倍速/三倍速などで追加行動できるユニットを、次の EnemyAction 周回で再確認できるようにする。
                     for (Enemy* e : enemies)
                     {
                         if (e && e->CanActThisTurn()) e->ResetActionPhaseCheck();
@@ -422,10 +461,16 @@ void TurnManager::Update()
         {
             // 攻撃後に移動を処理するフェーズ。
             // まだ移動予算が残っているユニットはチェックを戻し、同じフェーズ内でもう一度動かす。
+            // allChecked が false の間は、移動演出待ちや未処理ユニットが残っているので EnemyMove に留まる。
             bool allChecked = true;
             auto& enemies = um->GetEnemies();
             auto& allies = um->GetAllies();
 
+            // 敵移動フェーズに入った時も、プレイヤーのRun継続はここで切る。
+            if (!player->IsAnimatingMove()) player->ClearMoveRunHold();
+
+            // 移動フェーズは攻撃フェーズと違い、同じフレームで全員分を確認する。
+            // 実際の見た目は StartMove 後の MoveResolution でまとめて補間される。
             for (Enemy* e : enemies)
             {
                 if (!e) continue;
@@ -450,6 +495,7 @@ void TurnManager::Update()
 
             if (allChecked)
             {
+                // 全員の移動確認が終わったら、倍速/三倍速でまだ移動できるユニットだけチェックを戻す。
                 bool hasExtraMove = false;
                 for (Enemy* e : enemies)
                 {
@@ -477,6 +523,7 @@ void TurnManager::Update()
         {
             // StartMove で始まった補間移動が全員終わるのを待つ。
             // 倍速ユニットは移動後に追加行動できるため、必要なら EnemyPostMoveAction に入る。
+            // ここでは新しい移動命令は出さず、「全員の見た目が止まったか」と「移動後攻撃が必要か」だけを見る。
             auto& enemies = um->GetEnemies();
             auto& allies = um->GetAllies();
 
@@ -487,16 +534,17 @@ void TurnManager::Update()
                 if (IsAnyActionEffectActive(player, enemies, allies)) break;
 
                 bool hasPostMoveAction = false;
+                // 移動後に隣接した相手を攻撃できるユニットがいる場合だけ、専用フェーズへ進める。
                 for (Enemy* e : enemies)
                 {
-                    if (ShouldRunPostMoveAction(e, MapManager::Instance()->GetCurrentMap())) {
+                    if (ShouldRunPostMoveAction(e, currentMap)) {
                         e->ResetActionPhaseCheck();
                         hasPostMoveAction = true;
                     }
                 }
                 for (Ally* a : allies)
                 {
-                    if (ShouldRunPostMoveAction(a, MapManager::Instance()->GetCurrentMap())) {
+                    if (ShouldRunPostMoveAction(a, currentMap)) {
                         a->ResetActionPhaseCheck();
                         hasPostMoveAction = true;
                     }
@@ -517,6 +565,7 @@ void TurnManager::Update()
         {
             // 倍速/三倍速の「移動後攻撃」専用フェーズ。
             // 通常速度の敵や仲間はここでは処理しない。
+            // 構造は EnemyAction と同じで、ShouldRunPostMoveAction が true のユニットだけを対象にする。
             bool allChecked = true;
             auto& enemies = um->GetEnemies();
             auto& allies = um->GetAllies();
@@ -524,10 +573,14 @@ void TurnManager::Update()
             if (IsAnyUnitMoving(player, enemies, allies)) break;
             if (IsAnyActionEffectActive(player, enemies, allies)) break;
 
+            // 移動後の攻撃や特技でも、演出前にプレイヤー側のRun継続を解除する。
+            player->ClearMoveRunHold();
+
             bool actionStarted = false;
+            // 移動後攻撃も演出が始まったら1体で止め、次フレーム以降に続きを処理する。
             for (Enemy* e : enemies)
             {
-                if (!ShouldRunPostMoveAction(e, MapManager::Instance()->GetCurrentMap())) continue;
+                if (!ShouldRunPostMoveAction(e, currentMap)) continue;
                 if (UpdateActionPhaseOneByOne(e, m_EnemyActionLoopHadProgress)) {
                     actionStarted = true;
                 }
@@ -540,7 +593,7 @@ void TurnManager::Update()
             if (!actionStarted) {
                 for (Ally* a : allies)
                 {
-                    if (!ShouldRunPostMoveAction(a, MapManager::Instance()->GetCurrentMap())) continue;
+                    if (!ShouldRunPostMoveAction(a, currentMap)) continue;
                     if (UpdateActionPhaseOneByOne(a, m_EnemyActionLoopHadProgress)) {
                         actionStarted = true;
                     }
@@ -556,16 +609,17 @@ void TurnManager::Update()
             }
             if (allChecked)
             {
+                // 移動後攻撃でも追加行動予算が残る場合は、チェックを戻してもう一周する。
                 bool hasExtraAction = false;
                 for (Enemy* e : enemies)
                 {
-                    if (ShouldRunPostMoveAction(e, MapManager::Instance()->GetCurrentMap())) {
+                    if (ShouldRunPostMoveAction(e, currentMap)) {
                         hasExtraAction = true;
                     }
                 }
                 for (Ally* a : allies)
                 {
-                    if (ShouldRunPostMoveAction(a, MapManager::Instance()->GetCurrentMap())) {
+                    if (ShouldRunPostMoveAction(a, currentMap)) {
                         hasExtraAction = true;
                     }
                 }
@@ -573,11 +627,11 @@ void TurnManager::Update()
                 if (hasExtraAction && m_EnemyActionLoopHadProgress) {
                     for (Enemy* e : enemies)
                     {
-                        if (ShouldRunPostMoveAction(e, MapManager::Instance()->GetCurrentMap())) e->ResetActionPhaseCheck();
+                        if (ShouldRunPostMoveAction(e, currentMap)) e->ResetActionPhaseCheck();
                     }
                     for (Ally* a : allies)
                     {
-                        if (ShouldRunPostMoveAction(a, MapManager::Instance()->GetCurrentMap())) a->ResetActionPhaseCheck();
+                        if (ShouldRunPostMoveAction(a, currentMap)) a->ResetActionPhaseCheck();
                     }
                     m_EnemyActionLoopHadProgress = false;
                 }
@@ -586,13 +640,6 @@ void TurnManager::Update()
                     FinishTurnCycle();
                 }
             }
-            break;
-        }
-        case Phase::AllyAction:
-        case Phase::AllyMove:
-        {
-            m_Phase = Phase::MoveResolution;
-            advancePhase = true;
             break;
         }
         }
@@ -611,6 +658,7 @@ void TurnManager::ResolveAfterPlayerInstantMove()
 
     for (int guard = 0; guard < 1000 && m_Phase != Phase::PlayerTurn; ++guard)
     {
+        // 即時ダッシュ中はアニメーションを飛ばし、敵ターンを入力待ちまで一気に解決する。
         Update();
     }
 

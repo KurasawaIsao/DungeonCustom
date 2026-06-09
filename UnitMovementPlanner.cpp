@@ -37,9 +37,7 @@ namespace UnitMovementPlanner
     {
         int best = 999999;
         for (const Vector2Int& goal : goals) {
-            int dx = abs(goal.x - pos.x);
-            int dy = abs(goal.y - pos.y);
-            best = (std::min)(best, (std::max)(dx, dy));
+            best = (std::min)(best, Vector2Int::ChebyshevDistance(goal, pos));
         }
         return best;
     }
@@ -80,7 +78,7 @@ namespace UnitMovementPlanner
         if (!CanStandAt(self, next, map)) return false;
 
         Vector2Int dir = next - self.GetGridPos();
-        if (abs(dir.x) > 1 || abs(dir.y) > 1) return false;
+        if (dir.Chebyshev(Vector2Int(0, 0)) > 1) return false;
         if (self.IsDiagonalMoveBlocked(self.GetGridPos(), dir, map)) return false;
 
         self.SetCurrentDir(dir);
@@ -101,7 +99,7 @@ namespace UnitMovementPlanner
             if (!CanStandAt(self, goal, map)) continue;
 
             Vector2Int toTarget = targetPos - goal;
-            bool cornerAdjacent = abs(toTarget.x) == 1 && abs(toTarget.y) == 1 && self.IsDiagonalMoveBlocked(goal, toTarget, map);
+            bool cornerAdjacent = toTarget.Chebyshev(Vector2Int(0, 0)) == 1 && toTarget.Manhattan(Vector2Int(0, 0)) == 2 && self.IsDiagonalMoveBlocked(goal, toTarget, map);
             if (cornerAdjacent) cornerGoals.push_back(goal);
             else attackGoals.push_back(goal);
         }
@@ -114,14 +112,12 @@ namespace UnitMovementPlanner
             }
 
             std::sort(goals.begin(), goals.end(), [&](const Vector2Int& a, const Vector2Int& b) {
-                int da = abs(a.x - selfPos.x) + abs(a.y - selfPos.y);
-                int db = abs(b.x - selfPos.x) + abs(b.y - selfPos.y);
-                return da < db;
+                return a.Manhattan(selfPos) < b.Manhattan(selfPos);
             });
 
             int currentScore = DistanceToGoals(selfPos, goals);
             int bestScore = currentScore;
-            int bestTargetDist = (std::max)(abs(targetPos.x - selfPos.x), abs(targetPos.y - selfPos.y));
+            int bestTargetDist = Vector2Int::ChebyshevDistance(targetPos, selfPos);
             int bestApproach = 0;
             Vector2Int bestStep = selfPos;
             for (const Vector2Int& dir : kEightDirs) {
@@ -130,9 +126,8 @@ namespace UnitMovementPlanner
                 if (self.IsDiagonalMoveBlocked(selfPos, dir, map)) continue;
 
                 int score = DistanceToGoals(next, goals);
-                int targetDist = (std::max)(abs(targetPos.x - next.x), abs(targetPos.y - next.y));
-                int approach = (abs(targetPos.x - selfPos.x) - abs(targetPos.x - next.x))
-                    + (abs(targetPos.y - selfPos.y) - abs(targetPos.y - next.y));
+                int targetDist = Vector2Int::ChebyshevDistance(targetPos, next);
+                int approach = targetPos.Manhattan(selfPos) - targetPos.Manhattan(next);
                 if (score < bestScore
                     || (score == bestScore && approach > bestApproach)
                     || (score == bestScore && approach == bestApproach && targetDist < bestTargetDist)) {
@@ -172,9 +167,11 @@ namespace UnitMovementPlanner
         }
 
         if (!UnitAI::HasLineOfSight(self.GetGridPos(), player->GetGridPos(), map)) {
+            // 見通しがない場合は前後ラインにこだわらず、通常の隣接移動へ戻す。
             return MoveAdjacentAndEndTurn(self, player, map, pathAI);
         }
 
+        // プレイヤーの前後ラインを追従位置として作り、味方がプレイヤーの周囲に自然に並ぶようにする。
         std::vector<Vector2Int> goals = BuildPlayerLinePositions(player, rearCount, frontCount);
         std::vector<Vector2Int> validGoals;
         for (const Vector2Int& goal : goals) {
@@ -204,6 +201,7 @@ namespace UnitMovementPlanner
             }
         }
 
+        // BFSで届かない時も、目標ラインに少しでも近づく直交移動を最後に試す。
         static const Vector2Int dirs[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
         int currentScore = DistanceToGoals(selfPos, validGoals);
         int bestScore = currentScore;
@@ -241,6 +239,7 @@ namespace UnitMovementPlanner
         Room* selfRoom = map->GetRoomAt(self.GetGridPos());
         Room* targetRoom = map->GetRoomAt(target->GetGridPos());
         if (selfRoom && targetRoom && selfRoom == targetRoom) {
+            // 同じ部屋内なら位置取りより接敵を優先する。
             return MoveAdjacentAndEndTurn(self, target, map, pathAI);
         }
 

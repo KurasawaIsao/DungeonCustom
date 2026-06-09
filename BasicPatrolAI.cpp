@@ -27,7 +27,7 @@ void BasicPatrolAI::Update(Unit& self, MapData* map)
         Vector2Int next = patrolRoute.front();
         Vector2Int currentPos = self.GetGridPos();
         Vector2Int step = next - currentPos;
-        if (!map->IsInBounds(next) || !map->IsWalkable(next) || abs(step.x) > 1 || abs(step.y) > 1) {
+        if (!map->IsInBounds(next) || !map->IsWalkable(next) || step.Chebyshev(Vector2Int(0, 0)) > 1) {
             patrolRoute.clear();
             self.EndTurn();
             return;
@@ -100,6 +100,7 @@ std::vector<Vector2Int> BasicPatrolAI::GeneratePathToNextJunction(Unit& self, Ma
     if (currentRoom)
     {
         std::vector<Vector2Int> candidates;
+		//次候補の洗い出し（今来た入り口は除外）
         for (const auto& ent : currentRoom->entrances) {
             if (ent != lastEntrancePos) candidates.push_back(ent);
         }

@@ -21,6 +21,7 @@
 #include "Renderer.h"
 #include "UIRenderer.h"
 #include "UITextRenderer.h"
+#include "EffectManager.h"
 #include <algorithm>
 #include <functional>
 #include <string>
@@ -97,6 +98,7 @@ void PlayerInventoryUI::CloseAllMenus()
     m_ItemCommandCursor = 0;
     m_AllyCursor = 0;
     m_AllyCommandCursor = 0;
+    m_AllyDismissConfirmCursor = 1;
     m_GroundCursor = 0;
     m_MessageHistoryCursor = 0;
     m_ShrineConfirmCursor = 0;
@@ -110,6 +112,7 @@ void PlayerInventoryUI::CloseAllMenus()
     m_BlockShrineConfirm = false;
     m_RecruitDismissCursor = 0;
     m_BlockRecruitDismiss = false;
+    m_AllyDismissTarget = nullptr;
     m_SelectedInventoryIdx.clear();
     m_SelectedPotItemIdx.clear();
 }
@@ -153,6 +156,7 @@ void PlayerInventoryUI::UpdateAllyCameraFocus(Ally* ally)
     VisionMaskRenderer* visionMask = scene->GetGameObject<VisionMaskRenderer>();
     if (visionMask)
     {
+        // 仲間へカメラを向けている間は、視界マスクの中心も同じ仲間に合わせる。
         visionMask->SetFocusOverride(ally->GetGridPos(), ally->GetWorldPosition());
     }
 
@@ -184,6 +188,7 @@ void PlayerInventoryUI::ClearAllyCameraFocus(bool revealSelected)
     VisionMaskRenderer* visionMask = scene ? scene->GetGameObject<VisionMaskRenderer>() : nullptr;
     if (visionMask)
     {
+        // 仲間注視を終えたら、視界マスクの中心をプレイヤー基準に戻す。
         visionMask->ClearFocusOverride();
     }
 
@@ -216,6 +221,10 @@ void PlayerInventoryUI::DrawPlayerUI()
 
     case UIState::AllyMenu:
         DrawAllyMenu();
+        break;
+
+    case UIState::AllyDismissConfirm:
+        DrawAllyDismissConfirmUI();
         break;
 
     case UIState::GroundMenu:
@@ -267,12 +276,22 @@ void PlayerInventoryUI::DrawMainMenu(Player* player)
     const bool cancelTriggered = Input::GetKeyTrigger('X') && !m_BlockMainMenuCancel;
     m_BlockMainMenuCancel = false;
 
-    if (Input::GetKeyTrigger(VK_UP)) m_MainMenuCursor = (m_MainMenuCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_MainMenuCursor = (m_MainMenuCursor + 1) % static_cast<int>(commands.size());
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_MainMenuCursor = (m_MainMenuCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_MainMenuCursor = (m_MainMenuCursor + 1) % static_cast<int>(commands.size());
+    }
+
     if (cancelTriggered) m_MainMenuCursor = static_cast<int>(commands.size()) - 1;
 
     if (Input::GetKeyTrigger('Z') || cancelTriggered)
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         switch (m_MainMenuCursor)
         {
         case 0:
@@ -325,6 +344,7 @@ void PlayerInventoryUI::DrawMessageHistoryUI()
 
     if (Input::GetKeyTrigger('X'))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_State = UIState::MainMenu;
         return;
     }
@@ -334,8 +354,16 @@ void PlayerInventoryUI::DrawMessageHistoryUI()
         // 履歴画面ではカーソルをスクロール位置として扱い、上下キーで表示範囲を動かす。
         if (m_MessageHistoryCursor < 0) m_MessageHistoryCursor = 0;
         if (m_MessageHistoryCursor >= total) m_MessageHistoryCursor = total - 1;
-        if (Input::GetKeyTrigger(VK_UP)) m_MessageHistoryCursor = (std::max)(0, m_MessageHistoryCursor - 1);
-        if (Input::GetKeyTrigger(VK_DOWN)) m_MessageHistoryCursor = (std::min)(total - 1, m_MessageHistoryCursor + 1);
+        if (Input::GetKeyTrigger(VK_UP))
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_MessageHistoryCursor = (std::max)(0, m_MessageHistoryCursor - 1);
+        }
+        if (Input::GetKeyTrigger(VK_DOWN))
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_MessageHistoryCursor = (std::min)(total - 1, m_MessageHistoryCursor + 1);
+        }
     }
     else
     {
@@ -459,7 +487,11 @@ void PlayerInventoryUI::DrawItemMenu(Player* player)
 
     if (items.empty())
     {
-        if (Input::GetKeyTrigger('X')) m_State = UIState::MainMenu;
+        if (Input::GetKeyTrigger('X'))
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_State = UIState::MainMenu;
+        }
 
         UIRect rect{ 20.0f, 20.0f, 290.0f, 115.0f };
         UIRenderer::DrawWindow(rect);
@@ -476,15 +508,28 @@ void PlayerInventoryUI::DrawItemMenu(Player* player)
 
     if (activeList)
     {
-        if (Input::GetKeyTrigger(VK_UP)) m_InventoryCursor = (m_InventoryCursor + static_cast<int>(items.size()) - 1) % static_cast<int>(items.size());
-        if (Input::GetKeyTrigger(VK_DOWN)) m_InventoryCursor = (m_InventoryCursor + 1) % static_cast<int>(items.size());
+        if (Input::GetKeyTrigger(VK_UP)) {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_InventoryCursor = (m_InventoryCursor + static_cast<int>(items.size()) - 1) % static_cast<int>(items.size());
+        }
+        if (Input::GetKeyTrigger(VK_DOWN))
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_InventoryCursor = (m_InventoryCursor + 1) % static_cast<int>(items.size());
+        }
         if (Input::GetKeyTrigger('Z'))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_ItemCommandTarget = m_InventoryCursor;
             m_ItemCommandCursor = 0;
             m_State = UIState::ItemCommand;
         }
-        if (Input::GetKeyTrigger('X')) m_State = UIState::MainMenu;
+        if (Input::GetKeyTrigger('X'))
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+            m_State = UIState::MainMenu;
+        }
+
     }
 
     UIRect rect{ 20.0f, 20.0f, 310.0f, 398.0f };
@@ -556,6 +601,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     {
         const bool isEquipped = inventory[m_ItemCommandTarget].isEquipped;
         commands.push_back({ isEquipped ? u8"外す" : u8"装備する", [this, player]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             player->EquipItem(m_ItemCommandTarget);
             CloseAllMenus();
         } });
@@ -564,6 +610,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     if (data->type == ItemType::Arrow)
     {
         commands.push_back({ u8"発射", [this, player]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             player->ShootArrow(m_ItemCommandTarget);
             CloseAllMenus();
         } });
@@ -573,6 +620,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
         const char* label = (data->type == ItemType::Staff) ? u8"振る" :
             (data->type == ItemType::Herb) ? u8"飲む" : u8"食べる";
         commands.push_back({ label, [this, player]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             player->UseItem(m_ItemCommandTarget);
             CloseAllMenus();
         } });
@@ -580,6 +628,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     else if (data->type == ItemType::Pot)
     {
         commands.push_back({ u8"入れる・中を見る", [this]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_OpenPotIndex = m_ItemCommandTarget;
             m_State = UIState::PotMenu;
             m_ItemCommandTarget = -1;
@@ -590,22 +639,26 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     if (IsPlayerInShop(player))
     {
         commands.push_back({ u8"売る", [this, player]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             ShopUI::SellInventoryItem(player, m_ItemCommandTarget);
             CloseAllMenus();
         } });
     }
 
     commands.push_back({ u8"投げる", [this, player]() {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         player->ThrowItem(m_ItemCommandTarget);
         CloseAllMenus();
     } });
 
     commands.push_back({ u8"足元に置く", [this, player]() {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         DropItemAtFeet(player, m_ItemCommandTarget);
         CloseAllMenus();
     } });
 
     commands.push_back({ u8"交換", [this, player]() {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         ExchangeItemWithGroundItem(player, m_ItemCommandTarget);
         CloseAllMenus();
     } });
@@ -613,6 +666,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     if (itemInst.GetData()->canRename && !itemInst.IsOptionRevealed() && itemInst.GetIdentifiedState() == IdentifyState::Unidentified && !itemInst.IsOptionRevealed())
     {
         commands.push_back({ u8"名前を付ける", [this, &itemInst]() {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_RenameTargetIndex = m_ItemCommandTarget;
             memset(m_RenameBuffer, 0, sizeof(m_RenameBuffer));
             strncpy_s(m_RenameBuffer, itemInst.GetDisplayName().c_str(), _TRUNCATE);
@@ -623,6 +677,7 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     }
 
     commands.push_back({ u8"キャンセル", [this]() {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_ItemCommandTarget = -1;
         m_ItemCommandCursor = 0;
         m_State = UIState::ItemMenu;
@@ -639,8 +694,17 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
     if (m_ItemCommandCursor < 0) m_ItemCommandCursor = 0;
     if (m_ItemCommandCursor >= static_cast<int>(commands.size())) m_ItemCommandCursor = static_cast<int>(commands.size()) - 1;
 
-    if (Input::GetKeyTrigger(VK_UP)) m_ItemCommandCursor = (m_ItemCommandCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_ItemCommandCursor = (m_ItemCommandCursor + 1) % static_cast<int>(commands.size());
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_ItemCommandCursor = (m_ItemCommandCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_ItemCommandCursor = (m_ItemCommandCursor + 1) % static_cast<int>(commands.size());
+    }
+    // Xキャンセルは末尾のキャンセルコマンドを実行し、その処理内でSEを鳴らす。
     if (Input::GetKeyTrigger('X')) m_ItemCommandCursor = static_cast<int>(commands.size()) - 1;
 
     if (Input::GetKeyTrigger('Z') || Input::GetKeyTrigger('X'))
@@ -674,6 +738,7 @@ void PlayerInventoryUI::DrawAllyMenu()
 
     if (Input::GetKeyTrigger('X'))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         ClearAllyCameraFocus(true);
         m_State = UIState::MainMenu;
         return;
@@ -684,6 +749,7 @@ void PlayerInventoryUI::DrawAllyMenu()
 
     UITextRenderer::Begin();
     UITextRenderer::DrawOutlinedTextUtf8(u8"仲間", rect.x + 22.0f, rect.y + 16.0f, rect.w - 44.0f, 28.0f, 22.0f, D2D1::ColorF(D2D1::ColorF::White));
+    UITextRenderer::DrawOutlinedTextUtf8(u8"C: 選択中の仲間と別れる", rect.x + 208.0f, rect.y + 20.0f, 200.0f, 24.0f, 14.0f, D2D1::ColorF(0.8f, 0.8f, 0.8f, 1.0f));
 
     if (allies.empty())
     {
@@ -702,7 +768,7 @@ void PlayerInventoryUI::DrawAllyMenu()
         const char* label;
         AllyAIMode mode;
     };
-    const std::vector<AllyCommand> commands = {
+    const std::vector<AllyCommand> aiCommands = {
         { u8"追従", AllyAIMode::Follow },
         { u8"応戦", AllyAIMode::Counter },
         { u8"待機", AllyAIMode::Wait },
@@ -710,19 +776,48 @@ void PlayerInventoryUI::DrawAllyMenu()
         { u8"特技禁止", AllyAIMode::NoSkill },
         { u8"撤退", AllyAIMode::Retreat }
     };
+    const int commandCount = static_cast<int>(aiCommands.size());
 
     if (m_AllyCommandCursor < 0) m_AllyCommandCursor = 0;
-    if (m_AllyCommandCursor >= static_cast<int>(commands.size())) m_AllyCommandCursor = static_cast<int>(commands.size()) - 1;
+    if (m_AllyCommandCursor >= commandCount) m_AllyCommandCursor = commandCount - 1;
 
-    if (Input::GetKeyTrigger(VK_UP)) m_AllyCursor = (m_AllyCursor + static_cast<int>(allies.size()) - 1) % static_cast<int>(allies.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_AllyCursor = (m_AllyCursor + 1) % static_cast<int>(allies.size());
-    if (Input::GetKeyTrigger(VK_LEFT)) m_AllyCommandCursor = (m_AllyCommandCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger(VK_RIGHT)) m_AllyCommandCursor = (m_AllyCommandCursor + 1) % static_cast<int>(commands.size());
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyCursor = (m_AllyCursor + static_cast<int>(allies.size()) - 1) % static_cast<int>(allies.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyCursor = (m_AllyCursor + 1) % static_cast<int>(allies.size());
+    }
+    if (Input::GetKeyTrigger(VK_LEFT))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyCommandCursor = (m_AllyCommandCursor + commandCount - 1) % commandCount;
+    }
+    if (Input::GetKeyTrigger(VK_RIGHT))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyCommandCursor = (m_AllyCommandCursor + 1) % commandCount;
+    }
+
+    // CキーではAI設定を変更せず、現在選択中の仲間との別れ確認を開く。
+    if (Input::GetKeyTrigger('C'))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyDismissTarget = allies[m_AllyCursor];
+        m_AllyDismissConfirmCursor = 1;
+        m_State = UIState::AllyDismissConfirm;
+        return;
+    }
+
     if (Input::GetKeyTrigger('Z'))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         if (Ally* ally = allies[m_AllyCursor])
         {
-            ally->SetAIMode(commands[m_AllyCommandCursor].mode);
+            ally->SetAIMode(aiCommands[m_AllyCommandCursor].mode);
             RevealAllyOnMiniMap(ally);
         }
     }
@@ -746,9 +841,9 @@ void PlayerInventoryUI::DrawAllyMenu()
 
     float x = rect.x + 30.0f;
     float y = rect.y + 164.0f;
-    for (int i = 0; i < static_cast<int>(commands.size()); ++i)
+    for (int i = 0; i < commandCount; ++i)
     {
-        DrawMenuChoice(commands[i].label, i == m_AllyCommandCursor, x, y, 122.0f, D2D1::ColorF(D2D1::ColorF::White));
+        DrawMenuChoice(aiCommands[i].label, i == m_AllyCommandCursor, x, y, 122.0f, D2D1::ColorF(D2D1::ColorF::White));
         x += 124.0f;
         if ((i % 3) == 2)
         {
@@ -757,6 +852,87 @@ void PlayerInventoryUI::DrawAllyMenu()
         }
     }
 
+    UITextRenderer::End();
+    RestoreMainRenderTarget();
+}
+
+void PlayerInventoryUI::DrawAllyDismissConfirmUI()
+{
+    const auto& allies = UnitManager::Instance()->GetAllies();
+    const bool targetExists = m_AllyDismissTarget &&
+        std::find(allies.begin(), allies.end(), m_AllyDismissTarget) != allies.end();
+    if (!targetExists)
+    {
+        // 確認中に対象がいなくなった場合は、無効な参照を使わず一覧へ戻す。
+        ClearAllyCameraFocus(false);
+        m_AllyDismissTarget = nullptr;
+        m_State = UIState::AllyMenu;
+        return;
+    }
+
+    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_AllyDismissConfirmCursor = 1 - m_AllyDismissConfirmCursor;
+    }
+
+    const bool confirmTriggered = Input::GetKeyTrigger('Z');
+    const bool cancelTriggered = Input::GetKeyTrigger('X');
+    if (confirmTriggered || cancelTriggered)
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+    }
+    if (cancelTriggered)
+    {
+        m_AllyDismissConfirmCursor = 1;
+    }
+    if (confirmTriggered || cancelTriggered)
+    {
+        if (confirmTriggered && m_AllyDismissConfirmCursor == 0)
+        {
+            const std::string allyName = m_AllyDismissTarget->GetName();
+
+            // カメラが破棄予定の仲間を参照し続けないよう、離脱前に追跡を解除する。
+            ClearAllyCameraFocus(false);
+            m_AllyDismissTarget->DismissFromParty();
+            m_AllyDismissTarget = nullptr;
+            MessageLog::Instance().AddMessage(allyName + u8"と別れた。");
+
+            const int remainingCount = static_cast<int>(UnitManager::Instance()->GetAllies().size());
+            if (remainingCount > 0 && m_AllyCursor >= remainingCount)
+            {
+                m_AllyCursor = remainingCount - 1;
+            }
+        }
+        else
+        {
+            m_AllyDismissTarget = nullptr;
+        }
+
+        m_State = UIState::AllyMenu;
+        return;
+    }
+
+    UIRect rect{
+        SCREEN_WIDTH * 0.5f - 190.0f,
+        SCREEN_HEIGHT * 0.5f - 100.0f,
+        380.0f,
+        200.0f
+    };
+    UIRenderer::DrawWindow(rect);
+
+    UITextRenderer::Begin();
+    UITextRenderer::DrawOutlinedTextUtf8(u8"仲間と別れる", rect.x + 24.0f, rect.y + 18.0f, rect.w - 48.0f, 28.0f, 22.0f, D2D1::ColorF(D2D1::ColorF::White));
+    UITextRenderer::DrawOutlinedTextUtf8(
+        m_AllyDismissTarget->GetName() + u8"と別れますか？",
+        rect.x + 34.0f,
+        rect.y + 58.0f,
+        rect.w - 68.0f,
+        28.0f,
+        20.0f,
+        D2D1::ColorF(D2D1::ColorF::White));
+    DrawMenuChoice(u8"はい", m_AllyDismissConfirmCursor == 0, rect.x + 48.0f, rect.y + 100.0f, rect.w - 96.0f, D2D1::ColorF(1.0f, 0.58f, 0.58f, 1.0f));
+    DrawMenuChoice(u8"いいえ", m_AllyDismissConfirmCursor == 1, rect.x + 48.0f, rect.y + 132.0f, rect.w - 96.0f, D2D1::ColorF(D2D1::ColorF::White));
     UITextRenderer::End();
     RestoreMainRenderTarget();
 }
@@ -805,11 +981,6 @@ void PlayerInventoryUI::DrawGroundMenu(Player* player)
             player->EndTurn();
         } });
     }
-    else if (Shrine* shrine = dynamic_cast<Shrine*>(obj))
-    {
-        message = u8"不思議な祠がある。";
-        commands.push_back({ u8"調べる", [shrine, player]() { shrine->OnStepped(player); } });
-    }
     else
     {
         message = u8"足元のものは操作できない。";
@@ -820,10 +991,19 @@ void PlayerInventoryUI::DrawGroundMenu(Player* player)
     if (m_GroundCursor < 0) m_GroundCursor = 0;
     if (m_GroundCursor >= static_cast<int>(commands.size())) m_GroundCursor = static_cast<int>(commands.size()) - 1;
 
-    if (Input::GetKeyTrigger(VK_UP)) m_GroundCursor = (m_GroundCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_GroundCursor = (m_GroundCursor + 1) % static_cast<int>(commands.size());
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_GroundCursor = (m_GroundCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_GroundCursor = (m_GroundCursor + 1) % static_cast<int>(commands.size());
+    }
     if (Input::GetKeyTrigger('X'))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_State = UIState::MainMenu;
         return;
     }
@@ -886,19 +1066,26 @@ void PlayerInventoryUI::DrawPotUI(Player* player) {
     if (m_PotInventoryCursor < 0) m_PotInventoryCursor = 0;
     if (m_PotInventoryCursor >= invRows) m_PotInventoryCursor = invRows - 1;
 
-    if (Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_RIGHT)) m_PotSide = 1 - m_PotSide;
+    if (Input::GetKeyTrigger(VK_LEFT) || Input::GetKeyTrigger(VK_RIGHT))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_PotSide = 1 - m_PotSide;
+    }
     if (Input::GetKeyTrigger(VK_UP))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         if (m_PotSide == 0) m_PotItemCursor = (m_PotItemCursor + potRows - 1) % potRows;
         else m_PotInventoryCursor = (m_PotInventoryCursor + invRows - 1) % invRows;
     }
     if (Input::GetKeyTrigger(VK_DOWN))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         if (m_PotSide == 0) m_PotItemCursor = (m_PotItemCursor + 1) % potRows;
         else m_PotInventoryCursor = (m_PotInventoryCursor + 1) % invRows;
     }
     if (Input::GetKeyTrigger('X'))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_SelectedInventoryIdx.clear();
         m_SelectedPotItemIdx.clear();
         m_State = UIState::ItemMenu;
@@ -1051,9 +1238,7 @@ void PlayerInventoryUI::DismissAllyForRecruit(Ally* ally)
     if (!ally) return;
 
     std::string allyName = ally->GetName();
-    UnitManager::Instance()->RemoveAlly(ally);
-    ally->StopLoopEffect();
-    ally->SetDestroy();
+    ally->DismissFromParty();
     MessageLog::Instance().AddMessage(allyName + u8"と別れた。");
 
     BeginRecruitNameInput();
@@ -1077,11 +1262,20 @@ void PlayerInventoryUI::DrawRecruitDismissUI()
     const bool cancelTriggered = Input::GetKeyTrigger('X') && !m_BlockRecruitDismiss;
     m_BlockRecruitDismiss = false;
 
-    if (Input::GetKeyTrigger(VK_UP)) m_RecruitDismissCursor = (m_RecruitDismissCursor + static_cast<int>(allies.size()) - 1) % static_cast<int>(allies.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_RecruitDismissCursor = (m_RecruitDismissCursor + 1) % static_cast<int>(allies.size());
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_RecruitDismissCursor = (m_RecruitDismissCursor + static_cast<int>(allies.size()) - 1) % static_cast<int>(allies.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_RecruitDismissCursor = (m_RecruitDismissCursor + 1) % static_cast<int>(allies.size());
+    }
 
     if (cancelTriggered)
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_BlockRecruitConfirm = true;
         m_State = UIState::RecruitConfirm;
         return;
@@ -1139,8 +1333,16 @@ void PlayerInventoryUI::DrawRecruitUI()
     const bool confirmTriggered = Input::GetKeyTrigger('Z') && !m_BlockRecruitConfirm;
     const bool cancelTriggered = Input::GetKeyTrigger('X');
 
-    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN)) m_RecruitChoiceIndex = 1 - m_RecruitChoiceIndex;
-    if (cancelTriggered) m_RecruitChoiceIndex = 1;
+    if (Input::GetKeyTrigger(VK_UP) || Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_RecruitChoiceIndex = 1 - m_RecruitChoiceIndex;
+    }
+    if (cancelTriggered)
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_RecruitChoiceIndex = 1;
+    }
 
     if (confirmTriggered || cancelTriggered)
     {
@@ -1186,9 +1388,21 @@ void PlayerInventoryUI::DrawShrineConfirmUI()
         }
     }
 
-    if (Input::GetKeyTrigger(VK_UP)) m_ShrineConfirmCursor = (m_ShrineConfirmCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger(VK_DOWN)) m_ShrineConfirmCursor = (m_ShrineConfirmCursor + 1) % static_cast<int>(commands.size());
-    if (Input::GetKeyTrigger('X')) m_ShrineConfirmCursor = static_cast<int>(commands.size()) - 1;
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_ShrineConfirmCursor = (m_ShrineConfirmCursor + static_cast<int>(commands.size()) - 1) % static_cast<int>(commands.size());
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_ShrineConfirmCursor = (m_ShrineConfirmCursor + 1) % static_cast<int>(commands.size());
+    }
+    if (Input::GetKeyTrigger('X'))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        m_ShrineConfirmCursor = static_cast<int>(commands.size()) - 1;
+    }
 
     const bool confirmTriggered = Input::GetKeyTrigger('Z') && !m_BlockShrineConfirm;
     const bool cancelTriggered = Input::GetKeyTrigger('X');

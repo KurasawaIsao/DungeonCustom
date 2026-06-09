@@ -20,7 +20,6 @@ private:
     // プレイヤー・味方・敵をすべて候補に入れ、自分自身と死亡済みユニットだけ除外する。
     std::vector<Unit*> FindVisibleTargets(Unit& self, MapData* map) const;
     bool TryMoveTowardTarget(Unit& self, Unit* target, MapData* map);
-    int GetDistance(const Vector2Int& a, const Vector2Int& b) const;
 
     int m_VisionRange = 8;
     // 現状の移動は複数ターゲットを順に試すため専用処理だが、単一ターゲット追跡なら ChaseAI を流用できる。

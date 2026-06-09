@@ -20,8 +20,6 @@ public:
     void UpdateWithTarget(Unit& self, Unit* target, MapData* map);
 
 private:
-    int GetDistance(const Vector2Int& a, const Vector2Int& b) const;
-
     Unit* m_Target = nullptr;
     int m_KeepDistance = 3;
     BasicPatrolAI m_PatrolAI;

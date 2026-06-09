@@ -111,17 +111,16 @@ std::vector<Enemy*> UnitManager::GetAdjacentEnemies(Unit& self) const
         if (!e) continue;
 
         Vector2Int eP = e->GetGridPos();
-        int dx = eP.x - myPos.x;
-        int dy = eP.y - myPos.y;
-        int adx = abs(dx);
-        int ady = abs(dy);
+        Vector2Int dir = eP - myPos;
+        int chebyshev = dir.Chebyshev(Vector2Int(0, 0));
+        int manhattan = dir.Manhattan(Vector2Int(0, 0));
 
         // —×Ú”»’è
-        if ((adx == 1 && ady == 0) || (adx == 0 && ady == 1)) {
+        if (manhattan == 1) {
             neighbors.push_back(e);
         }
-        else if (adx == 1 && ady == 1) {
-            if (map->IsWalkable({ myPos.x + dx, myPos.y }) && map->IsWalkable({ myPos.x, myPos.y + dy })) {
+        else if (chebyshev == 1 && manhattan == 2) {
+            if (map->IsWalkable({ myPos.x + dir.x, myPos.y }) && map->IsWalkable({ myPos.x, myPos.y + dir.y })) {
                 neighbors.push_back(e);
             }
         }

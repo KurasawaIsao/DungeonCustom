@@ -76,6 +76,8 @@ public:
 
 private:
     void DropItem();
+    // 描画とアニメ更新で同じ視界判定を使い、視界外の敵処理をまとめて省く。
+    bool IsVisibleForPlayerUpdate(class Player* player) const;
     // プレイヤーと仲間から、現在の部屋/視界ルールで見えている最寄りの敵対対象を探す。
     Unit* FindVisibleHostileTarget(const char* context = "Unknown");
     // 巡回中の向き更新用に、プレイヤーを除いた敵対対象だけを探す。

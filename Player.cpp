@@ -20,6 +20,7 @@
 #include "MapObject.h"
 #include "FlyingObject.h"
 #include "EffectBillboard.h"
+#include "EffectManager.h"
 #include "DungeonEndingUI.h"
 #include "AnimationModel.h"
 #include "Trap.h"
@@ -86,49 +87,67 @@ void Player::Update() {
         m_LoopEffect->SetPosition(m_Position + Vector3(0, 3.0f, 0));
     }
 
+    Scene* scene = Manager::GetScene();
+
     // 行動演出の終了待ち
     if (m_IsActingAnimation) {
         bool itemFlying = false;
-        auto items = Manager::GetScene()->GetGameObjects<Item>();
-        for (auto* it : items) if (it->GetIsFlying()) { itemFlying = true; break; }
+        bool isFlying = false;
+        if (scene) {
+            auto items = scene->GetGameObjects<Item>();
+            for (auto* it : items) {
+                if (it->GetIsFlying()) {
+                    itemFlying = true;
+                    break;
+                }
+            }
 
-        auto flyObjects = Manager::GetScene()->GetGameObjects<FlyingObject>();
-        bool isFlying = std::any_of(flyObjects.begin(), flyObjects.end(), [](auto* f) { return f->GetIsActive(); });
+            // アイテム投げ演出が残っている場合は、矢などの飛翔体検索を省く。
+            if (!itemFlying) {
+                auto flyObjects = scene->GetGameObjects<FlyingObject>();
+                isFlying = std::any_of(flyObjects.begin(), flyObjects.end(), [](auto* f) { return f->GetIsActive(); });
+            }
+        }
 
         if ((m_IsAnimLooping || IsAnimationFinished()) && !itemFlying && !isFlying) {
             m_IsActingAnimation = false;
         }
     }
-    if (m_MoveState != MoveState::Idle || m_IsActingAnimation) return;
-
-    UpdateMoveAnimationByInput();
+    if (m_MoveState != MoveState::Idle) {
+        RecordMoveInputDuringMove();
+        return;
+    }
+    if (m_IsActingAnimation) return;
 
     // 階段確認
-    MapManager* mm = Manager::GetScene()->GetGameObject<MapManager>();
+    MapManager* mm = MapManager::Instance();
     MapData* map = mm ? mm->GetCurrentMap() : nullptr;
     if (map && map->GetTile(m_GridPos.x, m_GridPos.y) == TileType::Stair) {
-        ConfirmWindow* con = Manager::GetScene()->GetGameObject<ConfirmWindow>();
-    
-    // 初回確認時はウィンドウを開き、前回の「進まない」選択後は再表示しない。
-    if (!m_StairConfirmed) {
-        con->SetEnable(true);
-    }
+        ConfirmWindow* con = scene ? scene->GetGameObject<ConfirmWindow>() : nullptr;
+        if (!con) return;
 
-    // プレイヤーが「進む」か「進まない」を選ぶまで待つ。
-    if (!con->GetDecided()) return;
+        // 初回確認時はウィンドウを開き、前回の「進まない」選択後は再表示しない。
+        if (!m_StairConfirmed) {
+            con->SetEnable(true);
+        }
 
-    // 選択後はウィンドウを閉じる。
-    con->SetEnable(false);
+        // プレイヤーが「進む」か「進まない」を選ぶまで待つ。
+        if (!con->GetDecided()) return;
 
-    if (con->GetConfirm()) {
-        // 「進む」を選択したので次のフロアへ進む。
-        m_StairConfirmed = true; // 再確認を防ぐためのフラグ
-        con->SetDecided(false);
-        mm->RequestNextFloor();
-    } else {
-        // 「進まない」を選択した。
-        m_StairConfirmed = true; // 同じ階段上で確認を繰り返さないためのフラグ
-        con->SetDecided(false);    }
+        // 選択後はウィンドウを閉じる。
+        con->SetEnable(false);
+
+        if (con->GetConfirm()) {
+            // 「進む」を選択したので次のフロアへ進む。
+            m_StairConfirmed = true; // 再確認を防ぐためのフラグ
+            con->SetDecided(false);
+            mm->RequestNextFloor();
+        }
+        else {
+            // 「進まない」を選択した。
+            m_StairConfirmed = true; // 同じ階段上で確認を繰り返さないためのフラグ
+            con->SetDecided(false);
+        }
     }
     else {
         m_StairConfirmed = false;
@@ -136,10 +155,9 @@ void Player::Update() {
 }
 
 void Player::UpdateUnit() {
-    if (auto* miniMap = Manager::GetScene()->GetGameObject<MiniMapRenderer>())
-    {
-        if (miniMap->IsLookMode()) return;
-    }
+    Scene* scene = Manager::GetScene();
+    auto* miniMap = scene ? scene->GetGameObject<MiniMapRenderer>() : nullptr;
+    if (miniMap && miniMap->IsLookMode()) return;
 
     if (m_HasActed) return;
 
@@ -152,17 +170,26 @@ void Player::UpdateUnit() {
     if (m_Status == Status::Sleep || m_Status == Status::Paralysis) { EndTurn(); return; }
     if (IsStairConfirming()) return;
 
-    auto* ui = Manager::GetScene()->GetGameObject<PlayerInventoryUI>();
-    auto* shopUi = Manager::GetScene()->GetGameObject<ShopUI>();
+    auto* ui = scene ? scene->GetGameObject<PlayerInventoryUI>() : nullptr;
+    auto* shopUi = scene ? scene->GetGameObject<ShopUI>() : nullptr;
     if ((ui && ui->IsAnyMenuOpen()) || (shopUi && shopUi->IsAnyMenuOpen())) {
         if (Input::GetKeyTrigger(VK_SPACE)) SortItems();
         return;
     }
 
-    if (Input::GetKeyTrigger('X')) { if (ui) ui->OpenItemMenu(); return; }
+    if (Input::GetKeyTrigger('X')) { 
+        if (ui)
+        {
+            EffectManager::PlaySE("Asset\\Sound\\Window.wav");
+            ui->OpenItemMenu();
+        }
+           
+        return;
+    }
 
     // 移動中なら補間を進める。
     if (m_MoveState != MoveState::Idle) {
+        RecordMoveInputDuringMove();
         UpdateLerpMove();
         if (m_MoveState == MoveState::Idle) EndTurn();
         return;
@@ -192,6 +219,7 @@ void Player::UpdateUnit() {
 }
 
 void Player::MoveInput() {
+    m_KeepRunAfterMove = false;
 
     // 方向キーは「向き変更」「通常移動」「ダッシュ」の共通入力として扱う。
     // Space 押下中は移動せず向きだけ変更し、Shift 押下中は ExecuteInstantDash に渡す。
@@ -213,6 +241,7 @@ void Player::MoveInput() {
     if (inputDir.x == 0 && inputDir.y == 0)
     {
         m_DashWaitShiftRelease = false;
+        PlayAnimation(m_DefaultAnim, 1.0f);
         return;
     }
     m_IsDash = Input::GetKeyPress(VK_SHIFT);
@@ -232,51 +261,65 @@ void Player::MoveInput() {
     Move(inputDir);
 }
 
-bool Player::IsMoveAnimationInputHeld() const
+Vector2Int Player::GetDirectionalMoveInput() const
 {
-    // 睡眠や麻痺中は状態異常アニメーションを優先し、方向入力で上書きしない。
-    if (m_Status == Status::Sleep || m_Status == Status::Nap || m_Status == Status::Paralysis) return false;
-    if (Input::GetKeyPress(VK_SPACE)) return false;
-
-    return Input::GetKeyPress(VK_UP) ||
-        Input::GetKeyPress(VK_DOWN) ||
-        Input::GetKeyPress(VK_LEFT) ||
-        Input::GetKeyPress(VK_RIGHT);
-}
-
-bool Player::IsMoveAnimationBlockedByUi() const
-{
-    // メニューや確認ウィンドウの操作中は、カーソル入力で走りモーションへ切り替えない。
-    auto* scene = Manager::GetScene();
-    if (!scene) return false;
-
-    auto* ui = scene->GetGameObject<PlayerInventoryUI>();
-    auto* shopUi = scene->GetGameObject<ShopUI>();
-    auto* confirm = scene->GetGameObject<ConfirmWindow>();
-    return (ui && ui->IsAnyMenuOpen()) ||
-        (shopUi && shopUi->IsAnyMenuOpen()) ||
-        (confirm && confirm->GetEnable());
-}
-
-void Player::UpdateMoveAnimationByInput()
-{
-    if (IsMoveAnimationBlockedByUi()) return;
-
-    PlayAnimation(IsMoveAnimationInputHeld() ? "Run" : m_DefaultAnim, 1.0f);
-}
-
-std::string Player::GetMoveEndAnimation() const
-{
-    // 罠などで睡眠になった直後は Sleep を優先し、通常時だけキー保持で Run を維持する。
-    if (m_DefaultAnim != "Idle") return m_DefaultAnim;
-    return IsMoveAnimationInputHeld() ? "Run" : m_DefaultAnim;
-}
-void Player::ExecuteConfusionAction() {
     Vector2Int inputDir(0, 0);
     if (Input::GetKeyPress(VK_UP))    inputDir.y += 1;
     if (Input::GetKeyPress(VK_DOWN))  inputDir.y -= 1;
     if (Input::GetKeyPress(VK_LEFT))  inputDir.x -= 1;
     if (Input::GetKeyPress(VK_RIGHT)) inputDir.x += 1;
+    return inputDir;
+}
+
+bool Player::CanKeepRunAfterMoveInput()
+{
+    // 入力があっても、到着先から次の1マスへ移動できない場合はRun継続を無効にする。
+    if (Input::GetKeyPress(VK_SPACE)) return false;
+
+    Vector2Int inputDir = GetDirectionalMoveInput();
+    if (inputDir.x == 0 && inputDir.y == 0) return false;
+
+    MapManager* mapManager = MapManager::Instance();
+    MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
+    if (!map) return false;
+    Vector2Int next = m_GridPos + inputDir;
+    if (!map->IsInside(next) || !map->IsWalkable(next.x, next.y)) return false;
+    if (inputDir.x != 0 && inputDir.y != 0 && IsDiagonalMoveBlocked(m_GridPos, inputDir, map)) return false;
+
+    UnitManager* units = UnitManager::Instance();
+    Unit* targetUnit = units ? units->GetUnitAt(next) : nullptr;
+    return !targetUnit || dynamic_cast<Ally*>(targetUnit) != nullptr;
+}
+
+void Player::RecordMoveInputDuringMove()
+{
+    // 移動中の次入力が有効な移動なら、到着時にIdleを挟まずRunを維持する。
+    m_KeepRunAfterMove = (m_DefaultAnim == "Idle" && CanKeepRunAfterMoveInput());
+}
+
+std::string Player::GetMoveEndAnimation() const
+{
+    // 睡眠などで基準アニメーションが変わっている場合は、移動入力より状態アニメを優先する。
+    if (m_DefaultAnim != "Idle") return m_DefaultAnim;
+    return m_KeepRunAfterMove ? "Run" : m_DefaultAnim;
+}
+
+void Player::ClearMoveRunHold(bool playDefaultIfIdle)
+{
+    // 移動継続用のRunは次の移動へつなぐ時だけ使い、敵行動や被弾前には解除する。
+    m_KeepRunAfterMove = false;
+    if (playDefaultIfIdle && m_MoveState == MoveState::Idle && !m_IsActingAnimation) {
+        PlayAnimation(m_DefaultAnim, 1.0f);
+    }
+}
+
+void Player::OnTriggerAnimationStarted(const std::string&)
+{
+    // 被ダメージなどの単発演出が始まる時は、移動継続Runを残さない。
+    ClearMoveRunHold(false);
+}
+void Player::ExecuteConfusionAction() {
+    Vector2Int inputDir = GetDirectionalMoveInput();
 
     if (Input::GetKeyPress(VK_SPACE)) {
         if (inputDir.x != 0 || inputDir.y != 0) {
@@ -317,7 +360,8 @@ void Player::ExecuteConfusionAction() {
 }
 
 bool Player::TryConfusionMove(const Vector2Int& dir) {
-    MapData* map = MapManager::Instance()->GetCurrentMap();
+    MapManager* mapManager = MapManager::Instance();
+    MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
     if (!map) return false;
 
     Vector2Int next = m_GridPos + dir;
@@ -329,13 +373,6 @@ bool Player::TryConfusionMove(const Vector2Int& dir) {
     return true;
 }
 
-bool Player::CanConfusionAttack(const Vector2Int& dir) {
-    MapData* map = MapManager::Instance()->GetCurrentMap();
-    if (map && IsDiagonalMoveBlocked(m_GridPos, dir, map)) return false;
-
-    Vector2Int targetPos = m_GridPos + dir;
-    return UnitManager::Instance()->GetUnitAt(targetPos) != nullptr;
-}
 
 void Player::FaceDirection(const Vector2Int& dir) {
     if (dir.x == 0 && dir.y == 0) return;
@@ -356,10 +393,10 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
 
 	// Shiftダッシュは、以下のいずれかに該当するまで連続で移動する。
     for (int i = 0; i < maxSteps; ++i) {
-        if (!CanInstantDashStep(dir)) break;
+        if (!CanInstantDashStep(dir, map)) break;
 
         Vector2Int next = m_GridPos + dir;
-        if (IsVisibleTrapAt(next)) break;
+        if (IsVisibleTrapAt(next, map)) break;
 
         bool nextIsEntrance = map->IsEntranceTile(next.x, next.y);
         bool canEnterPendingEntrance = m_HasPendingEntranceDash && m_PendingEntranceDashPos == next;
@@ -374,7 +411,7 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
             m_PendingEntranceDashPos = { -1, -1 };
         }
 
-        const bool nextHasItem = IsItemAt(next);
+        const bool nextHasItem = IsItemAt(next, map);
         InstantMoveTo(next, nextHasItem);
         EndTurn();
         TurnManager::Instance()->ResolveAfterPlayerInstantMove();
@@ -386,37 +423,48 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
             UpdateKnownDashAdjacentEnemies();
             break;
         }
-        if (IsInstantDashStopTile(m_GridPos)) break;
-        if (nextHasItem || IsItemAdjacent(m_GridPos)) break;
-        if (ShouldStopDashForRoomEnemyAdjacent()) break;
+        if (IsInstantDashStopTile(m_GridPos, map)) break;
+        if (nextHasItem || IsItemAdjacent(m_GridPos, map)) break;
+        if (ShouldStopDashForRoomEnemyAdjacent(map)) break;
     }
 
     m_DashWaitShiftRelease = true;
 }
 
 bool Player::CanInstantDashStep(const Vector2Int& dir) {
-    if (dir.x == 0 && dir.y == 0) return false;
-
     MapData* map = MapManager::Instance()->GetCurrentMap();
+    return CanInstantDashStep(dir, map);
+}
+
+bool Player::CanInstantDashStep(const Vector2Int& dir, MapData* map) {
+    if (dir.x == 0 && dir.y == 0) return false;
     if (!map) return false;
     if (dir.x != 0 && dir.y != 0 && IsDiagonalMoveBlocked(m_GridPos, dir, map)) return false;
 
     Vector2Int next = m_GridPos + dir;
     if (!map->IsInside(next) || !map->IsWalkable(next.x, next.y)) return false;
-    if (UnitManager::Instance()->GetUnitAt(next)) return false;
+    UnitManager* units = UnitManager::Instance();
+    if (units && units->GetUnitAt(next)) return false;
 
     return true;
 }
 
 bool Player::IsInstantDashStopTile(const Vector2Int& gridPos) {
     MapData* map = MapManager::Instance()->GetCurrentMap();
-    if (!map) return false;
-    return map->IsEntranceTile(gridPos.x, gridPos.y) || IsCorridorIntersectionTile(gridPos) || IsVisibleTrapAt(gridPos);
+    return IsInstantDashStopTile(gridPos, map);
 }
 
+bool Player::IsInstantDashStopTile(const Vector2Int& gridPos, MapData* map) {
+    if (!map) return false;
+    return map->IsEntranceTile(gridPos.x, gridPos.y) || IsCorridorIntersectionTile(gridPos, map) || IsVisibleTrapAt(gridPos, map);
+}
 
 bool Player::IsCorridorIntersectionTile(const Vector2Int& gridPos) {
     MapData* map = MapManager::Instance()->GetCurrentMap();
+    return IsCorridorIntersectionTile(gridPos, map);
+}
+
+bool Player::IsCorridorIntersectionTile(const Vector2Int& gridPos, MapData* map) {
     if (!map) return false;
     if (map->GetRoomAt(gridPos)) return false;
     if (map->GetTile(gridPos.x, gridPos.y) != TileType::Corridor) return false;
@@ -432,6 +480,10 @@ bool Player::IsCorridorIntersectionTile(const Vector2Int& gridPos) {
 
 bool Player::IsVisibleTrapAt(const Vector2Int& gridPos) {
     MapData* map = MapManager::Instance()->GetCurrentMap();
+    return IsVisibleTrapAt(gridPos, map);
+}
+
+bool Player::IsVisibleTrapAt(const Vector2Int& gridPos, MapData* map) {
     if (!map) return false;
 
     Trap* trap = dynamic_cast<Trap*>(map->GetObjectAt(gridPos));
@@ -440,12 +492,21 @@ bool Player::IsVisibleTrapAt(const Vector2Int& gridPos) {
 
 bool Player::IsItemAt(const Vector2Int& gridPos) {
     MapData* map = MapManager::Instance()->GetCurrentMap();
+    return IsItemAt(gridPos, map);
+}
+
+bool Player::IsItemAt(const Vector2Int& gridPos, MapData* map) {
     if (!map || !map->IsInside(gridPos)) return false;
 
     return dynamic_cast<Item*>(map->GetObjectAt(gridPos)) != nullptr;
 }
 
 bool Player::IsItemAdjacent(const Vector2Int& gridPos) {
+    MapData* map = MapManager::Instance()->GetCurrentMap();
+    return IsItemAdjacent(gridPos, map);
+}
+
+bool Player::IsItemAdjacent(const Vector2Int& gridPos, MapData* map) {
     // Shiftダッシュ中は、周囲8マスにアイテムがあれば停止する。
     static const Vector2Int dirs[8] = {
         { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 },
@@ -453,13 +514,14 @@ bool Player::IsItemAdjacent(const Vector2Int& gridPos) {
     };
 
     for (const Vector2Int& dir : dirs) {
-        if (IsItemAt(gridPos + dir)) return true;
+        if (IsItemAt(gridPos + dir, map)) return true;
     }
     return false;
 }
 
 bool Player::HasNewDashAdjacentEnemy() {
-    MapData* map = MapManager::Instance()->GetCurrentMap();
+    MapManager* mapManager = MapManager::Instance();
+    MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
     if (!map) return false;
 
     auto enemies = UnitManager::Instance()->GetAdjacentEnemies(*this);
@@ -485,13 +547,13 @@ void Player::UpdateKnownDashAdjacentEnemies() {
     m_KnownDashAdjacentEnemies = UnitManager::Instance()->GetAdjacentEnemies(*this);
 }
 
-bool Player::ShouldStopDashForEnemyAdjacent() {
-    return HasNewDashAdjacentEnemy();
-}
-
 
 bool Player::ShouldStopDashForRoomEnemyAdjacent() {
     MapData* map = MapManager::Instance()->GetCurrentMap();
+    return ShouldStopDashForRoomEnemyAdjacent(map);
+}
+
+bool Player::ShouldStopDashForRoomEnemyAdjacent(MapData* map) {
     if (!map || !map->GetRoomAt(m_GridPos)) return false;
     return IsEnemyAdjacent();
 }
@@ -546,7 +608,7 @@ void Player::Move(const Vector2Int& dir) {
         return;
     }
 
-    if (UnitManager::Instance()->HasEnemy(next)) return;
+    if (targetUnit) return;
 
     m_PreviousGridPos = m_GridPos;
     StartMove(next, MOVE_TIME_NORMAL);
@@ -570,7 +632,9 @@ void Player::Attack() {
         return;
     }
 
-    Unit* target = UnitManager::Instance()->GetUnitAt(targetPos);
+    Scene* scene = Manager::GetScene();
+    UnitManager* units = UnitManager::Instance();
+    Unit* target = units ? units->GetUnitAt(targetPos) : nullptr;
     if (!target) {
         if (map) {
             MapObject* obj = map->GetObjectAt(targetPos);
@@ -580,7 +644,7 @@ void Player::Attack() {
             }
 
             if (obj) {
-                auto* ui = Manager::GetScene()->GetGameObject<PlayerInventoryUI>();
+                auto* ui = scene ? scene->GetGameObject<PlayerInventoryUI>() : nullptr;
                 const bool wasMenuOpen = ui && ui->IsAnyMenuOpen();
                 obj->OnAttacked();
                 const bool openedMenu = ui && ui->IsAnyMenuOpen() && !wasMenuOpen;
@@ -595,7 +659,7 @@ void Player::Attack() {
 
     if (Enemy* shopkeeper = dynamic_cast<Enemy*>(target)) {
         if (shopkeeper->IsShopKeeper() && !shopkeeper->IsShopHostile()) {
-            if (auto* shopUi = Manager::GetScene()->GetGameObject<ShopUI>()) shopUi->OpenShopTradeMenu();
+            if (auto* shopUi = scene ? scene->GetGameObject<ShopUI>() : nullptr) shopUi->OpenShopTradeMenu();
             EndTurn();
             return;
         }
@@ -752,12 +816,11 @@ Vector2Int Player::GetVisionGridPos() const
 bool Player::IsInView(const Vector2Int& tp) const 
 {
     const Vector2Int visionPos = GetVisionGridPos();
-    const int dx = std::abs(visionPos.x - tp.x);
-    const int dy = std::abs(visionPos.y - tp.y);
+    const int visionDistance = Vector2Int::ChebyshevDistance(visionPos, tp);
 
     MapManager* mapManager = MapManager::Instance();
     if (mapManager && mapManager->GetCurrentFloorData().playerVisionClear) {
-        return dx <= CLEAR_VISION_LOD_DISTANCE && dy <= CLEAR_VISION_LOD_DISTANCE;
+        return visionDistance <= CLEAR_VISION_LOD_DISTANCE;
     }
 
     MapData* map = mapManager ? mapManager->GetCurrentMap() : nullptr;
@@ -769,7 +832,7 @@ bool Player::IsInView(const Vector2Int& tp) const
     }
 
     const int viewDistance = GetViewDistance();
-    return dx <= viewDistance && dy <= viewDistance;
+    return visionDistance <= viewDistance;
 }
 int Player::GetViewDistance() const
 {

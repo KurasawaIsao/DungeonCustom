@@ -4,6 +4,7 @@
 #include "Renderer.h"
 #include "UIRenderer.h"
 #include "UITextRenderer.h"
+#include "EffectManager.h"
 #include <unordered_map>
 #include <cstring>
 #include <algorithm>
@@ -220,11 +221,32 @@ int KeyboardUI::Draw(char* buf, size_t bufSize, int& modeIndex) {
         }
     };
 
-    if (Input::GetKeyTrigger(VK_LEFT)) moveHorizontal(-1);
-    if (Input::GetKeyTrigger(VK_RIGHT)) moveHorizontal(1);
-    if (Input::GetKeyTrigger(VK_UP)) moveVertical(-1);
-    if (Input::GetKeyTrigger(VK_DOWN)) moveVertical(1);
-    if (Input::GetKeyTrigger('X')) return -1;
+    // 文字盤のカーソル移動とXキャンセルには、他メニューと同じ選択SEを使う。
+    if (Input::GetKeyTrigger(VK_LEFT))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        moveHorizontal(-1);
+    }
+    if (Input::GetKeyTrigger(VK_RIGHT))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        moveHorizontal(1);
+    }
+    if (Input::GetKeyTrigger(VK_UP))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        moveVertical(-1);
+    }
+    if (Input::GetKeyTrigger(VK_DOWN))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        moveVertical(1);
+    }
+    if (Input::GetKeyTrigger('X'))
+    {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
+        return -1;
+    }
 
     int result = 0;
     if (Input::GetKeyTrigger('Z'))

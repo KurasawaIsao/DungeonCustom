@@ -103,6 +103,8 @@ protected:
     void ClearKnockbackImpactDamage();
     // 移動完了後に戻すアニメーションを派生クラス側で調整できるようにする。
     virtual std::string GetMoveEndAnimation() const;
+    // 攻撃や被ダメージなど、移動以外の単発アニメーション開始時に派生クラスへ通知する。
+    virtual void OnTriggerAnimationStarted(const std::string& animName) {}
 
 protected:
     std::string m_Name = u8"ユニット";
@@ -267,6 +269,7 @@ public:
     // これらは TurnManager がフェーズごとに呼び出す UpdateActionPhase と UpdateMovePhase 内で、行動可能かどうかを判断するために使う。
     bool IsActionPhaseChecked() const { return m_ActionPhaseChecked; }
     bool IsMovePhaseChecked() const { return m_MovePhaseChecked; }
+
     void MarkActionPhaseChecked() { m_ActionPhaseChecked = true; }
     void MarkMovePhaseChecked() { m_MovePhaseChecked = true; }
     void ResetActionPhaseCheck() { m_ActionPhaseChecked = false; }

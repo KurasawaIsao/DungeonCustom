@@ -824,14 +824,14 @@
     <ClInclude Include="StoneEffect.h">
       <Filter>ソース ファイル\Effects</Filter>
     </ClInclude>
-    <ClInclude Include="WhimAI.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
     <ClInclude Include="SpeedChangeEffect.h">
       <Filter>ソース ファイル\Effects</Filter>
     </ClInclude>
     <ClInclude Include="DebugTrace.h">
       <Filter>ソース ファイル\Other</Filter>
+    </ClInclude>
+    <ClInclude Include="WhimAI.h">
+      <Filter>ヘッダー ファイル\UnitAI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

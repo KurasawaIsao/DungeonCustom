@@ -20,6 +20,7 @@
 #include "EnemyDatabase.h"
 #include "EnemyTableDatabase.h"
 #include "audio.h"
+#include "EffectManager.h"
 #include "UnitManager.h"
 #include "TrapDataBase.h"
 #include "UIRenderer.h"
@@ -196,11 +197,13 @@ void Title::UpdateDungeonSelectInput()
         // ドロップダウン展開中は、上下で候補を移動し Z で確定、X で閉じる。
         if (Input::GetKeyTrigger(VK_UP))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_SelectedDungeonIndex = (m_SelectedDungeonIndex + static_cast<int>(m_DungeonFiles.size()) - 1)
                 % static_cast<int>(m_DungeonFiles.size());
         }
         if (Input::GetKeyTrigger(VK_DOWN))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_SelectedDungeonIndex = (m_SelectedDungeonIndex + 1) % static_cast<int>(m_DungeonFiles.size());
         }
         if (Input::GetKeyTrigger('Z') || Input::GetKeyTrigger(VK_RETURN))
@@ -210,6 +213,7 @@ void Title::UpdateDungeonSelectInput()
         }
         if (Input::GetKeyTrigger('X'))
         {
+            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
             m_DungeonDropdownOpen = false;
         }
         return;
@@ -218,20 +222,24 @@ void Title::UpdateDungeonSelectInput()
     // 通常時はメニュー項目を選び、ダンジョン欄では左右キーで素早く候補を切り替える。
     if (Input::GetKeyTrigger(VK_UP))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_TitleMenuCursor = (m_TitleMenuCursor + TITLE_MENU_COUNT - 1) % TITLE_MENU_COUNT;
     }
     if (Input::GetKeyTrigger(VK_DOWN))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_TitleMenuCursor = (m_TitleMenuCursor + 1) % TITLE_MENU_COUNT;
     }
     if (m_TitleMenuCursor == TITLE_MENU_DUNGEON && Input::GetKeyTrigger(VK_LEFT))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_SelectedDungeonIndex = (m_SelectedDungeonIndex + static_cast<int>(m_DungeonFiles.size()) - 1)
             % static_cast<int>(m_DungeonFiles.size());
         strcpy_s(m_DungeonIdBuf, sizeof(m_DungeonIdBuf), GetSelectedDungeonName().c_str());
     }
     if (m_TitleMenuCursor == TITLE_MENU_DUNGEON && Input::GetKeyTrigger(VK_RIGHT))
     {
+        EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         m_SelectedDungeonIndex = (m_SelectedDungeonIndex + 1) % static_cast<int>(m_DungeonFiles.size());
         strcpy_s(m_DungeonIdBuf, sizeof(m_DungeonIdBuf), GetSelectedDungeonName().c_str());
     }
