@@ -58,6 +58,9 @@ private:
     bool m_StairConfirmed = false;
     // 移動中に次の方向入力が入った時、1マス移動の切れ目でRunを維持する。
     bool m_KeepRunAfterMove = false;
+    // 杖などで変化した行動速度を、プレイヤーターン単位で10ターン管理する。
+    int m_TemporaryTurnSpeedTurns = 0;
+    bool m_HasTemporaryTurnSpeed = false;
 
 
     // --- 定数パラメータ ---
@@ -84,6 +87,7 @@ protected:
 public:
     // 基本ライフサイクル
     void Init() override;
+    void OnTurnStart() override;
     void Update() override;     // 演出・UI更新
     void UpdateUnit() override; // ターン行動処理
     void Draw() override;
@@ -116,6 +120,8 @@ public:
     void EquipItem(int index);
     void EndTurn();
     void ClearMoveRunHold(bool playDefaultIfIdle = true);
+    void RefreshTemporaryTurnSpeed(int turns);
+    void ClearTemporaryTurnSpeed();
 
     // 装備操作
     void UnequipWeapon();

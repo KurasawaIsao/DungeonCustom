@@ -24,7 +24,8 @@ public:
 
             if (player)
             {
-                // Player だった場合のみ、AddFullness を呼ぶ
+                // プレイヤーの鈍足は10ターンで解除し、満腹度も回復させる。
+                player->RefreshTemporaryTurnSpeed(10);
                 player->AddFullness(30);
             }
             else if (ctx.target)

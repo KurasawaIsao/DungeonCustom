@@ -189,7 +189,8 @@ void MapRenderer::Draw()
     for (const auto& shopMatrix : m_ShopMatrices)
     {
         Renderer::SetWorldMatrix(shopMatrix);
-        s_ShopFloorModel->Draw();
+        // エディタ上の床は鏡面反射を無効化し、局所的な白い光が出ないようにする。
+        s_ShopFloorModel->Draw(m_IsEditor);
     }
 
     // マップ本体の外側10マス分を壁として描画する。
@@ -210,10 +211,10 @@ void MapRenderer::Draw()
         switch (m_TileTypes[i])
         {
         case TileType::Floor:
-            s_FloorModel->Draw();
+            s_FloorModel->Draw(m_IsEditor);
             break;
         case TileType::Corridor:
-            if (m_IsEditor) s_EditorCorridorModel->Draw();
+            if (m_IsEditor) s_EditorCorridorModel->Draw(true);
             else s_FloorModel->Draw();
             break;
         case TileType::Wall:

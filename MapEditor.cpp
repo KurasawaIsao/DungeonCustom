@@ -82,7 +82,7 @@ void MapEditor::DrawImGui() {
 
 // --- [ウィンドウ1] マップ・タイル・アイテム配置 ---
 void MapEditor::DrawMapEditorWindow() {
-    ImGui::SetNextWindowPos(ImVec2(800, 20), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(830, 0), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(450, 700), ImGuiCond_FirstUseEver);
 
     if (ImGui::Begin("Map Design Editor", &m_Enabled)) {

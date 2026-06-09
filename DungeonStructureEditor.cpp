@@ -104,7 +104,9 @@ void DungeonStructureEditor::ApplySelectedFloorSettings(const FloorData& source,
     // 選択式の一括反映では、チェックした項目だけを現在階層から対象階層へコピーする。
     if (m_BulkApplyTheme)
     {
+        target.themeSelectionMode = source.themeSelectionMode;
         target.themeId = source.themeId;
+        target.themeCandidates = source.themeCandidates;
     }
     if (m_BulkApplyMapSource)
     {
@@ -231,8 +233,8 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
     const std::vector<std::string>& mapFileList,
     const std::vector<std::string>& roomPartFileList
 ) {
-    ImGui::SetNextWindowPos(ImVec2(50, 20), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(400, 750), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(480, 750), ImGuiCond_FirstUseEver);
 
     if (ImGui::Begin("Dungeon Hierarchy Editor", &enabled)) {
         EnsureBulkTargetSize(dungeon.GetFloorCount());
@@ -276,73 +278,86 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             m_BulkApplyShopItemTable = false;
         };
 
-        ImGui::Separator();
-        ImGui::Spacing();
+        // 上部操作を用途ごとに区切り、ファイル操作と共通設定を見分けやすくする。
+        ImGui::SeparatorText("Dungeon File");
+        ImGui::TextDisabled("Dungeon ID");
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputText("##DungeonID", dungeonIDBuffer, 64);
 
-        // --- 1. ファイル保存・管理 ---
-        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "[ File Management ]");
-        ImGui::InputText("Dungeon ID", dungeonIDBuffer, 64);
-
-        const char* unidentifiedModeNames[] = { "None", "Half Assign", "All Assign" };
-        int unidentifiedMode = (int)dungeon.GetUnidentifiedMode();
-        if (ImGui::Combo("Unidentified Mode", &unidentifiedMode, unidentifiedModeNames, 3)) {
-            dungeon.SetUnidentifiedMode((UnidentifiedMode)unidentifiedMode);
-        }
-        bool blessOrCurseEnabled = dungeon.IsBlessOrCurseEnabled();
-        if (ImGui::Checkbox("Enable Bless/Curse", &blessOrCurseEnabled)) {
-            dungeon.SetBlessOrCurseEnabled(blessOrCurseEnabled);
-        }
-
-        if (ImGui::Button("Export Dungeon", ImVec2(150, 0))) {
+        if (ImGui::Button("Export Dungeon", ImVec2(-1, 0))) {
             dungeon.SetDungeonId(dungeonIDBuffer);
             DungeonDataIO::SaveToFile("DungeonData\\DungeonContext\\" + std::string(dungeonIDBuffer) + ".json", dungeon);
         }
-        ImGui::SameLine();
 
-        // --- 2. ダンジョンデータの読み込み・挿入 ---
-        ImGui::Separator();
-        ImGui::Text("Load / Insert Dungeon:");
         static std::string selectedDungeonFile = "";
-        if (ImGui::BeginCombo("Select Dungeon File", selectedDungeonFile.empty() ? "Choose..." : selectedDungeonFile.c_str())) {
+        ImGui::TextDisabled("Load / Insert Dungeon");
+        ImGui::SetNextItemWidth(-1.0f);
+        if (ImGui::BeginCombo("##DungeonFile", selectedDungeonFile.empty() ? "Choose..." : selectedDungeonFile.c_str())) {
             for (auto& file : dungeonFileList) {
                 if (ImGui::Selectable(file.c_str())) selectedDungeonFile = file;
             }
             ImGui::EndCombo();
         }
 
-        if (!selectedDungeonFile.empty()) {
-            if (ImGui::Button("Overwrite (Load)")) {
-                dungeon = DungeonData();
-                DungeonDataIO::LoadFromFile("DungeonData\\DungeonContext\\" + selectedDungeonFile, dungeon);
-                m_SelectedFloorIndex = -1;
-                m_BulkTargetFloors.clear();
-                EnsureBulkTargetSize(dungeon.GetFloorCount());
-                std::string idName = selectedDungeonFile.substr(0, selectedDungeonFile.find_last_of("."));
-                strncpy_s(dungeonIDBuffer, 64, idName.c_str(), 64);
+        const float fileButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        if (selectedDungeonFile.empty()) ImGui::BeginDisabled();
+        if (ImGui::Button("Overwrite (Load)", ImVec2(fileButtonWidth, 0))) {
+            dungeon = DungeonData();
+            DungeonDataIO::LoadFromFile("DungeonData\\DungeonContext\\" + selectedDungeonFile, dungeon);
+            m_SelectedFloorIndex = -1;
+            m_BulkTargetFloors.clear();
+            EnsureBulkTargetSize(dungeon.GetFloorCount());
+            std::string idName = selectedDungeonFile.substr(0, selectedDungeonFile.find_last_of("."));
+            strncpy_s(dungeonIDBuffer, 64, idName.c_str(), 64);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Append (Insert)", ImVec2(fileButtonWidth, 0))) {
+            DungeonData temp;
+            DungeonDataIO::LoadFromFile("DungeonData\\DungeonContext\\" + selectedDungeonFile, temp);
+            for (int i = 0; i < temp.GetFloorCount(); ++i) dungeon.AddFloor(temp.GetFloor(i));
+            EnsureBulkTargetSize(dungeon.GetFloorCount());
+        }
+        if (selectedDungeonFile.empty()) ImGui::EndDisabled();
+
+        ImGui::SeparatorText("Global Settings");
+        if (ImGui::BeginTable("DungeonGlobalSettings", 2, ImGuiTableFlags_SizingStretchSame)) {
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("Unidentified Mode");
+            const char* unidentifiedModeNames[] = { "None", "Half Assign", "All Assign" };
+            int unidentifiedMode = (int)dungeon.GetUnidentifiedMode();
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::Combo("##UnidentifiedMode", &unidentifiedMode, unidentifiedModeNames, 3)) {
+                dungeon.SetUnidentifiedMode((UnidentifiedMode)unidentifiedMode);
             }
-            ImGui::SameLine();
-            if (ImGui::Button("Append (Insert)")) {
-                DungeonData temp;
-                DungeonDataIO::LoadFromFile("DungeonData\\DungeonContext\\" + selectedDungeonFile, temp);
-                for (int i = 0; i < temp.GetFloorCount(); ++i) dungeon.AddFloor(temp.GetFloor(i));
-                EnsureBulkTargetSize(dungeon.GetFloorCount());
+
+            ImGui::TableNextColumn();
+            ImGui::TextDisabled("Item Rules");
+            bool blessOrCurseEnabled = dungeon.IsBlessOrCurseEnabled();
+            if (ImGui::Checkbox("Enable Bless/Curse", &blessOrCurseEnabled)) {
+                dungeon.SetBlessOrCurseEnabled(blessOrCurseEnabled);
             }
-        }
 
-        ImGui::Separator();
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            bool useGenerationSeed = dungeon.UseGenerationSeed();
+            if (ImGui::Checkbox("Use Generation Seed", &useGenerationSeed)) {
+                dungeon.SetUseGenerationSeed(useGenerationSeed);
+            }
 
-        bool useGenerationSeed = dungeon.UseGenerationSeed();
-        if (ImGui::Checkbox("Use Generation Seed", &useGenerationSeed)) {
-            dungeon.SetUseGenerationSeed(useGenerationSeed);
+            ImGui::TableNextColumn();
+            int generationSeed = dungeon.GetGenerationSeed();
+            if (!dungeon.UseGenerationSeed()) ImGui::BeginDisabled();
+            ImGui::SetNextItemWidth(-1.0f);
+            if (ImGui::InputInt("##GenerationSeed", &generationSeed)) {
+                dungeon.SetGenerationSeed(generationSeed);
+            }
+            if (!dungeon.UseGenerationSeed()) ImGui::EndDisabled();
+            ImGui::EndTable();
         }
-        int generationSeed = dungeon.GetGenerationSeed();
-        if (ImGui::InputInt("Generation Seed", &generationSeed)) {
-            dungeon.SetGenerationSeed(generationSeed);
-        }
-
-        // --- 3. 階層リスト ---
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "[ Floor Hierarchy ]");
-        if (ImGui::Button("Add New Floor")) {
+        ImGui::SeparatorText("Floor Hierarchy");
+        ImGui::Text("Floors: %d", dungeon.GetFloorCount());
+        const float floorButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        if (ImGui::Button("Add New Floor", ImVec2(floorButtonWidth, 0))) {
             FloorData f{};
             f.width = 50; f.height = 50;
             // エディタから新規作成する階層も、風ターンの初期値は1500ターンにする。
@@ -351,17 +366,17 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             EnsureBulkTargetSize(dungeon.GetFloorCount());
         }
         ImGui::SameLine();
-        if (ImGui::Button("Remove This Floor")) {
-            if (m_SelectedFloorIndex >= 0 && m_SelectedFloorIndex < dungeon.GetFloorCount()) {
-                dungeon.RemoveFloor(m_SelectedFloorIndex);
-                if (m_SelectedFloorIndex < (int)m_BulkTargetFloors.size()) {
-                    m_BulkTargetFloors.erase(m_BulkTargetFloors.begin() + m_SelectedFloorIndex);
-                }
+        const bool hasSelectedFloor = (m_SelectedFloorIndex >= 0 && m_SelectedFloorIndex < dungeon.GetFloorCount());
+        if (!hasSelectedFloor) ImGui::BeginDisabled();
+        if (ImGui::Button("Remove Selected", ImVec2(floorButtonWidth, 0))) {
+            dungeon.RemoveFloor(m_SelectedFloorIndex);
+            if (m_SelectedFloorIndex < (int)m_BulkTargetFloors.size()) {
+                m_BulkTargetFloors.erase(m_BulkTargetFloors.begin() + m_SelectedFloorIndex);
             }
             m_SelectedFloorIndex = -1;
             EnsureBulkTargetSize(dungeon.GetFloorCount());
         }
-
+        if (!hasSelectedFloor) ImGui::EndDisabled();
         EnsureBulkTargetSize(dungeon.GetFloorCount());
         ImGui::BeginChild("FloorList", ImVec2(0, 150), true);
         for (int i = 0; i < dungeon.GetFloorCount(); ++i) {
@@ -380,80 +395,89 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
         }
         ImGui::EndChild();
 
-        ImGui::SeparatorText("Bulk Settings");
-        const int bulkTargetCount = GetBulkTargetCount(dungeon.GetFloorCount(), m_SelectedFloorIndex);
-        ImGui::Text("Checked target floors: %d", bulkTargetCount);
-        if (ImGui::Button("Check All Targets")) {
-            EnsureBulkTargetSize(dungeon.GetFloorCount());
-            for (int i = 0; i < (int)m_BulkTargetFloors.size(); ++i) m_BulkTargetFloors[i] = 1;
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Clear Targets")) {
-            for (int i = 0; i < (int)m_BulkTargetFloors.size(); ++i) m_BulkTargetFloors[i] = 0;
-        }
+        // 一括編集は必要なときだけ展開できるようにし、階層一覧の視認性を保つ。
+        if (ImGui::CollapsingHeader("Bulk Edit", ImGuiTreeNodeFlags_DefaultOpen)) {
+            const int bulkTargetCount = GetBulkTargetCount(dungeon.GetFloorCount(), m_SelectedFloorIndex);
+            ImGui::Text("Checked targets: %d", bulkTargetCount);
 
-        const bool canUseBulkSource = (m_SelectedFloorIndex >= 0 && m_SelectedFloorIndex < dungeon.GetFloorCount());
-        if (!canUseBulkSource) ImGui::BeginDisabled();
-        ImGui::Checkbox("Mirror Edits To Checked Floors", &m_MirrorEditsToBulkTargets);
-        if (!canUseBulkSource) ImGui::EndDisabled();
-
-        ImGui::SeparatorText("Bulk Apply Fields");
-        ImGui::Checkbox("Apply All Settings", &m_BulkApplyAllSettings);
-        if (!m_BulkApplyAllSettings)
-        {
-            if (ImGui::Button("Player Vision Only"))
-            {
-                clearBulkApplyFields();
-                m_BulkApplyPlayerVisionClear = true;
+            const float bulkButtonWidth = (ImGui::GetContentRegionAvail().x - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+            if (ImGui::Button("Check All Targets", ImVec2(bulkButtonWidth, 0))) {
+                EnsureBulkTargetSize(dungeon.GetFloorCount());
+                for (int i = 0; i < (int)m_BulkTargetFloors.size(); ++i) m_BulkTargetFloors[i] = 1;
             }
             ImGui::SameLine();
-            if (ImGui::Button("Clear Fields"))
-            {
-                clearBulkApplyFields();
+            if (ImGui::Button("Clear Targets", ImVec2(bulkButtonWidth, 0))) {
+                for (int i = 0; i < (int)m_BulkTargetFloors.size(); ++i) m_BulkTargetFloors[i] = 0;
             }
 
-            // 必要な項目だけを選んで、選択中階層からチェック済み階層へ反映する。
-            ImGui::Checkbox("Theme##BulkApplyTheme", &m_BulkApplyTheme);
-            ImGui::Checkbox("Map Source / File##BulkApplyMapSource", &m_BulkApplyMapSource);
-            ImGui::Checkbox("Map Size##BulkApplyMapSize", &m_BulkApplyMapSize);
-            ImGui::Checkbox("Min Rooms##BulkApplyMinRoomCount", &m_BulkApplyMinRoomCount);
-            ImGui::Checkbox("Max Rooms##BulkApplyMaxRoomCount", &m_BulkApplyMaxRoomCount);
-            ImGui::Checkbox("Corridor Complexity##BulkApplyCorridorComplexity", &m_BulkApplyCorridorComplexity);
-            ImGui::Checkbox("Generation Seed Offset##BulkApplyGenerationSeedOffset", &m_BulkApplyGenerationSeedOffset);
-            ImGui::Checkbox("Floor Generation Type##BulkApplyLayoutWeights", &m_BulkApplyLayoutWeights);
-            ImGui::Checkbox("Fixed Room Parts##BulkApplyFixedRooms", &m_BulkApplyFixedRooms);
-            ImGui::Checkbox("View Distance##BulkApplyViewDistance", &m_BulkApplyViewDistance);
-            ImGui::Checkbox("Player Vision Clear##BulkApplyPlayerVisionClear", &m_BulkApplyPlayerVisionClear);
-            ImGui::Checkbox("Wind Turn Limit##BulkApplyWindTurnLimit", &m_BulkApplyWindTurnLimit);
-            ImGui::Checkbox("Max Enemy Count##BulkApplyMaxEnemyCount", &m_BulkApplyMaxEnemyCount);
-            ImGui::Checkbox("Max Item Count##BulkApplyMaxItemCount", &m_BulkApplyMaxItemCount);
-            ImGui::Checkbox("Max Trap Count##BulkApplyMaxTrapCount", &m_BulkApplyMaxTrapCount);
-            ImGui::Checkbox("Monster House Rate##BulkApplyMonsterHouseRate", &m_BulkApplyMonsterHouseRate);
-            ImGui::Checkbox("Shop Rate##BulkApplyShopRate", &m_BulkApplyShopRate);
-            ImGui::Checkbox("Shop Trap Density##BulkApplyShopTrapDensity", &m_BulkApplyShopTrapDensity);
-            ImGui::Checkbox("Enemy Table##BulkApplyEnemyTable", &m_BulkApplyEnemyTable);
-            ImGui::Checkbox("Item Table##BulkApplyItemTable", &m_BulkApplyItemTable);
-            ImGui::Checkbox("Trap Table##BulkApplyTrapTable", &m_BulkApplyTrapTable);
-            ImGui::Checkbox("Shop Item Table##BulkApplyShopItemTable", &m_BulkApplyShopItemTable);
-            if (!HasSelectedBulkApplyFields())
+            const bool canUseBulkSource = (m_SelectedFloorIndex >= 0 && m_SelectedFloorIndex < dungeon.GetFloorCount());
+            if (!canUseBulkSource) ImGui::BeginDisabled();
+            ImGui::Checkbox("Mirror Edits To Checked Floors", &m_MirrorEditsToBulkTargets);
+            if (!canUseBulkSource) ImGui::EndDisabled();
+
+            ImGui::SeparatorText("Apply Fields");
+            ImGui::Checkbox("Apply All Settings", &m_BulkApplyAllSettings);
+            if (!m_BulkApplyAllSettings)
             {
-                ImGui::TextDisabled("Select at least one field to apply.");
+                if (ImGui::Button("Player Vision Only", ImVec2(bulkButtonWidth, 0)))
+                {
+                    clearBulkApplyFields();
+                    m_BulkApplyPlayerVisionClear = true;
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Clear Fields", ImVec2(bulkButtonWidth, 0)))
+                {
+                    clearBulkApplyFields();
+                }
+
+                // 一括反映項目は2列に並べ、長い設定一覧を見渡しやすくする。
+                if (ImGui::BeginTable("BulkApplyFieldTable", 2, ImGuiTableFlags_SizingStretchSame))
+                {
+                    auto drawBulkField = [&](const char* label, bool* value) {
+                        ImGui::TableNextColumn();
+                        ImGui::Checkbox(label, value);
+                        };
+                    drawBulkField("Theme##BulkApplyTheme", &m_BulkApplyTheme);
+                    drawBulkField("Map Source / File##BulkApplyMapSource", &m_BulkApplyMapSource);
+                    drawBulkField("Map Size##BulkApplyMapSize", &m_BulkApplyMapSize);
+                    drawBulkField("Min Rooms##BulkApplyMinRoomCount", &m_BulkApplyMinRoomCount);
+                    drawBulkField("Max Rooms##BulkApplyMaxRoomCount", &m_BulkApplyMaxRoomCount);
+                    drawBulkField("Corridor Complexity##BulkApplyCorridorComplexity", &m_BulkApplyCorridorComplexity);
+                    drawBulkField("Generation Seed Offset##BulkApplyGenerationSeedOffset", &m_BulkApplyGenerationSeedOffset);
+                    drawBulkField("Floor Generation Type##BulkApplyLayoutWeights", &m_BulkApplyLayoutWeights);
+                    drawBulkField("Fixed Room Parts##BulkApplyFixedRooms", &m_BulkApplyFixedRooms);
+                    drawBulkField("View Distance##BulkApplyViewDistance", &m_BulkApplyViewDistance);
+                    drawBulkField("Player Vision Clear##BulkApplyPlayerVisionClear", &m_BulkApplyPlayerVisionClear);
+                    drawBulkField("Wind Turn Limit##BulkApplyWindTurnLimit", &m_BulkApplyWindTurnLimit);
+                    drawBulkField("Max Enemy Count##BulkApplyMaxEnemyCount", &m_BulkApplyMaxEnemyCount);
+                    drawBulkField("Max Item Count##BulkApplyMaxItemCount", &m_BulkApplyMaxItemCount);
+                    drawBulkField("Max Trap Count##BulkApplyMaxTrapCount", &m_BulkApplyMaxTrapCount);
+                    drawBulkField("Monster House Rate##BulkApplyMonsterHouseRate", &m_BulkApplyMonsterHouseRate);
+                    drawBulkField("Shop Rate##BulkApplyShopRate", &m_BulkApplyShopRate);
+                    drawBulkField("Shop Trap Density##BulkApplyShopTrapDensity", &m_BulkApplyShopTrapDensity);
+                    drawBulkField("Enemy Table##BulkApplyEnemyTable", &m_BulkApplyEnemyTable);
+                    drawBulkField("Item Table##BulkApplyItemTable", &m_BulkApplyItemTable);
+                    drawBulkField("Trap Table##BulkApplyTrapTable", &m_BulkApplyTrapTable);
+                    drawBulkField("Shop Item Table##BulkApplyShopItemTable", &m_BulkApplyShopItemTable);
+                    ImGui::EndTable();
+                }
+                if (!HasSelectedBulkApplyFields())
+                    ImGui::TextDisabled("Select at least one field to apply.");
             }
-        }
 
-        const bool canApplyBulkFields = m_BulkApplyAllSettings || HasSelectedBulkApplyFields();
-        if (!canUseBulkSource || bulkTargetCount <= 0 || !canApplyBulkFields) ImGui::BeginDisabled();
-        if (ImGui::Button("Apply Source To Checked")) {
-            ApplySourceFloorToTargets(dungeon, false);
+            const bool canApplyBulkFields = m_BulkApplyAllSettings || HasSelectedBulkApplyFields();
+            if (!canUseBulkSource || bulkTargetCount <= 0 || !canApplyBulkFields) ImGui::BeginDisabled();
+            if (ImGui::Button("Apply To Checked", ImVec2(bulkButtonWidth, 0))) {
+                ApplySourceFloorToTargets(dungeon, false);
+            }
+            if (!canUseBulkSource || bulkTargetCount <= 0 || !canApplyBulkFields) ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (!canUseBulkSource || dungeon.GetFloorCount() <= 1 || !canApplyBulkFields) ImGui::BeginDisabled();
+            if (ImGui::Button("Apply To All", ImVec2(bulkButtonWidth, 0))) {
+                ApplySourceFloorToTargets(dungeon, true);
+            }
+            if (!canUseBulkSource || dungeon.GetFloorCount() <= 1 || !canApplyBulkFields) ImGui::EndDisabled();
         }
-        if (!canUseBulkSource || bulkTargetCount <= 0 || !canApplyBulkFields) ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (!canUseBulkSource || dungeon.GetFloorCount() <= 1 || !canApplyBulkFields) ImGui::BeginDisabled();
-        if (ImGui::Button("Apply Source To All")) {
-            ApplySourceFloorToTargets(dungeon, true);
-        }
-        if (!canUseBulkSource || dungeon.GetFloorCount() <= 1 || !canApplyBulkFields) ImGui::EndDisabled();
-
         // --- 4. 階層ごとの詳細設定 ---
         if (m_SelectedFloorIndex >= 0 && m_SelectedFloorIndex < dungeon.GetFloorCount()) {
             ImGui::Separator();
@@ -468,19 +492,49 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
             }
 
             const auto& themes = DungeonThemeDatabase::GetAll();
-            const DungeonThemeData& currentTheme = DungeonThemeDatabase::GetOrDefault(f.themeId);
-            std::string themePreview = currentTheme.displayName.empty() ? currentTheme.id : currentTheme.displayName;
-            if (ImGui::BeginCombo("Floor Theme", themePreview.c_str())) {
+            const char* themeModeNames[] = { "Fixed Theme", "Random From Selected", "Random From All" };
+            int themeMode = (int)f.themeSelectionMode;
+            if (ImGui::Combo("Theme Selection", &themeMode, themeModeNames, 3)) {
+                f.themeSelectionMode = (ThemeSelectionMode)themeMode;
+                detailChanged = true;
+            }
+
+            if (f.themeSelectionMode == ThemeSelectionMode::Fixed) {
+                const DungeonThemeData& currentTheme = DungeonThemeDatabase::GetOrDefault(f.themeId);
+                std::string themePreview = currentTheme.displayName.empty() ? currentTheme.id : currentTheme.displayName;
+                if (ImGui::BeginCombo("Floor Theme", themePreview.c_str())) {
+                    for (const auto& theme : themes) {
+                        std::string label = theme.displayName.empty() ? theme.id : theme.displayName + " (" + theme.id + ")";
+                        const bool selected = (theme.id == currentTheme.id);
+                        if (ImGui::Selectable(label.c_str(), selected)) {
+                            f.themeId = theme.id;
+                            detailChanged = true;
+                        }
+                        if (selected) ImGui::SetItemDefaultFocus();
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+            else if (f.themeSelectionMode == ThemeSelectionMode::RandomCandidates) {
+                ImGui::Text("Theme Candidates: %d", (int)f.themeCandidates.size());
                 for (const auto& theme : themes) {
+                    const auto found = std::find(f.themeCandidates.begin(), f.themeCandidates.end(), theme.id);
+                    bool selected = (found != f.themeCandidates.end());
                     std::string label = theme.displayName.empty() ? theme.id : theme.displayName + " (" + theme.id + ")";
-                    const bool selected = (theme.id == currentTheme.id);
-                    if (ImGui::Selectable(label.c_str(), selected)) {
-                        f.themeId = theme.id;
+                    ImGui::PushID(theme.id.c_str());
+                    if (ImGui::Checkbox(label.c_str(), &selected)) {
+                        // チェックしたテーマだけを、この階層の抽選候補として保存する。
+                        if (selected && found == f.themeCandidates.end())
+                            f.themeCandidates.push_back(theme.id);
+                        else if (!selected && found != f.themeCandidates.end())
+                            f.themeCandidates.erase(found);
                         detailChanged = true;
                     }
-                    if (selected) ImGui::SetItemDefaultFocus();
+                    ImGui::PopID();
                 }
-                ImGui::EndCombo();
+            }
+            else {
+                ImGui::Text("Random pool: all themes in Theme folder (%d)", (int)themes.size());
             }
             const char* sourceNames[] = { "Auto (Random)", "Fixed (Full Map File)" };
             int currentSource = (int)f.mapSource;

@@ -74,6 +74,8 @@ void Camera::Draw()
 	
 	//DirectXへセット
 	Renderer::SetProjectionMatrix(m_Projection);
+	// 鏡面反射が実際の視点を基準に計算されるよう、描画前にカメラ位置を更新する。
+	Renderer::SetCameraPosition(m_Position);
 
 	if (m_IsTitleCamera)
 	{

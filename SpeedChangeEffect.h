@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "EffectBase.h"
 #include "Unit.h"
+#include "Player.h"
 #include "MessageLog.h"
 #include <string>
 
@@ -23,6 +24,13 @@ public:
         SpeedRank rank = GetSpeedRank(ctx.target);
         rank = ApplySpeedChange(rank);
         ApplySpeedRank(ctx.target, rank);
+
+        if (Player* player = dynamic_cast<Player*>(ctx.target))
+        {
+            // プレイヤーの鈍足・倍速は10ターン継続し、等速になった時は期限管理を解除する。
+            if (rank == SpeedRank::Normal) player->ClearTemporaryTurnSpeed();
+            else player->RefreshTemporaryTurnSpeed(10);
+        }
 
         MessageLog::Instance().AddMessage(
             ctx.target->GetName() + m_Message + u8"現在: " + GetSpeedRankName(rank) + u8"。");

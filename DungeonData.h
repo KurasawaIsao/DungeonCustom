@@ -35,9 +35,19 @@ struct FixedRoomSetting {
     std::string path;
     int appearanceRate = 100; 
 };
+enum class ThemeSelectionMode
+{
+    Fixed,
+    RandomCandidates,
+    RandomAll,
+};
+
 struct FloorData {
     // 1フロア分の生成設定。
+    // 階層ごとに固定テーマか、候補テーマまたは全テーマからの抽選かを指定する。
+    ThemeSelectionMode themeSelectionMode = ThemeSelectionMode::Fixed;
     std::string themeId = "default";
+    std::vector<std::string> themeCandidates;
     // マップサイズ、部屋数、敵/アイテムテーブル、視界、特殊部屋の出現率などをまとめて持つ。
     int width;
     int height;
