@@ -14,6 +14,8 @@ private:
 
     bool m_SingleUse = false;             // 使い捨て
     int m_LastActivatedTurn = -1;
+    float m_ItemActivationTimer = 0.0f;
+    bool m_DestroyAfterItemActivation = false;
 
 public:
     void Init() override;
@@ -26,6 +28,9 @@ public:
     }
 
     virtual void Activate(Unit* target);
+    // アイテムが着地した場合は、対象ユニットなしで罠を作動させる。
+    bool ActivateByItem();
+    static constexpr float GetItemActivationDuration() { return 0.35f; }
     void OnStepped(Player* player) override;
     void Setup(const TrapData* data) {
         m_Data = data;

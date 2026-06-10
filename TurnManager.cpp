@@ -6,7 +6,6 @@
 #include "MapManager.h"
 #include "scene.h"
 #include "manager.h"
-#include "Item.h"
 #include "FlyingObject.h"
 #include "Ally.h"
 #include "EnemyDatabase.h"
@@ -29,15 +28,12 @@ TurnManager* TurnManager::instance = nullptr;
 
 namespace
 {
-    // 投げたアイテムや矢など、ユニット外の飛翔演出が残っているかを調べる。
+    // 投擲物・矢・魔法弾など、ユニット外の飛翔演出が残っているかを調べる。
     bool IsAnyFlyingObjectActive()
     {
         Scene* scene = Manager::GetScene();
         if (!scene) return false;
 
-        for (auto* it : scene->GetGameObjects<Item>()) {
-            if (it->GetIsFlying()) return true;
-        }
         for (auto* obj : scene->GetGameObjects<FlyingObject>()) {
             if (obj->GetIsActive()) return true;
         }
@@ -74,6 +70,7 @@ namespace
     }
 
     template <typename TUnit>
+	// 一体一体、行動フェーズを更新していく。行動予算の消費や攻撃/特技演出が始まったユニットがいると loopHadProgress を true にする。
     bool UpdateActionPhaseOneByOne(TUnit* unit, bool& loopHadProgress)
     {
         if (!unit || unit->IsActionPhaseChecked() || unit->IsActing() || unit->IsAnimatingMove()) return false;
@@ -143,9 +140,10 @@ namespace
         return false;
     }
 
+	// プレイヤーの移動後攻撃を走らせるべきか。倍速/三倍速や、移動で行動予算を消費するケースに限定して走らせる。
     bool ShouldRunPostMoveAction(Unit* unit, MapData* map)
     {
-        // 移動後攻撃は「まだ行動予算があり、移動後に攻撃対象がいる」時だけ走らせる。
+        // 移動後攻撃は「まだ行動予算があり、移動後に攻撃対象がいる」時だけ実行する。
         // 等速の通常移動で毎回ここに入るとテンポが崩れるため、倍速系や移動で行動を消費するケースに限定する。
         if (!unit || !unit->CanActThisTurn()) return false;
         if (!HasPostMoveAttackTarget(unit, map)) return false;
@@ -153,7 +151,7 @@ namespace
         return HasExtraMoveSpeed(unit) || unit->HasActionConsumedByMoveThisTurn();
     }
 
-    // プレイヤー移動中でも先に解決すべき戦闘があるかを調べる。
+    // プレイヤー移動中に、敵が攻撃可能なターゲットがいるかを調べる。
     // これが true の時は一斉移動を待たず、プレイヤーの移動補間を先に終わらせる。
     // プレイヤーの移動先が、敵の通常攻撃が届く位置になっているかを調べる。
     bool HasEnemyAttackTargetingPlayer(MapData* map)
@@ -323,12 +321,17 @@ void TurnManager::Update()
     // 参照で受けることで、このフレーム中に撃破/勧誘でリストが変わっても最新状態を見続ける。
     auto& movementEnemies = um->GetEnemies();
     auto& movementAllies = um->GetAllies();
+
     MapData* currentMap = MapManager::Instance()->GetCurrentMap();
+
     const bool isActionPhase = (m_Phase == Phase::EnemyAction || m_Phase == Phase::EnemyPostMoveAction);
+
     const bool shouldResolvePlayerMoveBeforeCombat =
         player->IsAnimatingMove() && isActionPhase && HasAnyImmediateCombatTarget(currentMap);
+
     const bool shouldClearRunAfterMoveForEnemyAttack =
         player->IsAnimatingMove() && isActionPhase && HasEnemyAttackTargetingPlayer(currentMap);
+
     const bool hasActionEffectActive =
         isActionPhase && IsAnyActionEffectActive(player, movementEnemies, movementAllies);
 

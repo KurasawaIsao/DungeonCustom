@@ -7,6 +7,9 @@
 #include "EffectManager.h"
 #include "TurnManager.h"
 #include "MapManager.h"
+#include "Time.h"
+#include <algorithm>
+#include <cmath>
 void Trap::Init()
 {
     m_Model = new ModelRenderer();
@@ -14,12 +17,24 @@ void Trap::Init()
     Renderer::InitCommonShader();
     m_Rotation = Vector3{ 0.0f,0.0f,0.0f };
     m_Scale = { 1.0f, 1.0f, 1.0f };
-    m_IsVisible = false;
+    m_IsVisible = true;
 }
 
 void Trap::Update()
-
 {
+    if (m_ItemActivationTimer <= 0.0f) return;
+
+    // アイテムで起動した罠は、待機時間に合わせて一度だけ拡縮させる。
+    m_ItemActivationTimer = (std::max)(0.0f, m_ItemActivationTimer - Time::DeltaTime());
+    const float progress = 1.0f - m_ItemActivationTimer / GetItemActivationDuration();
+    const float pulse = std::sin(progress * 3.14159265f) * 0.2f;
+    m_Scale = { 1.0f + pulse, 1.0f + pulse, 1.0f + pulse };
+
+    if (m_ItemActivationTimer <= 0.0f)
+    {
+        m_Scale = { 1.0f, 1.0f, 1.0f };
+        if (m_DestroyAfterItemActivation) SetDestroy();
+    }
 }
 
 void Trap::Draw()
@@ -67,6 +82,37 @@ void Trap::Activate(Unit* target) {
 
         SetDestroy();
     }
+}
+bool Trap::ActivateByItem()
+{
+    if (!m_Data || !m_Data->effect) return false;
+
+    const int currentTurn = TurnManager::Instance() ? TurnManager::Instance()->GetTurnCount() : 0;
+    if (m_LastActivatedTurn == currentTurn) return false;
+    m_LastActivatedTurn = currentTurn;
+
+    // アイテム着地では不発判定を行わず、罠の表示と効果を直接解決する。
+    EffectManager::PlaySE("Asset\\Sound\\Switch.wav");
+    m_IsVisible = true;
+    m_ItemActivationTimer = GetItemActivationDuration();
+    MessageLog::Instance().AddMessage(m_Data->name + u8"が作動した！");
+
+    EffectContext ctx;
+    ctx.source = EffectSourceType::Trap;
+    ctx.target = nullptr;
+    ctx.pos = m_GridPos;
+    m_Data->effect->Apply(ctx);
+
+    if (m_Data->singleUse || (m_Data->breakChancePercent > 0 && GameRandom::Percent(m_Data->breakChancePercent)))
+    {
+        if (auto* map = MapManager::Instance()->GetCurrentMap())
+        {
+            // 配置判定からはすぐ外し、見た目だけ起動演出が終わるまで残す。
+            map->RemoveMapObject(this);
+        }
+        m_DestroyAfterItemActivation = true;
+    }
+    return true;
 }
 void Trap::OnStepped(Player* player)
 {

@@ -118,25 +118,13 @@ void Player::Update() {
 
     // 行動演出の終了待ち
     if (m_IsActingAnimation) {
-        bool itemFlying = false;
         bool isFlying = false;
         if (scene) {
-            auto items = scene->GetGameObjects<Item>();
-            for (auto* it : items) {
-                if (it->GetIsFlying()) {
-                    itemFlying = true;
-                    break;
-                }
-            }
-
-            // アイテム投げ演出が残っている場合は、矢などの飛翔体検索を省く。
-            if (!itemFlying) {
-                auto flyObjects = scene->GetGameObjects<FlyingObject>();
-                isFlying = std::any_of(flyObjects.begin(), flyObjects.end(), [](auto* f) { return f->GetIsActive(); });
-            }
+            auto flyObjects = scene->GetGameObjects<FlyingObject>();
+            isFlying = std::any_of(flyObjects.begin(), flyObjects.end(), [](auto* f) { return f->GetIsActive(); });
         }
 
-        if ((m_IsAnimLooping || IsAnimationFinished()) && !itemFlying && !isFlying) {
+        if ((m_IsAnimLooping || IsAnimationFinished()) && !isFlying) {
             m_IsActingAnimation = false;
         }
     }
@@ -968,18 +956,21 @@ void Player::ShootArrow(int index) {
     MessageLog::Instance().AddMessage(m_Name + u8"は" + slot.instance.GetDisplayName() + u8"を撃った。");
 
     FlyingObject* arrow = Manager::GetScene()->AddGameObject<FlyingObject>(1);
-	arrow->SetRotation(Vector3(0, m_Rotation.y-90.0f, 0));
-    arrow->FireEffect(
-        "Asset\\Model\\Items\\Arrow.obj",
-        data->effect,
+    arrow->SetRotation(Vector3(0, m_Rotation.y - 90.0f, 0));
+
+    // 装備中の束から1本分の状態を作り、投擲物と同じ飛翔処理へ渡す。
+    ItemInstance firedArrow(data);
+    firedArrow.SetBless(slot.instance.GetBless());
+    firedArrow.SetIdentified();
+    firedArrow.SetStackCount(1);
+    arrow->FireItem(
+        std::move(firedArrow),
         this,
-        EffectSourceType::Item,
         m_Position + Vector3(m_FacingDir.x * 0.8f, 0.5f, m_FacingDir.y * 0.8f),
         GetGridPos(),
         m_FacingDir,
         0.04f,
-        10,
-        data);
+        10);
 
     if (slot.count > 1) {
         --slot.count;
@@ -1007,9 +998,16 @@ void Player::ThrowItem(int index) {
     RefreshEquipIndices();
     MessageLog::Instance().AddMessage(m_Name + u8"は" + thrown.GetDisplayName() + u8"を投げた。");
 
-    Item* pItem = Manager::GetScene()->AddGameObject<Item>(1);
-    pItem->SetInstance(std::move(thrown));
-    pItem->SetupFromInstance();
-    pItem->StartThrow(this, m_Position + Vector3(0, 0.5f, 0), GetGridPos(), m_FacingDir);
+    // 石だけは従来どおり短射程とし、それ以外は矢と同じ直線経路を使用する。
+    const int maxRange = (data && data->type == ItemType::Stone) ? 2 : 10;
+    FlyingObject* flyingItem = Manager::GetScene()->AddGameObject<FlyingObject>(1);
+    flyingItem->FireItem(
+        std::move(thrown),
+        this,
+        m_Position + Vector3(0, 0.5f, 0),
+        GetGridPos(),
+        m_FacingDir,
+        0.04f,
+        maxRange);
     EndTurn();
 }

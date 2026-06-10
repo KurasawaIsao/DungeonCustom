@@ -1,11 +1,14 @@
-Ôªø#pragma once
+#pragma once
 #include "GameObject.h"
 #include "Vector2Int.h"
 #include <string>
+#include <optional>
+#include <vector>
 #include "ItemInstance.h"
 #include "EffectBase.h"
 
 class Unit;
+class MapData;
 
 class FlyingObject : public GameObject {
 public:
@@ -18,9 +21,17 @@ public:
         const Vector2Int& startGrid, const Vector2Int& dir, float speed = 0.1f, int maxRange = 15,
         Unit* user = nullptr);
 
+    // ìäù±ÉAÉCÉeÉÄÇ∆ñÓÇÕìØÇ∂íºê¸îÚçsÅEíÖíeèàóùÇégópÇ∑ÇÈÅB
+    void FireItem(ItemInstance&& item, Unit* user,
+        const Vector3& startPos, const Vector2Int& startGrid, const Vector2Int& dir,
+        float speed = 0.1f, int maxRange = 10);
+
+    // ö‚Ç™äÑÇÍÇΩéûÇÃíÜêgÇ‡ÅAìäù±ÉAÉCÉeÉÄÇ∆ìØÇ∂íÖínÅE„©èàóùÇ÷ìnÇ∑ÅB
+    void DropItemFromPot(ItemInstance&& item, const Vector2Int& centerGrid);
+
     void FireEffect(const std::string& modelPath, EffectBase* sourceEffect, Unit* user, EffectSourceType sourceType,
         const Vector3& startPos, const Vector2Int& startGrid, const Vector2Int& dir,
-        float speed = 0.1f, int maxRange = 15, const ItemData* dropItemData = nullptr);
+        float speed = 0.1f, int maxRange = 15);
 
     void FireEffectToTarget(const std::string& modelPath, EffectBase* sourceEffect, Unit* user, EffectSourceType sourceType,
         const Vector3& startPos, const Vector2Int& startGrid, const Vector2Int& targetGrid,
@@ -30,7 +41,15 @@ public:
 
 private:
     void OnHit();
-    void SetupFlight(const std::string& modelPath, const Vector3& startPos,
+    bool ResolveFlyingItemHit(MapData* map, Unit* hitUnit);
+    bool DropFlyingItem(MapData* map);
+    void UpdateDropResolution();
+    void ContinueDropSearch(MapData* map);
+    void HandleDropCandidate(MapData* map, const Vector2Int& grid, bool isTrap, bool allowMove);
+    void StartDropMove(const Vector2Int& grid, bool isTrap);
+    void StartTrapWait(MapData* map, const Vector2Int& grid);
+    void PlaceFlyingItem(MapData* map, const Vector2Int& grid);
+    void SetupFlight(const Vector3& startPos,
         const Vector2Int& startGrid, const Vector2Int& dir, float speed, int maxRange);
     void SetupDirectFlight(const std::string& modelPath, const Vector3& startPos,
         const Vector2Int& startGrid, const Vector2Int& targetGrid, float speed);
@@ -41,8 +60,8 @@ private:
     ID3D11InputLayout* m_Layout = nullptr;
 
     ItemInstance* m_SourceItem = nullptr;
+    std::optional<ItemInstance> m_FlyingItem;
     EffectBase* m_SourceEffect = nullptr;
-    const ItemData* m_DropItemData = nullptr;
     Unit* m_User = nullptr;
     EffectSourceType m_SourceType = EffectSourceType::Item;
     Vector2Int m_Dir = { 0, 0 };
@@ -52,6 +71,23 @@ private:
 
     float m_FlyT = 0.0f;
     float m_Speed = 0.05f;
+    float m_ItemSpin = 0.0f;
+    float m_ArcDuration = 0.5f;
+    bool m_RotateItemInFlight = false;
+    bool m_UseArcFlight = false;
+    enum class DropResolutionState
+    {
+        None,
+        MovingToCandidate,
+        WaitingForTrap
+    };
+
+    std::vector<Vector2Int> m_CheckedTrapGrids;
+    Vector2Int m_PendingDropGrid;
+    DropResolutionState m_DropResolutionState = DropResolutionState::None;
+    float m_DropMoveSpeed = 0.45f;
+    float m_TrapWaitTimer = 0.0f;
+    bool m_PendingDropIsTrap = false;
     bool m_HitWall = false;
     bool m_IsActive = false;
 };
