@@ -636,15 +636,6 @@ void PlayerInventoryUI::DrawItemCommandMenu(Player* player)
         } });
     }
 
-    if (IsPlayerInShop(player))
-    {
-        commands.push_back({ u8"”„‚é", [this, player]() {
-            EffectManager::PlaySE("Asset\\Sound\\Select.wav");
-            ShopUI::SellInventoryItem(player, m_ItemCommandTarget);
-            CloseAllMenus();
-        } });
-    }
-
     commands.push_back({ u8"“Š‚°‚é", [this, player]() {
         EffectManager::PlaySE("Asset\\Sound\\Select.wav");
         player->ThrowItem(m_ItemCommandTarget);
@@ -1499,7 +1490,7 @@ void PlayerInventoryUI::DropItemAtFeet(Player* player, int inventoryIndex)
     }
     else if (droppedInShop)
     {
-        // Ž©•ª‚ÌŽ‚¿•¨‚ð“X“à‚É’u‚¢‚½Žž‚¾‚¯A”„‹p—\’è•i‚Æ‚µ‚Äˆµ‚¤B
+        // ”„‹p‚Í“X“à‚Å‘«Œ³‚É’u‚¢‚½Žž‚¾‚¯Žó‚¯•t‚¯A¸ŽZŒã‚àÄw“ü‚Å‚«‚é‚æ‚¤°‚Ì¤•i‚Æ‚µ‚ÄŽc‚·B
         item->SetPlayerShopItem(true);
     }
     map->AddMapObject(item, pos.x, pos.y);

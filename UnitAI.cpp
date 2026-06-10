@@ -45,11 +45,16 @@ namespace
     }
 
 
-    void ClearPlayerMoveRunHoldIfSkillTargets(Unit* target, const std::vector<Unit*>& collectedTargets)
+    void ClearPlayerMoveRunHoldIfSkillTargets(Unit* user, Unit* target, const std::vector<Unit*>& collectedTargets)
     {
-        // “G‚Ìó‘ÔˆÙí“Á‹Z‚È‚Ç‚ªƒvƒŒƒCƒ„[‚Ö“–‚½‚éŽž‚ÍAˆÚ“®Œp‘±—p‚ÌRun‚ðŽc‚³‚È‚¢B
+        // “G‚Ì“Á‹Z‚ª”­“®‚µ‚½Žž‚ÍA‘ÎÛ•ûŽ®‚ÉŠÖŒW‚È‚­ˆÚ“®Œp‘±—p‚ÌRun‚ðŽc‚³‚È‚¢B
         Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
         if (!player) return;
+
+        if (dynamic_cast<Enemy*>(user)) {
+            player->ClearMoveRunHold();
+            return;
+        }
 
         if (target == player) {
             player->ClearMoveRunHold();
@@ -140,7 +145,7 @@ bool UnitAI::ExecuteSkill(Unit& self, Unit* target) {
             }
 
             MessageLog::Instance().AddMessage(self.GetName() + u8"‚Ì" + skill.name + u8"I");
-            ClearPlayerMoveRunHoldIfSkillTargets(target, collectedTargets);
+            ClearPlayerMoveRunHoldIfSkillTargets(&self, target, collectedTargets);
             if (ctx.targetType == EffectTargetType::Single) skill.effect->Apply(ctx);
             else {
                 for (Unit* unit : collectedTargets) {

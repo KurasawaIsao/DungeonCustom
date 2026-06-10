@@ -30,7 +30,6 @@ public:
     static int GetPendingShopSaleTotal(Player* player);
     static bool HasPendingShopSales(Player* player) { return GetPendingShopSaleTotal(player) > 0; }
     static int FinalizePendingShopSales(Player* player);
-    static void SellInventoryItem(Player* player, int inventoryIndex);
     static void StartTheftMode();
     static void AngerShopKeeper(Enemy* enemy);
 

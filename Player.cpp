@@ -138,6 +138,9 @@ void Player::Update() {
     MapManager* mm = MapManager::Instance();
     MapData* map = mm ? mm->GetCurrentMap() : nullptr;
     if (map && map->GetTile(m_GridPos.x, m_GridPos.y) == TileType::Stair) {
+        // 階段確認へ移る時は、次入力による移動モーション継続を解除する。
+        ClearMoveRunHold();
+
         ConfirmWindow* con = scene ? scene->GetGameObject<ConfirmWindow>() : nullptr;
         if (!con) return;
 
@@ -308,6 +311,16 @@ bool Player::CanKeepRunAfterMoveInput()
 
 void Player::RecordMoveInputDuringMove()
 {
+    Vector2Int inputDir = GetDirectionalMoveInput();
+    if (inputDir.x == 0 && inputDir.y == 0) {
+        // 中断時に押されていた方向キーを離した後は、次の移動からRun継続を許可する。
+        m_BlockRunHoldUntilDirectionRelease = false;
+    }
+    if (m_BlockRunHoldUntilDirectionRelease) {
+        m_KeepRunAfterMove = false;
+        return;
+    }
+
     // 移動中の次入力が有効な移動なら、到着時にIdleを挟まずRunを維持する。
     m_KeepRunAfterMove = (m_DefaultAnim == "Idle" && CanKeepRunAfterMoveInput());
 }
@@ -321,7 +334,9 @@ std::string Player::GetMoveEndAnimation() const
 
 void Player::ClearMoveRunHold(bool playDefaultIfIdle)
 {
-    // 移動継続用のRunは次の移動へつなぐ時だけ使い、敵行動や被弾前には解除する。
+    // 中断時に方向キーが押されている場合は、一度離されるまでRun継続の再予約を防ぐ。
+    Vector2Int inputDir = GetDirectionalMoveInput();
+    m_BlockRunHoldUntilDirectionRelease = (inputDir.x != 0 || inputDir.y != 0);
     m_KeepRunAfterMove = false;
     if (playDefaultIfIdle && m_MoveState == MoveState::Idle && !m_IsActingAnimation) {
         PlayAnimation(m_DefaultAnim, 1.0f);

@@ -58,6 +58,8 @@ private:
     bool m_StairConfirmed = false;
     // 移動中に次の方向入力が入った時、1マス移動の切れ目でRunを維持する。
     bool m_KeepRunAfterMove = false;
+    // 演出や確認画面で中断された時、押下中の方向キーを離すまでRun継続を再予約しない。
+    bool m_BlockRunHoldUntilDirectionRelease = false;
     // 杖などで変化した行動速度を、プレイヤーターン単位で10ターン管理する。
     int m_TemporaryTurnSpeedTurns = 0;
     bool m_HasTemporaryTurnSpeed = false;
