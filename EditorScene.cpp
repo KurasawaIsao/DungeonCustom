@@ -14,6 +14,8 @@ void EditorScene::Init()
 
     cam->SetPivot(Vector3(0.0f, 0.0f, 0.0f));
 
+    // テストプレイ中の階層テーマを引き継がず、エディタでは常にデフォルトテーマを表示する。
+    MapRenderer::SetTheme("default");
     AddGameObject<MapRenderer>(1)->SetEditor(true);
     AddGameObject<MapEditor>(0);
     m_BGM = new Audio;

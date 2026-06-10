@@ -420,6 +420,11 @@ bool Unit::ConsumeActionBlockAfterStatusClear()
 }
 void Unit::SetStatus(Status effect, int duration)
 {
+    if (Player* player = dynamic_cast<Player*>(this)) {
+        // 敵特技などで状態異常を受けた時は、移動入力によるRun継続を残さない。
+        player->ClearMoveRunHold();
+    }
+
     if (m_Status == effect) {
         switch (effect) {
         case Status::Confusion:
@@ -471,6 +476,8 @@ void Unit::SetStatus(Status effect, int duration)
         StopLoopEffect();
         EffectManager::PlaySE("Asset\\Sound\\Paralysis.wav");
         MessageLog::Instance().AddMessage(m_Name + u8"は動けなくなった。");
+        // かなしばり中であることが分かるよう、解除されるまで専用エフェクトを繰り返し表示する。
+        m_LoopEffect = EffectManager::CreateLoopEffect(m_Position, "Asset\\Texture\\Paralysis.png");
         m_Status = effect;
         m_StatusDuration = duration;
         break;

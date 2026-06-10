@@ -278,22 +278,6 @@ int ShopUI::FinalizePendingShopSales(Player* player)
     return total;
 }
 
-void ShopUI::SellInventoryItem(Player* player, int inventoryIndex)
-{
-    if (!player) return;
-    auto& items = player->GetItems();
-    if (inventoryIndex < 0 || inventoryIndex >= (int)items.size()) return;
-
-    const ItemInstance& inst = items[inventoryIndex].instance;
-    const int sellPrice = GetItemSellPrice(inst);
-    const std::string name = inst.GetDisplayName();
-
-    player->AddGold(sellPrice);
-    player->RemoveItemAt(inventoryIndex);
-    MessageLog::Instance().AddMessage(name + u8"を売った。" + std::to_string(sellPrice) + u8"G手に入れた。");
-    player->EndTurn();
-}
-
 void ShopUI::StartTheftMode()
 {
     MessageLog::Instance().AddMessage(u8"ドロボー！！！");

@@ -17,7 +17,7 @@ void Trap::Init()
     Renderer::InitCommonShader();
     m_Rotation = Vector3{ 0.0f,0.0f,0.0f };
     m_Scale = { 1.0f, 1.0f, 1.0f };
-    m_IsVisible = true;
+    m_IsVisible = false;
 }
 
 void Trap::Update()
@@ -116,6 +116,9 @@ bool Trap::ActivateByItem()
 }
 void Trap::OnStepped(Player* player)
 {
+    // 罠の作動・不発演出へ入る時は、次入力による移動モーション継続を無効にする。
+    if (player) player->ClearMoveRunHold();
+
     const int currentTurn = TurnManager::Instance() ? TurnManager::Instance()->GetTurnCount() : 0;
     if (m_LastActivatedTurn == currentTurn) return;
 
