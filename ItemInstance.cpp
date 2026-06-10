@@ -200,31 +200,16 @@ void ItemInstance::OnBreak(const Vector2Int& center)
     std::vector<ItemInstance> itemsToDrop = std::move(m_Pot->items);
     m_Pot->items.clear();
 
-    MapData* map = MapManager::Instance()->GetCurrentMap();
-    static const Vector2Int offsets[] = {
-        {0,0},{1,0},{-1,0},{0,1},{0,-1},{1,1},{-1,1},{1,-1},{-1,-1}
-    };
+    Scene* scene = Manager::GetScene();
+    if (!scene) return;
 
     for (auto& inst : itemsToDrop)
     {
-        Vector2Int dropPos = center;
-        for (int i = 0; i < (int)std::size(offsets); i++)
+        // 直接床へ配置せず、共通の着地処理を通して罠起動と再探索を行う。
+        FlyingObject* droppedItem = scene->AddGameObject<FlyingObject>(1);
+        if (droppedItem)
         {
-            Vector2Int p = center + offsets[i];
-            if (map->IsTileFree(p)) {
-                dropPos = p;
-                break;
-            }
-        }
-
-        Item* newItem = Manager::GetScene()->AddGameObject<Item>(1);
-        if (newItem)
-        {
-            newItem->SetInstance(std::move(inst));
-            newItem->SetupFromInstance();
-            newItem->SetGridPos(dropPos);
-            newItem->SetPosition(Vector3(dropPos.x * 2.0f, 0.05f, dropPos.y * 2.0f));
-            map->AddMapObject(newItem, dropPos.x, dropPos.y);
+            droppedItem->DropItemFromPot(std::move(inst), center);
         }
     }
 }
