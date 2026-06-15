@@ -54,10 +54,10 @@ namespace
         {
             auto TryGrid = [&](int offsetX, int offsetY)
             {
+                //中心+落ちる範囲マス(2マスまで)
                 const Vector2Int candidate = center + Vector2Int(offsetX, offsetY);
                 if (std::find(checkedTrapGrids.begin(), checkedTrapGrids.end(), candidate) != checkedTrapGrids.end())
                     return false;
-                if (map->GetUnitAt(candidate.x, candidate.y)) return false;
 
                 MapObject* object = map->GetObjectAt(candidate);
                 if (dynamic_cast<Trap*>(object))
@@ -148,7 +148,8 @@ void FlyingObject::Draw()
     Renderer::SetCommonShader();
 
     XMMATRIX scale = XMMatrixScaling(m_Scale.x, m_Scale.y, m_Scale.z);
-    const float facingYaw = std::atan2((float)m_Dir.x, (float)m_Dir.y);
+    // 進行方向にモデル固有の向き補正を加え、矢の先端を飛翔方向へ合わせる。
+    const float facingYaw = std::atan2((float)m_Dir.x, (float)m_Dir.y) + m_FlightYawOffset;
     XMMATRIX rot = m_RotateItemInFlight
         ? XMMatrixRotationRollPitchYaw(m_ItemSpin, facingYaw, m_ItemSpin * 0.7f)
         : XMMatrixRotationRollPitchYaw(0.0f, facingYaw, 0.0f);
@@ -166,6 +167,7 @@ void FlyingObject::Fire(const std::string& modelPath, ItemInstance* sourceItem, 
     m_RotateItemInFlight = false;
     m_UseArcFlight = false;
     m_ItemSpin = 0.0f;
+    m_FlightYawOffset = 0.0f;
     m_Scale = { 0.5f, 0.5f, 0.5f };
     m_SourceEffect = nullptr;
     m_User = user;
@@ -187,6 +189,8 @@ void FlyingObject::FireItem(ItemInstance&& item, Unit* user,
     m_RotateItemInFlight = itemData->type != ItemType::Arrow;
     m_UseArcFlight = itemData->type == ItemType::Stone;
     m_ItemSpin = 0.0f;
+    // 矢モデルのみ補正
+    m_FlightYawOffset = itemData->type == ItemType::Arrow ? -XM_PIDIV4 * 5.0f : 0.0f;
     m_SourceEffect = nullptr;
     m_User = user;
     m_SourceType = EffectSourceType::Item;
@@ -213,6 +217,7 @@ void FlyingObject::DropItemFromPot(ItemInstance&& item, const Vector2Int& center
     m_RotateItemInFlight = itemData->type != ItemType::Arrow;
     m_UseArcFlight = false;
     m_ItemSpin = 0.0f;
+    m_FlightYawOffset = 0.0f;
     m_HitWall = false;
     m_TargetGrid = centerGrid;
     m_Position = Vector3(static_cast<float>(centerGrid.x * TILE_DISTANCE), 0.5f,
@@ -234,6 +239,7 @@ void FlyingObject::FireEffect(const std::string& modelPath, EffectBase* sourceEf
     m_RotateItemInFlight = false;
     m_UseArcFlight = false;
     m_ItemSpin = 0.0f;
+    m_FlightYawOffset = 0.0f;
     m_Scale = { 0.5f, 0.5f, 0.5f };
     m_SourceEffect = sourceEffect;
     m_User = user;
@@ -250,6 +256,8 @@ void FlyingObject::FireEffectToTarget(const std::string& modelPath, EffectBase* 
     m_RotateItemInFlight = false;
     m_UseArcFlight = false;
     m_ItemSpin = 0.0f;
+    // 飛び道具エフェクトのモデルにも、矢と同じ向き補正を適用する。
+    m_FlightYawOffset = -XM_PIDIV4 * 5.0f;
     m_Scale = { 0.5f, 0.5f, 0.5f };
     m_SourceEffect = sourceEffect;
     m_User = user;
