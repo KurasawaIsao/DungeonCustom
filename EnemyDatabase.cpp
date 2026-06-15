@@ -425,7 +425,7 @@ void EnemyDatabase::Init()
     SetCombatAnimationNotifies(m_Data["PypeDevil"],  0.40f, 0.58f);
     SetCombatAnimationNotifies(m_Data["BlueJoker"],  0.40f, 0.58f);
     SetCombatAnimationNotifies(m_Data["Tormas"],     0.40f, 0.58f);
-    SetCombatAnimationNotifies(m_Data["Blood"],      0.58f, 0.58f);
+    SetCombatAnimationNotifies(m_Data["Blood"],      0.40f, 0.58f);
     SetCombatAnimationNotifies(m_Data["Armor"],      0.40f, 0.00f);
     SetCombatAnimationNotifies(m_Data["Dark"],       0.40f, 0.00f);
     SetCombatAnimationNotifies(m_Data["CurseFish"],  0.55f, 0.00f);
