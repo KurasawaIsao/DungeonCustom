@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <cstddef>
+#include <vector>
 #include "SkillData.h"
 #include "MapData.h"
 
@@ -49,13 +50,15 @@ struct StatModifierState {
     int maxStage = 0;
     float ratePerStage = 0.25f;
 };
+
+
 // Unit はプレイヤー/敵/仲間に共通する「盤面上の戦闘ユニット」の土台。
-// HP/能力値/状態異常/ターン予算/グリッド移動/アニメーションなど、勢力に依存しない処理だけを持つ。
-// どの相手を敵とみなすか、どんな AI 方針で動くか、死亡時に何を残すかは派生クラス側の責務。
+// HP/能力値/状態異常/ターン予算/グリッド移動など、ゲーム上のユニット状態を管理する。
+// アニメーションの再生状態とNotify判定はAnimationModelへ分離し、Unitはゲーム処理との接続だけを行う。
 class Unit : public GameObject
 {
 private:
-    static bool s_SkipMoveAnimation;
+    static bool m_SkipMoveAnimation;
 
 protected:
     ID3D11VertexShader* m_VertexShader;
@@ -71,17 +74,7 @@ protected:
     void DrawToonModel(XMMATRIX world);
 
 
-    std::string m_AnimNow = "Idle";
-    std::string m_AnimNext = "Idle";
-
-
-    float m_Frame = 0.0f;
-
-    float m_AnimSpeedCnt = 0.0f;
-    float m_AnimSpeed = 0.5f;
-    float m_AnimSpeedCntMax = 1.0f; // 1.0 = 毎フレーム進む
-    float m_AnimationBlend = 0.0f;
-
+    // アニメーションの再生状態はAnimationModel側が所有し、Unitはモデル参照だけを保持する。
     class AnimationModel* m_AnimationModel = nullptr;
 
     MoveState m_MoveState = MoveState::Idle;
@@ -104,7 +97,9 @@ protected:
     // 移動完了後に戻すアニメーションを派生クラス側で調整できるようにする。
     virtual std::string GetMoveEndAnimation() const;
     // 攻撃や被ダメージなど、移動以外の単発アニメーション開始時に派生クラスへ通知する。
-    virtual void OnTriggerAnimationStarted(const std::string& animName) {}
+    virtual void OnTriggerAnimationStarted(const std::string&) {}
+    // AnimationModelから通知を受け、派生クラス側で攻撃判定やSEなどのゲーム処理へ変換する。
+    virtual void OnAnimationNotify(const std::string&, const std::string&) {}
 
 protected:
     std::string m_Name = u8"ユニット";
@@ -169,9 +164,8 @@ protected:
     bool m_IsAnimatingMove = false; 
     bool m_IsVisible = true;//透明状態だとかに使えるかも？
     bool m_IsActingAnimation = false; // 演出中フラグ
-    float yoffset;
+    float m_YOffset;
 
-    bool m_IsAnimLooping = true; // 現在のアニメーションがループか単発か
     std::string m_DefaultAnim = "Idle"; 
 
 public:
@@ -183,15 +177,6 @@ public:
     }
 
     virtual void UpdateUnit() = 0;  
-
-    void ResetTurn()
-    {
-        m_HasActed = false;
-        m_ActionBudget = 1;
-        m_MoveBudget = 1;
-        m_ActionPhaseChecked = false;
-        m_MovePhaseChecked = false;
-    }
   
     virtual void EndTurn()
     {
@@ -258,7 +243,6 @@ public:
     void SetTurnSpeed(TurnSpeed speed) { m_ActionSpeed = speed; m_MoveSpeed = speed; }
     void SetActionSpeed(TurnSpeed speed) { m_ActionSpeed = speed; }
     void SetMoveSpeed(TurnSpeed speed) { m_MoveSpeed = speed; }
-    void SetBaseTurnSpeed(TurnSpeed speed) { m_BaseActionSpeed = speed; m_BaseMoveSpeed = speed; SetTurnSpeed(speed); }
     void SetBaseActionSpeed(TurnSpeed speed) { m_BaseActionSpeed = speed; m_ActionSpeed = speed; }
     void SetBaseMoveSpeed(TurnSpeed speed) { m_BaseMoveSpeed = speed; m_MoveSpeed = speed; }
     void ResetTurnSpeedToBase() { SetTurnSpeed(m_BaseActionSpeed); m_MoveSpeed = m_BaseMoveSpeed; m_ActionEnergy = 0; m_MoveEnergy = 0; }
@@ -270,16 +254,17 @@ public:
     bool IsActionPhaseChecked() const { return m_ActionPhaseChecked; }
     bool IsMovePhaseChecked() const { return m_MovePhaseChecked; }
 
-    void MarkActionPhaseChecked() { m_ActionPhaseChecked = true; }
-    void MarkMovePhaseChecked() { m_MovePhaseChecked = true; }
-    void ResetActionPhaseCheck() { m_ActionPhaseChecked = false; }
-    void ResetMovePhaseCheck() { m_MovePhaseChecked = false; }
+    // 各フェーズで判定済みかどうかを明示的に設定する。
+    void SetActionPhaseChecked(bool checked) { m_ActionPhaseChecked = checked; }
+    void SetMovePhaseChecked(bool checked) { m_MovePhaseChecked = checked; }
+
 
 	// ターンの消費タイプを設定する。ここの設定は各敵AIが個別に判断し、
     // 倍速で移動し攻撃する敵がいない場合はMove、といった運用法
     void SetTurnConsumeType(TurnConsumeType type) { m_TurnConsumeType = type; }
-    void ReserveActionConsumedOnNextTurn() { m_ConsumeActionOnNextTurn = true; }
-    void ReserveMoveConsumedOnNextTurn() { m_ConsumeMoveOnNextTurn = true; }
+    // 次ターン開始時に行動または移動を消費するか設定する。
+    void SetConsumeActionOnNextTurn(bool consume) { m_ConsumeActionOnNextTurn = consume; }
+    void SetConsumeMoveOnNextTurn(bool consume) { m_ConsumeMoveOnNextTurn = consume; }
 
 
     // ===== 座標管理 =====
@@ -288,7 +273,8 @@ public:
     bool RepairInvalidGridPos(const char* context);
     const Vector2Int& GetGridPos() const { return m_GridPos; }
     const Vector2Int& GetMoveStartGridPos() const { return m_MoveStartGridPos; }
-    void SetCurrentDir(const Vector2Int& g) { m_CurrentDir = g; }
+    // 現在の移動方向は、グリッド上の1マス方向へ正規化して保持する。
+    void SetCurrentDir(const Vector2Int& g) { m_CurrentDir = g.normalized(); }
 
     void UpdateFacingRotation();
     void LookAt(const Vector2Int& targetGrid);
@@ -311,33 +297,21 @@ public:
 
     bool IsDead() const { return m_HP <= 0; }
     int GetHP() const { return m_HP; }
-    void SetHP(int value) { m_HP = value; }
     virtual int GetDEF() const { return ApplyStatModifierToValue(StatModifierType::Defense, m_DEF); }
-    virtual void SetDEF(int value) { m_DEF = value; }
     virtual int GetATK() const { return ApplyStatModifierToValue(StatModifierType::Attack, m_ATK); }
-    virtual void SetATK(int value) { m_ATK = value; }
     int GetACC() const { return m_ACC; }
-    void SetACC(int value) { m_ACC = value; }
     int GetEVD() const { return m_EVD; }
-    void SetEVD(int value) { m_EVD = value; }
 
     int GetMaxHP() const { return m_MaxHP; }
     void SetMaxHP(int value) { m_MaxHP = value; }
     int GetMaxDEF() const { return m_MaxDEF; }
-    void SetMaxDEF(int value) { m_MaxDEF = value; }
     int GetMaxATK() const { return m_MaxATK; }
-    void SetMaxATK(int value) { m_MaxATK = value; }
     int GetMaxACC() const { return m_MaxACC; }
-    void SetMaxACC(int value) { m_MaxACC = value; }
     int GetMaxEVD() const { return m_MaxEVD; }
-    void SetMaxEVD(int value) { m_MaxEVD = value; }
 
     const std::vector<Skill>& GetSkills() const { return m_Skills; }
-    void AddSkill(const Skill& skill) { m_Skills.push_back(skill); }
 
     int GetLevel() const { return m_Level; }
-    int GetExp() const { return m_Exp; }
-    float GetYoffset() { return yoffset; }
 
     virtual void AddExp(int value)
     {
@@ -411,7 +385,7 @@ public:
     // ===== 移動補助 =====
     bool IsDiagonalMoveBlocked(Vector2Int cur, Vector2Int dir, MapData* map);
 
-    void PlayAnimation(const std::string& animName, float m_AnimSpeed);
+    void PlayAnimation(const std::string& animName, float animSpeed, bool useBlend = true);
     void UpdateAnimation();
     void SetTriggerAnimation(const std::string& animName, float speed = 1.0f, bool waitForAnimation = true);
 
@@ -419,22 +393,14 @@ public:
     void StartKnockback(const Vector2Int& target, int impactDamage = 0, Unit* attacker = nullptr, Unit* collisionUnit = nullptr, int collisionDamage = 0);
     void StartSummonAppear(float duration = 0.45f);
     void StartWarp(const Vector2Int& targetGrid);
-    static void SetSkipMoveAnimation(bool skip) { s_SkipMoveAnimation = skip; }
-    static bool IsSkipMoveAnimation() { return s_SkipMoveAnimation; }
+    static void SetSkipMoveAnimation(bool skip) { m_SkipMoveAnimation = skip; }
+    static bool IsSkipMoveAnimation() { return m_SkipMoveAnimation; }
 
     void UpdateLerpMove();
-    MoveState GetMoveState(){ return m_MoveState; };
     bool IsAnimatingMove() const { return m_IsAnimatingMove; }
     bool IsActing() const { return m_IsActingAnimation; }
+	//　戦闘演出を表示するべきか。攻撃対象が視界内にいるなど、プレイヤーに見える状況ならtrueを返す。
     bool ShouldShowCombatVisual(Unit* other = nullptr) const;
-
-    //ターン終了時の行動を分けたい場合にvirtual
-    virtual void OnMoveFinished()
-    {
-        PlayAnimation("Idle", 1.0f);
-        m_MoveState = MoveState::Idle;
-        EndTurn();
-    }
     virtual void Attack() = 0;
 
     //行動用API

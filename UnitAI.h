@@ -15,10 +15,10 @@ public:
     virtual void Update(Unit& self, MapData* map) = 0;
 
     // AIを切り替えた瞬間に必要な初期化がある場合だけ派生先で使う。
-    virtual void OnEnter(Unit& self, MapData* map) {}
+    virtual void OnEnter(Unit&, MapData*) {}
 
     // AIを抜ける瞬間に経路キャッシュなどを片付けたい場合だけ派生先で使う。
-    virtual void OnExit(Unit& self, MapData* map) {}
+    virtual void OnExit(Unit&, MapData*) {}
 
    
     // 視界・隣接・経路探索など、複数AIで使う共通判定。

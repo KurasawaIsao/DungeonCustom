@@ -45,7 +45,4 @@ public:
     // 外部（シリアライザ等）からのアクセス用
     const std::vector<EditorPlacedObject>& GetPlacedObjects() const { return m_PlacedObjects; }
     void ClearAllObjects(MapData* map);
-
-    // JSON読み込み時などに外部から流し込む用
-    void AddPlacedObjectDirectly(const EditorPlacedObject& obj) { m_PlacedObjects.push_back(obj); }
 };

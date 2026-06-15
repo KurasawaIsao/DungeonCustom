@@ -591,14 +591,6 @@ void MapEditor::DrawTestPlayControls()
         StartTestPlay();
     }
 }
-std::string MapEditor::GetTestMapPath() const
-{
-    std::string fileName = m_MapFileName;
-    if (fileName.empty()) fileName = "map01.json";
-    if (fileName.find(".json") == std::string::npos) fileName += ".json";
-    return "DungeonData\\EdittedMapData\\" + fileName;
-}
-
 void MapEditor::StartTestPlay()
 {
     fs::create_directories("DungeonData\\DungeonContext");
@@ -610,10 +602,10 @@ void MapEditor::StartTestPlay()
     // テストプレイを繰り返す前に、前回のダンジョンUnit参照を確実に破棄する。
     UnitManager::Instance()->ClearSceneReferences();
 
-    DataReference::NextDungeonId = dungeonPath.substr(0, dungeonPath.find_last_of('.'));
-    DataReference::IsEditorTestPlay = true;
-    DataReference::RandomizeEditorTestPlaySeed = m_RandomizeTestPlaySeed;
-    DataReference::EditorTestPlaySeedSalt = m_RandomizeTestPlaySeed
+    DataReference::m_NextDungeonId = dungeonPath.substr(0, dungeonPath.find_last_of('.'));
+    DataReference::m_IsEditorTestPlay = true;
+    DataReference::m_RandomizeEditorTestPlaySeed = m_RandomizeTestPlaySeed;
+    DataReference::m_EditorTestPlaySeedSalt = m_RandomizeTestPlaySeed
         ? static_cast<int>(std::time(nullptr) ^ (std::clock() << 1))
         : 0;
     Manager::SetScene<DungeonScene>();

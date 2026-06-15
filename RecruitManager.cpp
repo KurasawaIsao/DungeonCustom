@@ -37,7 +37,7 @@ void RecruitManager::ExecuteRecruit(Enemy* target, const std::string& customName
     if (player) {
         player->SetInputEnable(true);
     }
-    TurnManager::Instance()->ResumeTurnProgression();
+    TurnManager::Instance()->SetTurnProgressionPaused(false);
 }
 
 void RecruitManager::DeclineRecruit(Enemy* target) {
@@ -51,5 +51,5 @@ void RecruitManager::DeclineRecruit(Enemy* target) {
 
     auto* player = Manager::GetScene()->GetGameObject<Player>();
     if (player) player->SetInputEnable(true);
-    TurnManager::Instance()->ResumeTurnProgression();
+    TurnManager::Instance()->SetTurnProgressionPaused(false);
 }

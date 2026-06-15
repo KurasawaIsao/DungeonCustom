@@ -21,9 +21,8 @@ namespace
 {
     Vector2Int NormalizeFlightDir(const Vector2Int& dir)
     {
-        Vector2Int result(
-            (dir.x > 0) ? 1 : (dir.x < 0 ? -1 : 0),
-            (dir.y > 0) ? 1 : (dir.y < 0 ? -1 : 0));
+        // 飛翔方向の各成分をグリッド上の1マス方向へ揃える。
+        Vector2Int result = dir.normalized();
 
         if (result.x == 0 && result.y == 0)
             result = { 0, 1 };
@@ -561,7 +560,8 @@ void FlyingObject::StartTrapWait(MapData* map, const Vector2Int& grid)
         m_CheckedTrapGrids.push_back(grid);
     }
 
-    if (!trap->ActivateByItem())
+    // 罠効果が落下アイテムを変更できるよう、飛翔中の実体を渡して作動させる。
+    if (!trap->ActivateByItem(&(*m_FlyingItem)))
     {
         ContinueDropSearch(map);
         return;

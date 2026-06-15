@@ -326,9 +326,3 @@ const std::vector<DungeonThemeData>& DungeonThemeDatabase::GetAll()
     EnsureLoaded();
     return g_Themes;
 }
-
-const std::vector<DungeonTileTypeSetting>& DungeonThemeDatabase::GetTileTypes()
-{
-    EnsureLoaded();
-    return g_TileTypes;
-}

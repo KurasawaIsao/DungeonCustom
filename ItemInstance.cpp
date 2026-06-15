@@ -280,13 +280,14 @@ std::string ItemInstance::GetDisplayName() const
     if ((m_Identify == IdentifyState::Identified || info.isIdentified) &&
         (m_Data->type == ItemType::Weapon || m_Data->type == ItemType::Shield))
     {
-        if (m_PlusValue >= 0) {
+        if (m_PlusValue > 0) {
             displayName += "+" + std::to_string(m_PlusValue);
         }
 		else  if (m_PlusValue < 0)
         {
             displayName += std::to_string(m_PlusValue); // •‰‚Ì”‚Í - ‚ªŽ©“®‚Å‚Â‚­
         }
+        
     }
 
     // šâ‚Ì—e—Ê

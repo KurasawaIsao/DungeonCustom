@@ -6,7 +6,7 @@
 #include "MapManager.h"
 #include "Ally.h"
 #include <algorithm>
-UnitManager* UnitManager::instance = nullptr;
+UnitManager* UnitManager::m_Instance = nullptr;
 
 // UnitManager は Scene に散らばる Player/Enemy/Ally への参照をまとめる検索窓口。
 // ターン処理、攻撃判定、マップ占有判定はここを通すことで、各クラスが Scene 全体を直接探し回らずに済む。
@@ -14,7 +14,7 @@ UnitManager* UnitManager::instance = nullptr;
 void UnitManager::ClearAllEnemies()
 {
     // 階層遷移時は敵だけを破棄予約し、Scene の通常 Uninit とは独立してフロア単位で片付ける。
-    for (Enemy* e : enemies)
+    for (Enemy* e : m_Enemies)
     {
         if (e)
         {
@@ -23,12 +23,12 @@ void UnitManager::ClearAllEnemies()
             e = nullptr;
         }
     }
-    enemies.clear();
+    m_Enemies.clear();
 }
 
 void UnitManager::ClearAllAllies()
 {
-    for (Ally* a : allies)
+    for (Ally* a : m_Allies)
     {
         if (a)
         {
@@ -37,35 +37,24 @@ void UnitManager::ClearAllAllies()
             a = nullptr;
         }
     }
-    allies.clear();
+    m_Allies.clear();
 }
 
 void UnitManager::ClearSceneReferences()
 {
     // Sceneをまたいで破棄済みUnitを参照しないよう、テストプレイ開始/終了時に登録だけを必ず空にする。
-    player = nullptr;
-    enemies.clear();
-    allies.clear();
+    m_Player = nullptr;
+    m_Enemies.clear();
+    m_Allies.clear();
 }
 
-//指定のマスに敵がいるかどうか
-bool UnitManager::HasEnemy(const Vector2Int& pos) const
-{
-    // プレイヤーの移動先チェックなど、敵だけを障害物として見たい時に使う。
-    for (auto* e : enemies)
-    {
-        if (e && e->GetGridPos() == pos)
-            return true;
-    }
-    return false;
-}
 Unit* UnitManager::GetUnitAt(const Vector2Int& pos) const
 {
     // 攻撃・移動・投擲の共通当たり判定。
     // 優先順はプレイヤー -> 仲間 -> 敵。通常は同じマスに複数 Unit がいない前提。
-    if (player && player->GetGridPos() == pos) return player;
-    for (auto* a : allies) if (a && a->GetGridPos() == pos) return a;
-    for (auto* e : enemies) if (e && e->GetGridPos() == pos) return e;
+    if (m_Player && m_Player->GetGridPos() == pos) return m_Player;
+    for (auto* a : m_Allies) if (a && a->GetGridPos() == pos) return a;
+    for (auto* e : m_Enemies) if (e && e->GetGridPos() == pos) return e;
     return nullptr;
 }
 
@@ -74,31 +63,31 @@ void UnitManager::RegisterEnemy(Enemy* enemy)
     // GeneraterPlacer が敵を Scene に追加した直後に登録する。
     // TurnManager はこの配列を使って敵ターンを回す。
     if (!enemy) return;
-    if (std::find(enemies.begin(), enemies.end(), enemy) != enemies.end()) return;
-    enemies.push_back(enemy);
+    if (std::find(m_Enemies.begin(), m_Enemies.end(), enemy) != m_Enemies.end()) return;
+    m_Enemies.push_back(enemy);
 }
 void UnitManager::RemoveEnemy(Enemy* enemy)
 {
     if (!enemy) return;
-    enemies.erase(
-        std::remove(enemies.begin(), enemies.end(), enemy),
-        enemies.end()
+    m_Enemies.erase(
+        std::remove(m_Enemies.begin(), m_Enemies.end(), enemy),
+        m_Enemies.end()
     );
 }
 
 void UnitManager::RegisterAlly(Ally* ally)
 {
     if (!ally) return;
-    if (std::find(allies.begin(), allies.end(), ally) != allies.end()) return;
-    allies.push_back(ally);
+    if (std::find(m_Allies.begin(), m_Allies.end(), ally) != m_Allies.end()) return;
+    m_Allies.push_back(ally);
 }
 void UnitManager::RemoveAlly(Ally* ally)
 {
     if (!ally) return;
 
-    allies.erase(
-        std::remove(allies.begin(), allies.end(), ally),
-        allies.end()
+    m_Allies.erase(
+        std::remove(m_Allies.begin(), m_Allies.end(), ally),
+        m_Allies.end()
     );
 }
 std::vector<Enemy*> UnitManager::GetAdjacentEnemies(Unit& self) const
@@ -107,7 +96,7 @@ std::vector<Enemy*> UnitManager::GetAdjacentEnemies(Unit& self) const
     Vector2Int myPos = self.GetGridPos();
     MapData* map = MapManager::Instance()->GetCurrentMap();
 
-    for (auto* e : enemies) {
+    for (auto* e : m_Enemies) {
         if (!e) continue;
 
         Vector2Int eP = e->GetGridPos();
@@ -133,14 +122,14 @@ Unit* UnitManager::GetNearestHostileToEnemy(const Vector2Int& pos) const
     float minDist = 1e9f;
 
     // プレイヤーとの距離をチェック
-    if (player) {
-        float dist = Vector2Int::Distance(pos, player->GetGridPos());
+    if (m_Player) {
+        float dist = Vector2Int::Distance(pos, m_Player->GetGridPos());
         minDist = dist;
-        nearest = player;
+        nearest = m_Player;
     }
 
     // 全ての味方(Ally)との距離をチェックし、より近い方がいれば更新
-    for (auto* a : allies) {
+    for (auto* a : m_Allies) {
         if (!a) continue;
         float dist = Vector2Int::Distance(pos, a->GetGridPos());
         if (dist < minDist) {

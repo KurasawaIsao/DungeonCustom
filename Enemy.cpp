@@ -28,9 +28,10 @@
 #include "ItemDataBase.h"
 #include "Item.h"
 #include "UnitMovementPlanner.h"
+#include "EffectTargeting.h"
 // Enemy は敵ユニット本体。
 // TurnManager から UpdateActionPhase と UpdateMovePhase が呼ばれ、
-// currentAI(巡回/追跡/逃走など)を使って「攻撃・特技」と「移動」を分けて実行する。
+// m_CurrentAI(巡回/追跡/逃走など)を使って「攻撃・特技」と「移動」を分けて実行する。
 
 namespace
 {
@@ -184,14 +185,6 @@ Enemy::~Enemy()
 void Enemy::Init()
 {   
 
-    m_AnimNow = "Idle";
-    m_AnimNext = "Idle";
-
-    m_AnimSpeed = 0.5f;
-    m_AnimSpeedCnt = 0.0f;
-    m_AnimSpeedCntMax = 1.0f; 
-    m_Frame = 0;
-
     m_Scale = { 0.5f,0.5f,0.5f };
 
     InitToonShader();
@@ -242,6 +235,7 @@ void Enemy::Draw()
 void Enemy::Uninit()
 {
 	//MapManager及びUnitManagerから自分を削除してから、モデルやエフェクトを解放する。
+    ClearPendingCombatActions();
     UnitManager::Instance()->RemoveEnemy(this);
     StopLoopEffect();
 
@@ -263,7 +257,7 @@ void Enemy::Update()
         UpdateAnimation();
     }
 
-    if (m_IsActingAnimation && (m_IsAnimLooping || IsAnimationFinished())) {
+    if (m_IsActingAnimation && (!m_AnimationModel || !m_AnimationModel->IsOneShotPlaying())) {
         m_IsActingAnimation = false;
     }
    
@@ -284,7 +278,7 @@ void Enemy::Update()
     }
     Unit* visibleTarget = nullptr;
     const bool patrolFacing = (m_Data.aiType == EnemyAIType::Patrol ||
-        (m_Data.aiType == EnemyAIType::PatrolAndChase && state == EnemyState::Patrol));
+        (m_Data.aiType == EnemyAIType::PatrolAndChase && m_State == EnemyState::Patrol));
     if (patrolFacing) {
         visibleTarget = FindVisibleNonPlayerHostileTarget();
     }
@@ -294,7 +288,7 @@ void Enemy::Update()
     if (visibleTarget) {
         Vector2Int diff = visibleTarget->GetGridPos() - GetGridPos();
         if (diff.x != 0 || diff.y != 0) {
-            m_FacingDir = diff;
+            m_FacingDir = diff.normalized();
         }
     }
     // 決定した m_FacingDir に基づいてモデルの向きを更新する。
@@ -317,9 +311,9 @@ void Enemy::UpdateActionPhase()
 {
     // 攻撃・特技だけを判定する。
     // 移動までここで行うと倍速/三倍速の予算管理が崩れるため、移動は UpdateMovePhase に任せる。
-    if (IsDead || IsActionPhaseChecked()) return;
+    if (m_IsDead || IsActionPhaseChecked()) return;
     RepairInvalidGridPos("Enemy::UpdateActionPhase");
-    MarkActionPhaseChecked();
+    SetActionPhaseChecked(true);
     SetTurnConsumeType(TurnConsumeType::Action);
     if (!CanActThisTurn()) return;
 
@@ -366,7 +360,7 @@ void Enemy::UpdateActionPhase()
     }
 
     Unit* target = nullptr;
-    if (auto* berserk = dynamic_cast<BerserkAI*>(currentAI)) {
+    if (auto* berserk = dynamic_cast<BerserkAI*>(m_CurrentAI)) {
         target = berserk->FindTarget(*this, map);
     }
     else if (m_Data.aiType != EnemyAIType::Passive && m_Data.aiType != EnemyAIType::RunAway) {
@@ -374,22 +368,22 @@ void Enemy::UpdateActionPhase()
     }
     if (!target) {
         // 索敵範囲から外れた時点で追跡状態を終わらせ、後続の移動フェーズは現在位置から巡回を選び直す。
-        if (state == EnemyState::Chase && UsesHostileRecognitionState(m_Data.aiType)) {
+        if (m_State == EnemyState::Chase && UsesHostileRecognitionState(m_Data.aiType)) {
             ReturnToPatrolFromCurrentPos();
         }
         ConsumeAllActions();
         return;
     }
-    const bool isChaseAI = dynamic_cast<ChaseAI*>(currentAI) != nullptr;
+    const bool isChaseAI = dynamic_cast<ChaseAI*>(m_CurrentAI) != nullptr;
     const bool isChaseAdjacent =
-        (isChaseAI && currentAI && currentAI->IsAdjacent(*this, target));
+        (isChaseAI && m_CurrentAI && m_CurrentAI->IsAdjacent(*this, target));
     const bool isKeepDistanceAdjacent =
-        (m_Data.aiType == EnemyAIType::KeepDistance && currentAI && currentAI->IsAdjacent(*this, target));
-    const bool canAttackTarget = currentAI && currentAI->IsAttackAdjacent(*this, target, map);
+        (m_Data.aiType == EnemyAIType::KeepDistance && m_CurrentAI && m_CurrentAI->IsAdjacent(*this, target));
+    const bool canAttackTarget = m_CurrentAI && m_CurrentAI->IsAttackAdjacent(*this, target, map);
 
     // 行動フェーズでは、特技または通常攻撃だけを行う。移動は後続の移動フェーズに回す。
     if (canAttackTarget) {
-        if (auto* whim = dynamic_cast<WhimAI*>(currentAI)) {
+        if (auto* whim = dynamic_cast<WhimAI*>(m_CurrentAI)) {
             if (!whim->ShouldAttackAdjacent()) {
                 ConsumeAction();
                 ConsumeAllMoves();
@@ -398,13 +392,13 @@ void Enemy::UpdateActionPhase()
         }
     }
 
-    if (currentAI && currentAI->ExecuteSkill(*this, target)) {
+    if (m_CurrentAI && m_CurrentAI->ExecuteSkill(*this, target)) {
         if (isKeepDistanceAdjacent || isChaseAdjacent) ConsumeAllMoves();
         EndTurn();
         if (!CanActThisTurn()) ConsumeAllMoves();
         return;
     }
-    if (m_Data.aiType == EnemyAIType::KeepDistance && currentAI && !currentAI->IsAdjacent(*this, target)) {
+    if (m_Data.aiType == EnemyAIType::KeepDistance && m_CurrentAI && !m_CurrentAI->IsAdjacent(*this, target)) {
         ConsumeAction();
         return;
     }
@@ -426,9 +420,10 @@ void Enemy::UpdateMovePhase()
 {
     // 移動だけを判定する。
     // AI ごとに目標選択は異なるが、予算消費と移動失敗時の扱いはここで統一する。
-    if (IsDead || IsMovePhaseChecked() || IsAnimatingMove()) return;
+    if (m_IsDead || IsMovePhaseChecked() || IsAnimatingMove()) return;
     RepairInvalidGridPos("Enemy::UpdateMovePhase");
-    MarkMovePhaseChecked();
+
+    SetMovePhaseChecked(true);
     SetTurnConsumeType(TurnConsumeType::Move);
     if (!CanMoveThisTurn()) return;
 
@@ -455,12 +450,12 @@ void Enemy::UpdateMovePhase()
     int moveBudgetBefore = GetMoveBudget();
     Vector2Int oldPos = GetGridPos();
 
-    if (auto* chase = dynamic_cast<ChaseAI*>(currentAI)) {
+    if (auto* chase = dynamic_cast<ChaseAI*>(m_CurrentAI)) {
         Unit* target = FindVisibleHostileTarget("UpdateMovePhase:Chase");
         if (!target) {
             ReturnToPatrolFromCurrentPos();
             // 見失ったターンも停止せず、現在位置から巡回ルートを選び直す。
-            if (currentAI) currentAI->Update(*this, map);
+            if (m_CurrentAI) m_CurrentAI->Update(*this, map);
         }
         else {
             UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, target, map, *chase, 3, 3, true);
@@ -468,34 +463,34 @@ void Enemy::UpdateMovePhase()
             // 見失い判定は行動開始時にまとめる。移動直後に部屋/通路の基準を切り替えると、入口や角で不自然に追跡が切れやすい。
         }
     }
-    else if (auto* keep = dynamic_cast<KeepDistAI*>(currentAI)) {
+    else if (auto* keep = dynamic_cast<KeepDistAI*>(m_CurrentAI)) {
         Unit* target = FindVisibleHostileTarget("UpdateMovePhase:KeepDistance");
         keep->UpdateWithTarget(*this, target, map);
     }
-    else if (auto* runAway = dynamic_cast<RunAwayAI*>(currentAI)) {
+    else if (auto* runAway = dynamic_cast<RunAwayAI*>(m_CurrentAI)) {
         Unit* target = FindVisibleHostileTarget("UpdateMovePhase:RunAway");
         runAway->MoveAwayFromTarget(*this, target, nullptr, map);
     }
-    else if (auto* berserk = dynamic_cast<BerserkAI*>(currentAI)) {
+    else if (auto* berserk = dynamic_cast<BerserkAI*>(m_CurrentAI)) {
         Unit* target = berserk->FindTarget(*this, map);
-        if (target && currentAI->IsAdjacent(*this, target)) {
+        if (target && m_CurrentAI->IsAdjacent(*this, target)) {
             ConsumeAllMoves();
         }
-        else if (currentAI) {
-            currentAI->Update(*this, map);
+        else if (m_CurrentAI) {
+            m_CurrentAI->Update(*this, map);
         }
     }
-    else if (auto* whim = dynamic_cast<WhimAI*>(currentAI)) {
+    else if (auto* whim = dynamic_cast<WhimAI*>(m_CurrentAI)) {
         Unit* target = FindVisibleHostileTarget("UpdateMovePhase:Whim");
-        if (target && currentAI->IsAdjacent(*this, target)) {
+        if (target && m_CurrentAI->IsAdjacent(*this, target)) {
             ConsumeAllMoves();
         }
         else {
             whim->UpdateWithTarget(*this, target, map);
         }
     }
-    else if (currentAI) {
-        currentAI->Update(*this, map);
+    else if (m_CurrentAI) {
+        m_CurrentAI->Update(*this, map);
     }
     Vector2Int newPos = GetGridPos();
     if (oldPos != newPos)
@@ -520,19 +515,19 @@ void Enemy::DecideNextAction()
 
     Unit* visibleTarget = FindVisibleHostileTarget("DecideNextAction");
 
-    if (state == EnemyState::Patrol)
+    if (m_State == EnemyState::Patrol)
     {
         if (visibleTarget)
         {
-            state = EnemyState::Chase;
-            if (chaseAI) currentAI = chaseAI.get();
+            m_State = EnemyState::Chase;
+            if (m_ChaseAI) m_CurrentAI = m_ChaseAI.get();
             m_TargetRecognized = true;
             Vector2Int dir = visibleTarget->GetGridPos() - this->GetGridPos();
-            this->m_FacingDir = dir;
+            this->m_FacingDir = dir.normalized();
             this->LookAt(dir);
         }
     }
-    else if (state == EnemyState::Chase)
+    else if (m_State == EnemyState::Chase)
     {
         if (visibleTarget)
         {
@@ -622,63 +617,65 @@ void Enemy::ClearNap(bool consumeTurn)
         ClearStatus();
 	}
 }
-void Enemy::SuppressHostileRecognitionThisTurn()
+void Enemy::SetHostileRecognitionSuppressed(bool suppressed)
 {
     // 吹き飛ばしなどの強制移動後は、その敵ターン中だけ索敵を止めて追跡を切る。
-    m_SuppressHostileRecognitionThisTurn = true;
-    ReturnToPatrolFromCurrentPos();
+    m_SuppressHostileRecognitionThisTurn = suppressed;
+    if (suppressed) {
+        ReturnToPatrolFromCurrentPos();
+    }
 }
 void Enemy::SetShopKeeperMode(bool hostile)
 {
     m_IsShopKeeper = true;
     m_IsShopHostile = hostile;
-    patrolAI = std::make_unique<ShopUnitAI>(hostile);
-    chaseAI.reset();
-    currentAI = patrolAI.get();
+    m_PatrolAI = std::make_unique<ShopUnitAI>(hostile);
+    m_ChaseAI.reset();
+    m_CurrentAI = m_PatrolAI.get();
     ClearStatus();
 }
 void Enemy::ResetAI(EnemyAIType aiType)
 {
-    patrolAI.reset();
-    chaseAI.reset();
-    currentAI = nullptr;
-    state = EnemyState::Patrol;
+    m_PatrolAI.reset();
+    m_ChaseAI.reset();
+    m_CurrentAI = nullptr;
+    m_State = EnemyState::Patrol;
     ClearTargetRecognition();
 
     switch (aiType)
     {
     case EnemyAIType::Patrol:
-        patrolAI = std::make_unique<BasicPatrolAI>();
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<BasicPatrolAI>();
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::PatrolAndChase:
-        patrolAI = std::make_unique<BasicPatrolAI>();
-        chaseAI = std::make_unique<ChaseAI>();
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<BasicPatrolAI>();
+        m_ChaseAI = std::make_unique<ChaseAI>();
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::KeepDistance:
-        patrolAI = std::make_unique<KeepDistAI>((std::max)(1, m_Data.keepDistance));
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<KeepDistAI>((std::max)(1, m_Data.keepDistance));
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::Berserk:
     {
         auto berserk = std::make_unique<BerserkAI>();
         berserk->SetVisionRange((std::max)(1, m_Data.visionRange));
-        patrolAI = std::move(berserk);
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::move(berserk);
+        m_CurrentAI = m_PatrolAI.get();
         break;
     }
     case EnemyAIType::RunAway:
-        patrolAI = std::make_unique<RunAwayAI>();
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<RunAwayAI>();
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::WhimAlwaysAttack:
-        patrolAI = std::make_unique<WhimAI>(true);
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<WhimAI>(true);
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::WhimRandomAttack:
-        patrolAI = std::make_unique<WhimAI>(false);
-        currentAI = patrolAI.get();
+        m_PatrolAI = std::make_unique<WhimAI>(false);
+        m_CurrentAI = m_PatrolAI.get();
         break;
     case EnemyAIType::Passive:
         // AI思考を持たない。常に待機するだけの敵。
@@ -697,7 +694,7 @@ void Enemy::ChangeAI(EnemyAIType aiType)
 }
 void Enemy::OnDeath(Unit* attacker)
 {
-    IsDead = true;
+    m_IsDead = true;
     const bool canRecruit = m_RecruitByPlayerNormalAttack && dynamic_cast<Player*>(attacker);
     m_RecruitByPlayerNormalAttack = false;
 
@@ -713,21 +710,146 @@ void Enemy::OnDeath(Unit* attacker)
             auto* ui = Manager::GetScene()->GetGameObject<PlayerInventoryUI>();
             if (ui)
             {
-                TurnManager::Instance()->PauseTurnProgression();
+                TurnManager::Instance()->SetTurnProgressionPaused(true);
                 ui->OpenRecruitMenu(this);
                 return;
             }
         }
     }
     UnitManager::Instance()->RemoveEnemy(this);
-    currentAI = nullptr;
-    patrolAI.reset();
-    chaseAI.reset();
+    m_CurrentAI = nullptr;
+    m_PatrolAI.reset();
+    m_ChaseAI.reset();
     MessageLog::Instance().AddMessage(
         m_Name + u8"はちからつきた。"
     );
    StopLoopEffect();
    SetDestroy();
+}
+
+void Enemy::StartAttackWithNotify(Unit* target)
+{
+    if (!target || target->GetHP() <= 0) return;
+
+    // 回避判定を先に確定し、Notifyを待たず行動内容の一文を表示する。
+    m_PendingAttackTarget = target;
+    m_PendingAttackHit = CheckHit(GetACC(), target->GetEVD());
+    if (m_PendingAttackHit)
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"から");
+    }
+    
+
+    const bool showVisual = ShouldShowCombatVisual(target);
+    if (showVisual &&
+        m_AnimationModel &&
+        m_AnimationModel->HasAnimationNotify("Attack", "AttackHit"))
+    {
+        // ダメージ処理はAttackHit Notifyまで保留し、見た目と判定の瞬間を一致させる。
+        m_IsActingAnimation = true;
+        SetTriggerAnimation("Attack", 1.0f);
+        return;
+    }
+
+    // Notify未登録時は即時処理へ戻すが、表示可能なら攻撃モーション自体は再生する。
+    ResolvePendingAttack();
+    if (showVisual) SetTriggerAnimation("Attack", 1.0f);
+}
+
+void Enemy::ResolvePendingAttack()
+{
+    Unit* target = m_PendingAttackTarget;
+    const bool attackHit = m_PendingAttackHit;
+    m_PendingAttackTarget = nullptr;
+    m_PendingAttackHit = false;
+    if (!target || target->GetHP() <= 0) return;
+
+    if (!attackHit)
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
+        return;
+    }
+
+    const int damage = CalcDamage(GetATK(), target->GetDEF());
+    target->TakeDamage(damage, this);
+
+    if (target->IsDead())
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"は強くなった！");
+        m_ATK *= 2;
+    }
+}
+
+bool Enemy::QueueSkillForNotify(
+    const Skill& skill,
+    const EffectContext& context,
+    const std::vector<Unit*>& targets)
+{
+    // Notify未登録時は効果を保留せず、呼び出し側で即時適用へ戻す。
+    if (!m_AnimationModel ||
+        !m_AnimationModel->HasAnimationNotify("Skill", "SkillEffect"))
+    {
+        return false;
+    }
+
+    m_PendingSkillEffect = skill.effect;
+    m_PendingSkillContext = context;
+    m_PendingSkillTargets = targets;
+    return true;
+}
+
+void Enemy::ResolvePendingSkill()
+{
+    std::shared_ptr<EffectBase> effect = m_PendingSkillEffect;
+    EffectContext context = m_PendingSkillContext;
+    std::vector<Unit*> targets = m_PendingSkillTargets;
+
+    m_PendingSkillEffect.reset();
+    m_PendingSkillContext = {};
+    m_PendingSkillTargets.clear();
+    if (!effect) return;
+
+    if (context.targetType == EffectTargetType::Single)
+    {
+        if (context.target && context.target->GetHP() > 0)
+            effect->Apply(context);
+        return;
+    }
+
+    // 複数対象は特技決定時に収集した対象へ適用し、Notify待機中の位置変化で範囲を変えない。
+    for (Unit* target : targets)
+    {
+        if (!target || target->GetHP() <= 0) continue;
+        EffectContext each = context;
+        each.target = target;
+        each.pos = target->GetGridPos();
+        effect->Apply(each);
+    }
+}
+
+void Enemy::ClearPendingCombatActions()
+{
+    m_PendingAttackTarget = nullptr;
+    m_PendingAttackHit = false;
+    m_PendingSkillEffect.reset();
+    m_PendingSkillContext = {};
+    m_PendingSkillTargets.clear();
+}
+
+void Enemy::OnAnimationNotify(
+    const std::string& animationName,
+    const std::string& notifyName)
+{
+    if (animationName == "Attack" && notifyName == "AttackHit")
+    {
+        ResolvePendingAttack();
+        return;
+    }
+
+    if (animationName == "Skill" && notifyName == "SkillEffect")
+    {
+        ResolvePendingSkill();
+    }
 }
 
 void Enemy::Attack()
@@ -750,7 +872,7 @@ void Enemy::Attack()
     Unit* target = units->GetUnitAt(targetPos);
 
 	// 無差別攻撃AI取得
-    const bool attacksAnyUnit = dynamic_cast<BerserkAI*>(currentAI) != nullptr;
+    const bool attacksAnyUnit = dynamic_cast<BerserkAI*>(m_CurrentAI) != nullptr;
 
     auto canAttackTarget = [&](Unit* candidate) -> bool {
         if (!candidate || candidate == this || candidate->GetHP() <= 0) return false;
@@ -805,31 +927,7 @@ void Enemy::Attack()
         LookAt(target->GetGridPos() - m_GridPos);
     }
 
-    if (ShouldShowCombatVisual(target)) {
-        m_IsActingAnimation = true;
-        SetTriggerAnimation("Attack", 1.0f);
-    }
-
-
-    if(!CheckHit(GetACC(), target->GetEVD()))
-    {
-        MessageLog::Instance().AddMessage(
-            m_Name + u8"の攻撃は外れた。"
-        );
-        EndTurn();
-        return;
-    }
-
-    int damage = CalcDamage(GetATK(), target->GetDEF());
-    target->TakeDamage(damage,this);
-
-    if (target->IsDead())
-    {
-        MessageLog::Instance().AddMessage(
-            m_Name + u8"は強くなった！"
-        );
-        m_ATK *= 2;
-    }
+    StartAttackWithNotify(target);
 }
 void Enemy::DropItem()
 {
@@ -988,15 +1086,15 @@ Unit* Enemy::FindVisibleNonPlayerHostileTarget()
 // 追跡対象を完全に見失った場合(ワープして対象がどこかへ行った場合など)、巡回状態に戻す
 void Enemy::ReturnToPatrolFromCurrentPos()
 {
-    state = EnemyState::Patrol;
-    currentAI = patrolAI.get();
+    m_State = EnemyState::Patrol;
+    m_CurrentAI = m_PatrolAI.get();
     ClearTargetRecognition();
 
-    if (auto* chase = dynamic_cast<ChaseAI*>(chaseAI.get())) {
+    if (auto* chase = dynamic_cast<ChaseAI*>(m_ChaseAI.get())) {
         chase->Reset();
     }
 
-    if (auto* patrol = dynamic_cast<BasicPatrolAI*>(patrolAI.get())) {
+    if (auto* patrol = dynamic_cast<BasicPatrolAI*>(m_PatrolAI.get())) {
         patrol->ResetFromCurrentPos(*this, MapManager::Instance()->GetCurrentMap());
     }
 }
@@ -1017,13 +1115,7 @@ void Enemy::ApplyData(const EnemyData& d)
     m_Name = d.name;
     m_ExpReward = d.expReward;
     m_Scale = d.visual.scale;
-    yoffset = d.visual.yOffset;
-
-    float roll = GameRandom::Value();
-    if (roll < d.sleepRate)
-    {
-        SetStatus(Status::Nap, -1);
-    }
+    m_YOffset = d.visual.yOffset;
 
     AnimationModel* base =
         EnemyModelManager::Instance().GetModel(d.id);
@@ -1031,10 +1123,26 @@ void Enemy::ApplyData(const EnemyData& d)
     m_AnimationModel = new AnimationModel();
     m_AnimationModel->CreateClone(*base);
 
+    // 敵データに定義されたタイミングを、この敵個体のAnimationModelへ登録する。
+    m_AnimationModel->ClearAllAnimationNotifies();
+    for (const EnemyAnimationNotifyData& notify : d.visual.animationNotifies)
+    {
+        m_AnimationModel->AddAnimationNotifyNormalized(
+            notify.animationName,
+            notify.normalizedTime,
+            notify.notifyName);
+    }
 
     m_RecruitmentModifier = d.recruitmentModifier;
     m_Skills = d.skills;
     m_Data = d;
+
+    // 仮眠アニメーションを確実に開始できるよう、モデル生成後に状態を設定する。
+    if (GameRandom::Value() < d.sleepRate)
+    {
+        SetStatus(Status::Nap, -1);
+    }
+
     SetBaseActionSpeed(ToTurnSpeed(d.actionSpeed));
     SetBaseMoveSpeed(ToTurnSpeed(d.moveSpeed));
 

@@ -190,9 +190,6 @@
     <ClCompile Include="DungeonScene.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Easing.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="EditorScene.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -397,7 +394,6 @@
     <ClInclude Include="CorridorGenarator.h" />
     <ClInclude Include="CurePoisonEffect.h" />
     <ClInclude Include="DamageEffect.h" />
-    <ClInclude Include="DebugTrace.h" />
     <ClInclude Include="DigEffect.h" />
     <ClInclude Include="DungeonStructureEditor.h" />
     <ClInclude Include="EditorMode.h" />
@@ -415,7 +411,6 @@
     <ClInclude Include="DungeonData.h" />
     <ClInclude Include="DungeonDataIO.h" />
     <ClInclude Include="DungeonThemeDatabase.h" />
-    <ClInclude Include="Easing.h" />
     <ClInclude Include="EditorScene.h" />
     <ClInclude Include="EffectBillboard.h" />
     <ClInclude Include="EffectManager.h" />

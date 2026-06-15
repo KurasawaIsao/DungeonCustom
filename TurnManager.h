@@ -15,7 +15,7 @@ private:
         MoveResolution       // StartMove の補間移動が終わるまで待つ。
     };
 
-    static TurnManager* instance;
+    static TurnManager* m_Instance;
 
     // 現在どの処理段階で止まっているか。Update() はこの値を見て少しずつ進める。
     Phase m_Phase = Phase::PlayerTurn;
@@ -40,17 +40,17 @@ private:
 public:
     TurnManager()
     {
-        instance = this;
+        m_Instance = this;
     }
 
     static TurnManager* Instance()
     {
-        return instance;
+        return m_Instance;
     }
 
     void Init() override { ResetDungeonState(); }
     void Draw() override {}
-    void Uninit() override { if (instance == this) instance = nullptr; }
+    void Uninit() override { if (m_Instance == this) m_Instance = nullptr; }
 
     void ResetDungeonState()
     {
@@ -73,8 +73,9 @@ public:
     void SpawnEnemy();
     void SetShopTheftMode(bool enabled) { m_ShopTheftMode = enabled; }
     bool IsShopTheftMode() const { return m_ShopTheftMode; }
-    void PauseTurnProgression() { m_IsPaused = true; }
-    void ResumeTurnProgression() { m_IsPaused = false; }
+    // UI演出などに応じてターン進行の一時停止状態を設定する。
+    void SetTurnProgressionPaused(bool paused) { m_IsPaused = paused; }
+
 
     void Update() override;
     // Shiftダッシュのような即時移動後、敵ターンを入力待ちまでまとめて解決する。

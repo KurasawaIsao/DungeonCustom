@@ -19,11 +19,11 @@ public:
         std::string,
         EnemySpawnTable>& GetAll()
     {
-        return tables;
+        return m_Tables;
     }
 
 private:
     static std::unordered_map<
         std::string,
-        EnemySpawnTable> tables;
+        EnemySpawnTable> m_Tables;
 };

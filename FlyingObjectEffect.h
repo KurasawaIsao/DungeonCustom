@@ -16,22 +16,15 @@ private:
     DamageEffect m_Damage;
     std::string m_ModelPath;
 
-    Vector2Int NormalizeDir(Vector2Int dir) const
-    {
-        if (dir.x != 0) dir.x = dir.x > 0 ? 1 : -1;
-        if (dir.y != 0) dir.y = dir.y > 0 ? 1 : -1;
-        return dir;
-    }
-
     Vector2Int GetLeftSourceDir(Unit* target) const
     {
         if (!target) return { 0, 0 };
 
-        Vector2Int forward = NormalizeDir(target->GetFacingDir());
+        Vector2Int forward = target->GetFacingDir().normalized();
         if (forward.x == 0 && forward.y == 0) forward = { 0, 1 };
 
         Vector2Int left = { -forward.y, forward.x };
-        return NormalizeDir(left);
+        return left.normalized();
     }
 
     Vector2Int GetLineStart(Unit* target, MapData* map, const Vector2Int& fromDir) const
@@ -54,7 +47,7 @@ private:
         if (!fallbackTarget) return nullptr;
 
         Vector2Int targetGrid = fallbackTarget->GetGridPos();
-        Vector2Int step = NormalizeDir(targetGrid - startGrid);
+        Vector2Int step = (targetGrid - startGrid).normalized();
         Vector2Int current = startGrid;
 
         for (int guard = 0; guard < 256; ++guard)
@@ -92,7 +85,7 @@ public:
             EffectContext hitCtx = ctx;
             hitCtx.target = impactTarget;
             hitCtx.pos = impactTarget->GetGridPos();
-            hitCtx.direction = NormalizeDir(impactTarget->GetGridPos() - startGrid);
+            hitCtx.direction = (impactTarget->GetGridPos() - startGrid).normalized();
             m_Damage.Apply(hitCtx);
             MessageLog::Instance().AddMessage(u8"”ò‚Ñ“¹‹ï‚ª”ò‚ñ‚Å‚«‚½I");
             return;

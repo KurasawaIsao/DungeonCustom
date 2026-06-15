@@ -28,8 +28,8 @@ private:
     int m_Width;
     int m_Height;
 
-    bool lockTiles;
-    bool lockRooms;
+    bool m_LockTiles;
+    bool m_LockRooms;
 
     int m_Floor = 1;
 
@@ -121,8 +121,6 @@ public:
     {
         return t == TileType::Floor || t == TileType::Corridor;
     }
-
-    void ApplyRooms();
     void ApplyRoom(const Room& r);
 
     bool IsInsideRoom(int roomIndex, int x, int y) const

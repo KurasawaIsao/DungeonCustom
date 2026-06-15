@@ -116,7 +116,7 @@ void MapGeometryEditor::UpdateRoomDataFromTiles(MapData* map) {
 
                 // Roomを作成
                 Room newRoom({ minX, minY }, { rw, rh });
-                newRoom.isFixed = true;
+                newRoom.m_IsFixed = true;
                 newRoom.ClearSubRects(); // 既存の矩形をクリア（※関数がある前提）
 
                 // 【重要】床タイル1枚1枚を1x1のSubRectとして登録
@@ -130,7 +130,7 @@ void MapGeometryEditor::UpdateRoomDataFromTiles(MapData* map) {
     if (detectedRooms.empty()) {
         // マップ全体を包む矩形を設定
         Room wholeMapRoom({ 0, 0 }, { w, h });
-        wholeMapRoom.isFixed = true; // エディタ用フラグ
+        wholeMapRoom.m_IsFixed = true; // エディタ用フラグ
 
         // 全マスを subRects に登録（床タイルのみを対象にするのが安全）
         for (int y = 0; y < h; y++) {

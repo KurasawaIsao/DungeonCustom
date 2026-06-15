@@ -24,7 +24,7 @@ public:
     void Draw() override;
     void Uninit() override;
     void UpdateUnit()override {}; 
-    void OnDeath(Unit* attacker = nullptr)override {};
+    void OnDeath(Unit* = nullptr) override {}
     void AddAnimation(
         const std::string& name,
         const std::string& fbxPath);

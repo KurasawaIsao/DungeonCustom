@@ -55,6 +55,8 @@ void Player::Init() {
     m_AnimationModel->LoadAnimation("Asset\\Model\\TIdle.fbx", "Idle");
     m_AnimationModel->LoadAnimation("Asset\\Model\\TRun.fbx", "Run");
     m_AnimationModel->LoadAnimation("Asset\\Model\\TAttack.fbx", "Attack");
+    // 通常攻撃の命中処理を、武器を振り切るタイミングへ合わせる。
+    m_AnimationModel->AddAnimationNotifyNormalized("Attack", 0.35f, "AttackHit");
     m_AnimationModel->LoadAnimation("Asset\\Model\\TDamaged.fbx", "Damaged");
     m_AnimationModel->LoadAnimation("Asset\\Model\\TSleep.fbx", "Sleep");
 
@@ -62,7 +64,6 @@ void Player::Init() {
     FaceDirection({ 0, 1 });
     m_PreviousGridPos = m_GridPos;
     m_Position = Vector3(m_GridPos.x * TILE_DISTANCE, TILE_DISTANCE, m_GridPos.y * TILE_DISTANCE);
-    m_AnimNow = m_AnimNext = "Idle";
     PlayAnimation("Idle", 1.0f);
 
     m_Scale = { 0.5f, 0.5f, 0.5f };
@@ -124,7 +125,7 @@ void Player::Update() {
             isFlying = std::any_of(flyObjects.begin(), flyObjects.end(), [](auto* f) { return f->GetIsActive(); });
         }
 
-        if ((m_IsAnimLooping || IsAnimationFinished()) && !isFlying) {
+        if ((!m_AnimationModel->IsOneShotPlaying()) && !isFlying) {
             m_IsActingAnimation = false;
         }
     }
@@ -185,7 +186,16 @@ void Player::UpdateUnit() {
     // 3. 状態異常入力
     // 4. 通常入力(移動・攻撃・足踏み)
     // 状態異常・メニューによる行動不可チェック
-    if (m_Status == Status::Sleep || m_Status == Status::Paralysis) { EndTurn(); return; }
+    if (m_Status == Status::Sleep || m_Status == Status::Paralysis)
+    {
+        // プレイヤーは解除判定をターン開始時に行い、この場で治った場合はそのまま入力を受け付ける。
+        if (!UpdateStatusCount())
+        {
+            // ここですでに残り時間を減らしたため、EndTurn側では二重に更新しない。
+            EndTurn(false);
+            return;
+        }
+    }
     if (IsStairConfirming()) return;
 
     auto* ui = scene ? scene->GetGameObject<PlayerInventoryUI>() : nullptr;
@@ -348,6 +358,17 @@ void Player::OnTriggerAnimationStarted(const std::string&)
     // 被ダメージなどの単発演出が始まる時は、移動継続Runを残さない。
     ClearMoveRunHold(false);
 }
+
+void Player::OnAnimationNotify(
+    const std::string& animationName,
+    const std::string& notifyName)
+{
+    if (animationName == "Attack" && notifyName == "AttackHit")
+    {
+        ResolvePendingAttack();
+    }
+}
+
 void Player::ExecuteConfusionAction() {
     Vector2Int inputDir = GetDirectionalMoveInput();
 
@@ -628,11 +649,11 @@ void Player::Move(const Vector2Int& dir) {
         m_PreviousGridPos = oldPos;
         StartMove(next, MOVE_TIME_NORMAL);
         ally->RequestMove(oldPos);
-        ally->ReserveMoveConsumedOnNextTurn();
+        ally->SetConsumeMoveOnNextTurn(true);
         ally->LookAt(-dir);
         // 入れ替わりで押し出された等速以下の仲間は、敵が隣接していても同じ敵ターン内に即攻撃させない。
         if (IsNormalOrSlowerAction(ally) || UnitManager::Instance()->GetAdjacentEnemies(*ally).empty()) {
-            ally->ReserveActionConsumedOnNextTurn();
+            ally->SetConsumeActionOnNextTurn(true);
         }
         EndTurn();
         return;
@@ -646,6 +667,8 @@ void Player::Move(const Vector2Int& dir) {
 }
 
 void Player::Attack() {
+    // 前回の攻撃が演出中断などで残っていても、今回の対象と混ざらないよう初期化する。
+    ClearPendingAttack();
     // 攻撃ごとに表示中ログをリセットする。履歴は MessageLog 側に残す。
     MessageLog::Instance().Clear();
     // 正面1マスへの通常攻撃。
@@ -698,23 +721,54 @@ void Player::Attack() {
     if (Ally* ally = dynamic_cast<Ally*>(target)) {
         ally->Talk();
     }
-    else if (CheckHit(GetACC(), target->GetEVD())) {
-        int dmg = CalcDamage(GetATK(), target->GetDEF());
-        Enemy* enemyTarget = dynamic_cast<Enemy*>(target);
-        if (enemyTarget) enemyTarget->MarkPlayerNormalAttackDamage();
-        target->TakeDamage(dmg, this);
-        if (enemyTarget && !target->IsDead()) enemyTarget->ClearPlayerNormalAttackDamage();
-    }
     else {
-        MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
+        // 命中結果を先に確定し、ダメージ処理だけAttackHit Notifyまで保留する。
+        m_PendingAttackTarget = target;
+        m_PendingAttackHit = CheckHit(GetACC(), target->GetEVD());
+        if (!ShouldShowCombatVisual(target) ||
+            !m_AnimationModel ||
+            !m_AnimationModel->HasAnimationNotify("Attack", "AttackHit"))
+        {
+            ResolvePendingAttack();
+        }
     }
     EndTurn();
 }
 
+void Player::ResolvePendingAttack()
+{
+    Unit* target = m_PendingAttackTarget;
+    const bool attackHit = m_PendingAttackHit;
+    ClearPendingAttack();
+    if (!target || target->GetHP() <= 0) return;
+
+    if (!attackHit)
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
+        return;
+    }
+
+    const int damage = CalcDamage(GetATK(), target->GetDEF());
+    Enemy* enemyTarget = dynamic_cast<Enemy*>(target);
+    if (enemyTarget) enemyTarget->SetPlayerNormalAttackDamage(true);
+    target->TakeDamage(damage, this);
+    if (enemyTarget && !target->IsDead()) enemyTarget->SetPlayerNormalAttackDamage(false);
+}
+
+void Player::ClearPendingAttack()
+{
+    m_PendingAttackTarget = nullptr;
+    m_PendingAttackHit = false;
+}
+
 void Player::EndTurn() {
+    EndTurn(true);
+}
+
+void Player::EndTurn(bool updateStatusCount) {
     m_HasActed = true;
     ConsumeFullness();
-    UpdateStatusCount();
+    if (updateStatusCount) UpdateStatusCount();
     if (m_Fullness == 0)
     {
         m_HP--;
@@ -751,6 +805,7 @@ void Player::SortItems() {
 }
 
 void Player::Uninit() {
+    ClearPendingAttack();
     if (UnitManager::Instance()->GetPlayer() == this) {
         UnitManager::Instance()->SetPlayer(nullptr);
     }

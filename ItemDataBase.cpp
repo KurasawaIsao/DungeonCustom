@@ -22,6 +22,7 @@
 #include "JsonIO.h"
 #include "MessageLog.h"
 #include <algorithm>
+#include <utility>
 
 std::unordered_map<std::string, ItemData> ItemDatabase::m_Items;
 std::vector<std::string> ItemDatabase::m_ItemIDs;
@@ -54,6 +55,25 @@ namespace
     }
 }
 
+void ItemDatabase::Register(ItemData data)
+{
+    // ItemDataのIDを登録キーと一覧の両方に使い、ID指定の重複を防ぐ。
+    if (data.id.empty())
+    {
+        LogDataWarning("Item has empty id.");
+        return;
+    }
+
+    const std::string id = data.id;
+    const auto result = m_Items.emplace(id, std::move(data));
+    if (!result.second)
+    {
+        LogDataWarning("Duplicate item id: " + id);
+        return;
+    }
+
+    m_ItemIDs.push_back(id);
+}
 void ItemDatabase::SetShopPriceDefaults()
     {
         struct PriceDefault { const char* id; int buy; int sell; };
@@ -91,8 +111,7 @@ void ItemDatabase::Init()
     // 複数個スタックできるか/未識別・識別対称か/呪い・祝福が適用されるか
     // 
     // ---- 草 ----
-    m_Items.emplace(
-        "Herb_Heal20",
+    Register(
         ItemData{
             "Herb_Heal20",
             ItemType::Herb,
@@ -103,10 +122,8 @@ void ItemDatabase::Init()
             &g_Heal20
         }
     );
-    m_ItemIDs.push_back("Herb_Heal20");
 
-    m_Items.emplace(
-        "Herb_Heal50",
+    Register(
         ItemData{
             "Herb_Heal50",
             ItemType::Herb,
@@ -117,10 +134,8 @@ void ItemDatabase::Init()
             &g_Heal50
         }
     );
-    m_ItemIDs.push_back("Herb_Heal50");
 
-    m_Items.emplace(
-        "Herb_Heal100",
+    Register(
         ItemData{
             "Herb_Heal100",
             ItemType::Herb,
@@ -131,10 +146,8 @@ void ItemDatabase::Init()
             &g_Heal100
         }
     );
-    m_ItemIDs.push_back("Herb_Heal100");
 
-    m_Items.emplace(
-        "ParalysisHerb",
+    Register(
         ItemData{
             "ParalysisHerb",
             ItemType::Herb,
@@ -145,10 +158,8 @@ void ItemDatabase::Init()
             &g_Paralysis
         }
     );
-    m_ItemIDs.push_back("ParalysisHerb");
 
-    m_Items.emplace(
-        "SleepHerb",
+    Register(
         ItemData{
             "SleepHerb",
             ItemType::Herb,
@@ -159,10 +170,8 @@ void ItemDatabase::Init()
             &g_Sleep
         }
     );
-    m_ItemIDs.push_back("SleepHerb");
 
-    m_Items.emplace(
-        "ConfuseHerb",
+    Register(
         ItemData{
             "ConfuseHerb",
             ItemType::Herb,
@@ -173,10 +182,8 @@ void ItemDatabase::Init()
             &g_Confuse
         }
     );
-    m_ItemIDs.push_back("ConfuseHerb");
 
-    m_Items.emplace(
-        "WarpHerb",
+    Register(
         ItemData{
             "WarpHerb",
             ItemType::Herb,
@@ -187,10 +194,8 @@ void ItemDatabase::Init()
             &g_Warp
         }
     );
-    m_ItemIDs.push_back("WarpHerb");
 
-    m_Items.emplace(
-        "PoisonHerb",
+    Register(
         ItemData{
             "PoisonHerb",
             ItemType::Herb,
@@ -201,10 +206,8 @@ void ItemDatabase::Init()
             &g_Poison
         }
     );
-    m_ItemIDs.push_back("PoisonHerb");
 
-    m_Items.emplace(
-        "AntidoteHerb",
+    Register(
         ItemData{
             "AntidoteHerb",
             ItemType::Herb,
@@ -215,10 +218,8 @@ void ItemDatabase::Init()
             &g_CurePoison
         }
     );
-    m_ItemIDs.push_back("AntidoteHerb");
     // ---- パン ----
-    m_Items.emplace(
-        "Food_Bread",
+    Register(
         ItemData{
             "Food_Bread",
             ItemType::Food,
@@ -229,10 +230,8 @@ void ItemDatabase::Init()
             &g_Food50
         }
     );
-    m_ItemIDs.push_back("Food_Bread");
 
-    m_Items.emplace(
-        "Food_BigBread",
+    Register(
         ItemData{
             "Food_BigBread",
             ItemType::Food,
@@ -243,10 +242,8 @@ void ItemDatabase::Init()
             &g_Food100
         }
     );
-    m_ItemIDs.push_back("Food_BigBread");
 
-    m_Items.emplace(
-        "Food_RottenBread",
+    Register(
         ItemData{
             "Food_RottenBread",
             ItemType::Food,
@@ -257,11 +254,9 @@ void ItemDatabase::Init()
             &g_RottenFood
         }
     );
-    m_ItemIDs.push_back("Food_RottenBread");
 
     // ----　杖  ----
-    m_Items.emplace(
-        "Staff_Confuse",
+    Register(
         ItemData{
             "Staff_Confuse",
             ItemType::Staff,
@@ -272,10 +267,8 @@ void ItemDatabase::Init()
             &g_Confuse
         }
     );
-    m_ItemIDs.push_back("Staff_Confuse");
 
-    m_Items.emplace(
-        "Staff_Sleep",
+    Register(
         ItemData{
             "Staff_Sleep",
             ItemType::Staff,
@@ -286,10 +279,8 @@ void ItemDatabase::Init()
             &g_Sleep
         }
     );
-    m_ItemIDs.push_back("Staff_Sleep");
 
-    m_Items.emplace(
-        "Staff_Paralysis",
+    Register(
         ItemData{
             "Staff_Paralysis",
             ItemType::Staff,
@@ -300,10 +291,8 @@ void ItemDatabase::Init()
             &g_Paralysis
         }
     );
-    m_ItemIDs.push_back("Staff_Paralysis");
 
-    m_Items.emplace(
-        "Staff_Warp",
+    Register(
         ItemData{
             "Staff_Warp",
             ItemType::Staff,
@@ -314,10 +303,8 @@ void ItemDatabase::Init()
             &g_Warp
         }
     );
-    m_ItemIDs.push_back("Staff_Warp");
 
-    m_Items.emplace(
-        "Staff_Damage",
+    Register(
         ItemData{
             "Staff_Damage",
             ItemType::Staff,
@@ -328,10 +315,8 @@ void ItemDatabase::Init()
             &g_Damage
         }
     );
-    m_ItemIDs.push_back("Staff_Damage");
 
-    m_Items.emplace(
-        "Staff_KnockBack",
+    Register(
         ItemData{
             "Staff_KnockBack",
             ItemType::Staff,
@@ -342,9 +327,7 @@ void ItemDatabase::Init()
             &g_Knockback
         }
     );
-    m_ItemIDs.push_back("Staff_KnockBack");
-    m_Items.emplace(
-        "Staff_Haste",
+    Register(
         ItemData{
             "Staff_Haste",
             ItemType::Staff,
@@ -355,10 +338,8 @@ void ItemDatabase::Init()
             &g_Haste
         }
     );
-    m_ItemIDs.push_back("Staff_Haste");
 
-    m_Items.emplace(
-        "Staff_Slow",
+    Register(
         ItemData{
             "Staff_Slow",
             ItemType::Staff,
@@ -369,10 +350,8 @@ void ItemDatabase::Init()
             &g_Slow
         }
     );
-    m_ItemIDs.push_back("Staff_Slow");
 
-    m_Items.emplace(
-        "Staff_AIRunAway",
+    Register(
         ItemData{
             "Staff_AIRunAway",
             ItemType::Staff,
@@ -383,11 +362,9 @@ void ItemDatabase::Init()
             &g_ChangeRunAwayAI
         }
     );
-    m_ItemIDs.push_back("Staff_AIRunAway");
 
     // ---- 矢 ----
-    m_Items.emplace(
-        "Arrow",
+    Register(
         ItemData{
             "Arrow",
             ItemType::Arrow,
@@ -398,11 +375,9 @@ void ItemDatabase::Init()
             &g_ArrowDamage
         }
     );
-    m_ItemIDs.push_back("Arrow");
 
     // ---- 石 ----
-    m_Items.emplace(
-        "Stone",
+    Register(
         ItemData{
             "Stone",
             ItemType::Stone,
@@ -413,11 +388,9 @@ void ItemDatabase::Init()
             &g_StoneEffect
         }
     );
-    m_ItemIDs.push_back("Stone");
     
     // ---- 壺 ----
-    m_Items.emplace(
-        "Pot_Storage",
+    Register(
         ItemData{
             "Pot_Storage",
             ItemType::Pot,
@@ -428,13 +401,11 @@ void ItemDatabase::Init()
             nullptr
         }
     );
-    m_ItemIDs.push_back("Pot_Storage");
 
     // ----- 武器 ------
-    m_Items.emplace(
-        "CopperSword",
+    Register(
         ItemData{
-            "CopperSword",
+            "Wep_CopperSword",
             ItemType::Weapon,
             u8"銅の剣",
             ItemUseType::Equip,
@@ -444,26 +415,22 @@ void ItemDatabase::Init()
             nullptr
         }
     );
-    m_ItemIDs.push_back("CopperSword");
 
-    m_Items.emplace(
-        "IronSword",
+    Register(
         ItemData{
-            "IronSword",
+            "Wep_IronSword",
             ItemType::Weapon,
             u8"鋼鉄の剣",
             ItemUseType::Equip,
             false, true, true,
 			2000,1000,
-            8, // 基本攻撃力
+            8,
             nullptr
         }
     );
-    m_ItemIDs.push_back("IronSword");
 
     // ----盾 ----
-    m_Items.emplace(
-        "Sh_LeatherShield",
+    Register(
         ItemData{
             "Sh_LeatherShield",
             ItemType::Shield,
@@ -471,14 +438,12 @@ void ItemDatabase::Init()
             ItemUseType::Equip,
             false, true, true,
             550,250,
-            3, 
+            3,  // 基本防御力
             nullptr
         }
     );
-    m_ItemIDs.push_back("Sh_LeatherShield");
 
-    m_Items.emplace(
-        "Sh_IronShield",
+    Register(
         ItemData{
             "Sh_IronShield",
             ItemType::Shield,
@@ -490,7 +455,6 @@ void ItemDatabase::Init()
             nullptr
         }
     );
-    m_ItemIDs.push_back("Sh_IronShield");
 
 
     // ---- SpawnTable読み込み ----

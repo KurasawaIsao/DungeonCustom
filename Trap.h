@@ -5,6 +5,7 @@
 
 class Player;
 class Unit;
+class ItemInstance;
 class Trap : public MapObject
 {
 private:
@@ -29,7 +30,7 @@ public:
 
     virtual void Activate(Unit* target);
     // アイテムが着地した場合は、対象ユニットなしで罠を作動させる。
-    bool ActivateByItem();
+    bool ActivateByItem(ItemInstance* item = nullptr);
     static constexpr float GetItemActivationDuration() { return 0.35f; }
     void OnStepped(Player* player) override;
     void Setup(const TrapData* data) {

@@ -38,6 +38,8 @@ struct EffectContext {
     EffectSourceType source = EffectSourceType::Item;
     Unit* user = nullptr;
     Unit* target = nullptr;
+    // アイテムの着地で罠が作動した場合、罠効果が落下アイテムを変更するために使用する。
+    ItemInstance* item = nullptr;
     Vector2Int pos = { 0, 0 };
     Vector2Int direction = { 0, 0 };
     EffectRank rank = EffectRank::Normal;

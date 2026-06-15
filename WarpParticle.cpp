@@ -23,7 +23,7 @@ void WarpParticle::OnParticleSpawn(PARTICLE& p)
 
 void WarpParticle::UpdateParticle(PARTICLE& p)
 {
-    Vector3 toCenter = Center - p.Position;
+    Vector3 toCenter = m_Center - p.Position;
 
     // ‹zˆø
     p.Velocity += toCenter * 0.05f;

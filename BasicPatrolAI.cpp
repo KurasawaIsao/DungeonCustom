@@ -13,22 +13,22 @@ void BasicPatrolAI::Update(Unit& self, MapData* map)
  
 
     // 1. 経路が空なら新しく生成
-    if (patrolRoute.empty())
+    if (m_PatrolRoute.empty())
     {
         // 経路生成の「直前」の座標を保存しておく
-        lastPos = self.GetGridPos();
+        m_LastPos = self.GetGridPos();
         UpdateCurrentRoom(self, map);
-        patrolRoute = GeneratePathToNextJunction(self, map);
+        m_PatrolRoute = GeneratePathToNextJunction(self, map);
     }
 
     // 2. 経路があるなら一歩進む
-    if (!patrolRoute.empty())
+    if (!m_PatrolRoute.empty())
     {
-        Vector2Int next = patrolRoute.front();
+        Vector2Int next = m_PatrolRoute.front();
         Vector2Int currentPos = self.GetGridPos();
         Vector2Int step = next - currentPos;
         if (!map->IsInBounds(next) || !map->IsWalkable(next) || step.Chebyshev(Vector2Int(0, 0)) > 1) {
-            patrolRoute.clear();
+            m_PatrolRoute.clear();
             self.EndTurn();
             return;
         }
@@ -36,15 +36,15 @@ void BasicPatrolAI::Update(Unit& self, MapData* map)
         // 他ユニットによるスタック判定
         if (UnitManager::Instance()->GetUnitAt(next) && UnitManager::Instance()->GetUnitAt(next) != &self)
         {
-            moveFailureCount++;
-            if (moveFailureCount > MAX_FAILURE_RETRY)
+            m_MoveFailureCount++;
+            if (m_MoveFailureCount > m_MaxFailureRetry)
             {
                 // 入り口付近で詰まったら、その入り口を「既に使用済み」と見なして引き返す
                 if (map->IsEntranceTile(currentPos.x, currentPos.y) || map->IsEntranceTile(next.x, next.y))
                 {
-                    lastEntrancePos = next;
+                    m_LastEntrancePos = next;
                 }
-                patrolRoute.clear();
+                m_PatrolRoute.clear();
             }
             else {
                 self.EndTurn(); // 譲り合い待機
@@ -52,12 +52,12 @@ void BasicPatrolAI::Update(Unit& self, MapData* map)
             }
         }
         else if (self.RequestMoveBool(next)) {
-            patrolRoute.erase(patrolRoute.begin());
-            lastPos = currentPos;
-            moveFailureCount = 0;
+            m_PatrolRoute.erase(m_PatrolRoute.begin());
+            m_LastPos = currentPos;
+            m_MoveFailureCount = 0;
         }
         else {
-            patrolRoute.clear();
+            m_PatrolRoute.clear();
         }
     }
     else {
@@ -73,7 +73,7 @@ void BasicPatrolAI::UpdateCurrentRoom(Unit& self, MapData* map)
 
     // 通路に出たら部屋IDをリセット（振り返り防止の準備）
     if (!room) {
-        currentRoomId = -1;
+        m_CurrentRoomId = -1;
         return;
     }
 
@@ -81,13 +81,13 @@ void BasicPatrolAI::UpdateCurrentRoom(Unit& self, MapData* map)
     if (id < 0) return;
 
     // 新しい部屋に入った
-    if (id != currentRoomId) {
-        currentRoomId = id;
+    if (id != m_CurrentRoomId) {
+        m_CurrentRoomId = id;
     }
 
     // 入り口マスを踏んでいる間、その位置を記憶（次の行き先から除外するため）
     if (map->IsEntranceTile(self.GetGridPos().x, self.GetGridPos().y)) {
-        lastEntrancePos = self.GetGridPos();
+        m_LastEntrancePos = self.GetGridPos();
     }
 }
 
@@ -101,22 +101,22 @@ std::vector<Vector2Int> BasicPatrolAI::GeneratePathToNextJunction(Unit& self, Ma
     {
         std::vector<Vector2Int> candidates;
 		//次候補の洗い出し（今来た入り口は除外）
-        for (const auto& ent : currentRoom->entrances) {
-            if (ent != lastEntrancePos) candidates.push_back(ent);
+        for (const auto& ent : currentRoom->m_Entrances) {
+            if (ent != m_LastEntrancePos) candidates.push_back(ent);
         }
 
         // 行き止まり部屋なら唯一の出口（今来た道）に戻る
-        if (candidates.empty() && (!map->IsInBounds(lastEntrancePos) || !map->IsWalkable(lastEntrancePos))) {
+        if (candidates.empty() && (!map->IsInBounds(m_LastEntrancePos) || !map->IsWalkable(m_LastEntrancePos))) {
             return {};
         }
-        Vector2Int targetEntrance = candidates.empty() ? lastEntrancePos : candidates[GameRandom::Index(candidates.size())];
+        Vector2Int targetEntrance = candidates.empty() ? m_LastEntrancePos : candidates[GameRandom::Index(candidates.size())];
 
         if (!map->IsInBounds(targetEntrance) || !map->IsWalkable(targetEntrance)) {
             return {};
         }
 
         // 出口を決めたら、通路に出た直後に振り返らないよう即座に記憶
-        lastEntrancePos = targetEntrance;
+        m_LastEntrancePos = targetEntrance;
 
         // BFSで部屋内のパスを作成
         std::vector<Vector2Int> path = BFSPath(self, start, targetEntrance, map);
@@ -141,7 +141,7 @@ std::vector<Vector2Int> BasicPatrolAI::GenerateCorridorPath(Unit& self, MapData*
     for (auto& d : dirs) {
         Vector2Int next = start + d;
         if (map->IsWalkable(next) && map->IsEntranceTile(next.x, next.y)) {
-            if (next != lastEntrancePos) return { next };
+            if (next != m_LastEntrancePos) return { next };
         }
     }
 
@@ -151,17 +151,17 @@ std::vector<Vector2Int> BasicPatrolAI::GenerateCorridorPath(Unit& self, MapData*
         Vector2Int next = start + d;
 
         // 通行不可、また直前にいた場所は除外
-        if (!map->IsWalkable(next) || next == lastPos) continue;
+        if (!map->IsWalkable(next) || next == m_LastPos) continue;
 
         // 部屋の入り口（さっき出たばかりの入り口）も戻らない
-        if (next == lastEntrancePos) continue;
+        if (next == m_LastEntrancePos) continue;
 
         if (map->GetTile(next.x, next.y) == TileType::Corridor) {
             options.push_back(next);
         }
     }
 
-    // 候補がない場合（行き止まり）のみ、lastPos 解禁
+    // 候補がない場合（行き止まり）のみ、m_LastPos 解禁
     if (options.empty()) {
         for (auto& d : dirs) {
             Vector2Int next = start + d;
@@ -207,7 +207,7 @@ bool BasicPatrolAI::IsDecisionPoint(const Vector2Int& pos, MapData* map)
     // 隣接マスに「新しい部屋」があるか？
     for (auto& d : dirs) {
         Vector2Int neighbor = pos + d;
-        if (map->IsEntranceTile(neighbor.x, neighbor.y) && neighbor != lastEntrancePos) return true;
+        if (map->IsEntranceTile(neighbor.x, neighbor.y) && neighbor != m_LastEntrancePos) return true;
     }
 
     // 交差点（3方以上が道）か行き止まりか？
@@ -230,11 +230,11 @@ void BasicPatrolAI::RandomMove(Unit& self, MapData* map)
 
 void BasicPatrolAI::ResetFromCurrentPos(Unit& self, MapData* map)
 {
-    patrolRoute.clear();
-    lastPos = self.GetGridPos();
-    lastEntrancePos = { -1, -1 };
-    moveFailureCount = 0;
-    currentRoomId = map ? map->GetRoomIndex(map->GetRoomAt(self.GetGridPos())) : -1;
+    m_PatrolRoute.clear();
+    m_LastPos = self.GetGridPos();
+    m_LastEntrancePos = { -1, -1 };
+    m_MoveFailureCount = 0;
+    m_CurrentRoomId = map ? map->GetRoomIndex(map->GetRoomAt(self.GetGridPos())) : -1;
 }
 
 Vector2Int BasicPatrolAI::FindAdjacentCorridor(const Vector2Int& entrancePos, MapData* map)

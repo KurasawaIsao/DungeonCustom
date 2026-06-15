@@ -18,6 +18,8 @@ public:
     static const std::vector<std::string>& GetAllIds();
 
 private:
+    // ItemData自身のIDを使って本体とID一覧をまとめて登録する。
+    static void Register(ItemData data);
     static void SetShopPriceDefaults();
 
     static std::unordered_map<std::string, ItemData> m_Items;

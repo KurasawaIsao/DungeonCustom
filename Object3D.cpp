@@ -4,7 +4,6 @@
 #include "camera.h"
 #include"manager.h"
 #include "animationModel.h"
-#include "Easing.h"
 #include "Object3D.h"
 
 void Object3D::Init()

@@ -50,18 +50,14 @@ Ally::~Ally() {}
 void Ally::Init()
 {
     m_AnimationModel = new AnimationModel();
-    m_AnimNow = "Idle";
-    m_AnimNext = "Idle";
-    m_AnimSpeed = 0.5f;
-    m_AnimSpeedCnt = 0.0f;
-    m_AnimSpeedCntMax = 1.0f;
-    m_Frame = 0;
     m_Scale = { 0.5f,0.5f,0.5f };
 
 
-    chaseAI = std::make_unique<ChaseAI>();
-    runAwayAI = std::make_unique<RunAwayAI>();
-    patrolAI = std::make_unique<BasicPatrolAI>();
+    // AIは最初に一度だけ生成し、以降はm_CurrentAIの差し替えで使い分ける。
+    m_ChaseAI = std::make_unique<ChaseAI>();
+    m_RunAwayAI = std::make_unique<RunAwayAI>();
+    m_PatrolAI = std::make_unique<BasicPatrolAI>();
+    SwitchAI(GetCommandAI());
 
     InitToonShader();
 
@@ -97,7 +93,7 @@ void Ally::InitFromEnemy(Enemy* source) {
 
     // ビジュアル設定
     m_Scale = d.visual.scale;
-    yoffset = d.visual.yOffset;
+    m_YOffset = d.visual.yOffset;
 
     if (!m_AnimationModel) m_AnimationModel = new AnimationModel();
     m_AnimationModel->Load(d.visual.modelPath.c_str());
@@ -107,6 +103,16 @@ void Ally::InitFromEnemy(Enemy* source) {
     m_AnimationModel->LoadAnimation(d.visual.animDamaged.c_str(), "Damaged");
     m_AnimationModel->LoadAnimation(d.visual.animSkill.c_str(), "Skill");
     m_AnimationModel->LoadAnimation(d.visual.animSleep.c_str(), "Sleep");
+
+    // 仲間化後も元の敵種別と同じNotifyタイミングを使用する。
+    m_AnimationModel->ClearAllAnimationNotifies();
+    for (const EnemyAnimationNotifyData& notify : d.visual.animationNotifies)
+    {
+        m_AnimationModel->AddAnimationNotifyNormalized(
+            notify.animationName,
+            notify.normalizedTime,
+            notify.notifyName);
+    }
 
     for (int i = 0; i < 3;i++)
     {
@@ -150,7 +156,7 @@ void Ally::Update()
     if (m_MoveState == MoveState::Moving)
     {
         Vector2Int moveDir = m_MoveTarget - m_GridPos;
-        if (moveDir.x != 0 || moveDir.y != 0) m_FacingDir = moveDir;
+        if (moveDir.x != 0 || moveDir.y != 0) m_FacingDir = moveDir.normalized();
     }
     else
     {
@@ -158,17 +164,17 @@ void Ally::Update()
         const bool patrolFacing = (m_AIMode == AllyAIMode::Patrol || m_IsLostPatrolling);
         if (patrolFacing) {
             if (Enemy* enemy = FindVisibleEnemy(map)) {
-                m_FacingDir = enemy->GetGridPos() - GetGridPos();
+                m_FacingDir = (enemy->GetGridPos() - GetGridPos()).normalized();
             }
         }
         else {
             Enemy* enemyTarget = FindAdjacentHostileEnemy();
             if (enemyTarget) {
-                m_FacingDir = enemyTarget->GetGridPos() - GetGridPos();
+                m_FacingDir = (enemyTarget->GetGridPos() - GetGridPos()).normalized();
             }
             else {
                 Player* p = UnitManager::Instance()->GetPlayer();
-                if (p) m_FacingDir = p->GetGridPos() - GetGridPos();
+                if (p) m_FacingDir = (p->GetGridPos() - GetGridPos()).normalized();
             }
         }
     }
@@ -177,7 +183,7 @@ void Ally::Update()
     this->LookAt(m_FacingDir);
     UpdateAnimation();
     // 攻撃・特技・被ダメージの単発演出が終わったら、次の行動へ進める状態に戻す。
-    if (m_IsActingAnimation && (m_IsAnimLooping || IsAnimationFinished())) {
+    if (m_IsActingAnimation && (!m_AnimationModel->IsOneShotPlaying())) {
         m_IsActingAnimation = false;
     }
 }
@@ -195,7 +201,7 @@ void Ally::UpdateActionPhase()
     // 味方の攻撃/特技フェーズ。
     // 通常攻撃は隣接敵だけを対象にし、待機中の特技は移動せず視界内の敵にも使えるようにする。
     if (IsActionPhaseChecked()) return;
-    MarkActionPhaseChecked();
+    SetActionPhaseChecked(true);
     SetTurnConsumeType(TurnConsumeType::Action);
     if (!CanActThisTurn()) return;
 
@@ -237,7 +243,7 @@ void Ally::UpdateActionPhase()
         skillTarget = FindVisibleEnemy(map);
     }
 
-    if (m_AIMode != AllyAIMode::NoSkill && skillTarget && chaseAI && chaseAI->ExecuteSkill(*this, skillTarget)) {
+    if (m_CanUseSkill && skillTarget && m_ChaseAI && m_ChaseAI->ExecuteSkill(*this, skillTarget)) {
         EndTurn();
         if (!CanActThisTurn()) ConsumeAllMoves();
         return;
@@ -246,16 +252,15 @@ void Ally::UpdateActionPhase()
     if (!adjacentTarget) return;
 
     int budgetBefore = GetActionBudget();
-    m_FacingDir = adjacentTarget->GetGridPos() - GetGridPos();
+    m_FacingDir = (adjacentTarget->GetGridPos() - GetGridPos()).normalized();
     Attack();
     if (GetActionBudget() == budgetBefore) EndTurn();
 }
 void Ally::UpdateMovePhase()
 {
-    // 味方の移動フェーズ。
-    // プレイヤー追従、敵への接近/待機/退避などは AllyAIMode と各 AI クラスへ分岐する。
+    // 味方の移動フェーズ。命令と周囲の状況から、保持済みAIのどれを使うか決める。
     if (IsMovePhaseChecked() || IsAnimatingMove()) return;
-    MarkMovePhaseChecked();
+    SetMovePhaseChecked(true);
     SetTurnConsumeType(TurnConsumeType::Move);
     if (!CanMoveThisTurn()) return;
     if (m_Status == Status::Sleep || m_Status == Status::Paralysis) {
@@ -264,51 +269,61 @@ void Ally::UpdateMovePhase()
         return;
     }
     if (m_AIMode == AllyAIMode::Wait) {
+        SwitchAI(nullptr);
         ConsumeAllMoves();
         SetTurnConsumeType(TurnConsumeType::Action);
         return;
     }
+
     int moveBudgetBefore = GetMoveBudget();
     Vector2Int oldPos = GetGridPos();
     MapData* map = MapManager::Instance()->GetCurrentMap();
     Player* player = UnitManager::Instance()->GetPlayer();
     bool playerRecognized = UpdatePlayerRecognition(player, map);
     bool chaseMode = (m_AIMode == AllyAIMode::Follow || m_AIMode == AllyAIMode::Counter || m_AIMode == AllyAIMode::NoSkill);
+
     if (playerRecognized && m_IsLostPatrolling) {
+        // プレイヤーを再発見したら、本来の命令に対応するAIへ戻す。
         m_IsLostPatrolling = false;
-        if (chaseAI) chaseAI->Reset();
-        if (patrolAI && map) patrolAI->ResetFromCurrentPos(*this, map);
+        SwitchAI(GetCommandAI());
     }
-    Enemy* visibleEnemy = nullptr;
-    if (m_AIMode != AllyAIMode::Retreat) {
-        // 退避AIでは敵へ近づかないため、視界内敵の探索を省く。
-        visibleEnemy = FindVisibleEnemy(map);
-    }
-    bool attackableEnemy = visibleEnemy && chaseAI && chaseAI->IsAttackAdjacent(*this, visibleEnemy, map);
+
+    // 撤退時は敵を追跡対象ではなく、RunAwayAIへ渡す脅威として利用する。
+    Enemy* visibleEnemy = FindVisibleEnemy(map);
+    bool attackableEnemy = visibleEnemy && m_ChaseAI && m_ChaseAI->IsAttackAdjacent(*this, visibleEnemy, map);
     if (attackableEnemy && m_AIMode != AllyAIMode::Retreat) {
         ConsumeAllMoves();
         SetTurnConsumeType(TurnConsumeType::Action);
         return;
     }
-    if (visibleEnemy && m_AIMode != AllyAIMode::Counter && m_AIMode != AllyAIMode::NoSkill && m_AIMode != AllyAIMode::Patrol) {
+    if (visibleEnemy && m_AIMode != AllyAIMode::Counter && m_AIMode != AllyAIMode::NoSkill
+        && m_AIMode != AllyAIMode::Patrol && m_AIMode != AllyAIMode::Retreat) {
         visibleEnemy = nullptr;
     }
+
     if (m_AIMode == AllyAIMode::Patrol) {
-        if (visibleEnemy && chaseAI && map) chaseAI->MoveOnlyWithTarget(*this, visibleEnemy, map);
-        else if (patrolAI && map) patrolAI->Update(*this, map);
-        else ConsumeAllMoves();
+        if (visibleEnemy && m_ChaseAI && map) {
+            SwitchAI(m_ChaseAI.get());
+            m_ChaseAI->MoveOnlyWithTarget(*this, visibleEnemy, map);
+        }
+        else if (m_PatrolAI && map) {
+            SwitchAI(m_PatrolAI.get());
+            m_CurrentAI->Update(*this, map);
+        }
+        else {
+            ConsumeAllMoves();
+        }
         if (oldPos != GetGridPos()) ConsumeActionForMoveIfPossible();
         SetTurnConsumeType(TurnConsumeType::Action);
         return;
     }
+
     if (!playerRecognized && chaseMode) {
-        if (patrolAI && map) {
-            if (!m_IsLostPatrolling) {
-                if (chaseAI) chaseAI->Reset();
-                patrolAI->ResetFromCurrentPos(*this, map);
-                m_IsLostPatrolling = true;
-            }
-            patrolAI->Update(*this, map);
+        // プレイヤーを見失った間だけ巡回AIへ切り替え、再発見を待つ。
+        if (m_PatrolAI && map) {
+            m_IsLostPatrolling = true;
+            SwitchAI(m_PatrolAI.get());
+            m_CurrentAI->Update(*this, map);
         }
         else {
             ConsumeAllMoves();
@@ -322,19 +337,31 @@ void Ally::UpdateMovePhase()
         SetTurnConsumeType(TurnConsumeType::Action);
         return;
     }
-    if (chaseAI && map && player) {
+
+    if (map && player) {
         switch (m_AIMode) {
         case AllyAIMode::Counter:
         case AllyAIMode::NoSkill:
-            if (visibleEnemy) chaseAI->MoveOnlyWithTarget(*this, visibleEnemy, map);
-            else UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *chaseAI, 3, 3, false);
+            SwitchAI(m_ChaseAI.get());
+            if (visibleEnemy) m_ChaseAI->MoveOnlyWithTarget(*this, visibleEnemy, map);
+            else UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *m_ChaseAI, 3, 3, false);
             break;
         case AllyAIMode::Retreat:
-            UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *chaseAI, 3, 3, false);
+            if (visibleEnemy && m_RunAwayAI) {
+                // 見えている敵から離れつつ、安全目標であるプレイヤー側へ寄る。
+                SwitchAI(m_RunAwayAI.get());
+                m_RunAwayAI->MoveAwayFromTarget(*this, visibleEnemy, player, map);
+            }
+            else {
+                // 脅威が見えない時は孤立しないよう、プレイヤーの近くへ戻る。
+                SwitchAI(m_ChaseAI.get());
+                UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *m_ChaseAI, 3, 3, false);
+            }
             break;
         case AllyAIMode::Follow:
         default:
-            UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *chaseAI, 3, 3, false);
+            SwitchAI(m_ChaseAI.get());
+            UnitMovementPlanner::MoveToTargetByAreaAndEndTurn(*this, player, map, *m_ChaseAI, 3, 3, false);
             break;
         }
     }
@@ -348,7 +375,6 @@ void Ally::UpdateMovePhase()
     }
     SetTurnConsumeType(TurnConsumeType::Action);
 }
-
 const char* Ally::GetAIModeName() const
 {
     switch (m_AIMode)
@@ -373,11 +399,46 @@ const char* Ally::GetAIModeName() const
 void Ally::SetAIMode(AllyAIMode mode)
 {
     m_AIMode = mode;
-    if (chaseAI) chaseAI->Reset();
-    if (patrolAI) patrolAI->ResetFromCurrentPos(*this, MapManager::Instance()->GetCurrentMap());
+    m_CanUseSkill = (mode != AllyAIMode::NoSkill);
     m_IsLostPatrolling = false;
     m_PlayerRecognized = false;
+    SwitchAI(GetCommandAI());
     MessageLog::Instance().AddMessage(m_Name + u8"のAIを「" + GetAIModeName() + u8"」にした。");
+}
+
+void Ally::SwitchAI(UnitAI* nextAI)
+{
+    if (m_CurrentAI == nextAI) return;
+
+    MapData* map = MapManager::Instance()->GetCurrentMap();
+    if (m_CurrentAI) {
+        // 切替前のAIへ終了を通知し、必要なら経路などを整理させる。
+        m_CurrentAI->OnExit(*this, map);
+    }
+
+    m_CurrentAI = nextAI;
+    if (m_CurrentAI) {
+        // 新しいAIへ開始を通知し、現在位置を基準に行動準備をさせる。
+        m_CurrentAI->OnEnter(*this, map);
+    }
+}
+
+UnitAI* Ally::GetCommandAI() const
+{
+    switch (m_AIMode)
+    {
+    case AllyAIMode::Follow:
+    case AllyAIMode::Counter:
+    case AllyAIMode::NoSkill:
+        return m_ChaseAI.get();
+    case AllyAIMode::Patrol:
+        return m_PatrolAI.get();
+    case AllyAIMode::Retreat:
+        return m_RunAwayAI.get();
+    case AllyAIMode::Wait:
+    default:
+        return nullptr;
+    }
 }
 
 void Ally::EndTurn()
@@ -387,6 +448,112 @@ void Ally::EndTurn()
     Unit::EndTurn();
     if (actionBudgetBefore > GetActionBudget() || moveBudgetBefore > GetMoveBudget()) {
         NaturalRecovery();
+    }
+}
+
+void Ally::StartAttackWithNotify(Unit* target)
+{
+    if (!target || target->GetHP() <= 0) return;
+
+    const bool showVisual = ShouldShowCombatVisual(target);
+    if (showVisual &&
+        m_AnimationModel &&
+        m_AnimationModel->HasAnimationNotify("Attack", "AttackHit"))
+    {
+        // ダメージ処理はAttackHit Notifyまで保留し、見た目と判定の瞬間を一致させる。
+        m_PendingAttackTarget = target;
+        SetTriggerAnimation("Attack", 1.0f);
+        return;
+    }
+
+    // Notify未登録時は即時処理へ戻すが、表示可能なら攻撃モーション自体は再生する。
+    m_PendingAttackTarget = target;
+    ResolvePendingAttack();
+    if (showVisual) SetTriggerAnimation("Attack", 1.0f);
+}
+
+void Ally::ResolvePendingAttack()
+{
+    Unit* target = m_PendingAttackTarget;
+    m_PendingAttackTarget = nullptr;
+    if (!target || target->GetHP() <= 0) return;
+
+    if (!CheckHit(GetACC(), target->GetEVD()))
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
+        return;
+    }
+
+    const int damage = CalcDamage(GetATK(), target->GetDEF());
+    target->TakeDamage(damage, this);
+}
+
+bool Ally::QueueSkillForNotify(
+    const Skill& skill,
+    const EffectContext& context,
+    const std::vector<Unit*>& targets)
+{
+    if (!m_AnimationModel ||
+        !m_AnimationModel->HasAnimationNotify("Skill", "SkillEffect"))
+    {
+        return false;
+    }
+
+    m_PendingSkillEffect = skill.effect;
+    m_PendingSkillContext = context;
+    m_PendingSkillTargets = targets;
+    return true;
+}
+
+void Ally::ResolvePendingSkill()
+{
+    std::shared_ptr<EffectBase> effect = m_PendingSkillEffect;
+    EffectContext context = m_PendingSkillContext;
+    std::vector<Unit*> targets = m_PendingSkillTargets;
+
+    m_PendingSkillEffect.reset();
+    m_PendingSkillContext = {};
+    m_PendingSkillTargets.clear();
+    if (!effect) return;
+
+    if (context.targetType == EffectTargetType::Single)
+    {
+        if (context.target && context.target->GetHP() > 0)
+            effect->Apply(context);
+        return;
+    }
+
+    for (Unit* target : targets)
+    {
+        if (!target || target->GetHP() <= 0) continue;
+        EffectContext each = context;
+        each.target = target;
+        each.pos = target->GetGridPos();
+        effect->Apply(each);
+    }
+}
+
+void Ally::ClearPendingCombatActions()
+{
+    m_PendingAttackTarget = nullptr;
+    m_PendingSkillEffect.reset();
+    m_PendingSkillContext = {};
+    m_PendingSkillTargets.clear();
+}
+
+void Ally::OnAnimationNotify(
+    const std::string& animationName,
+    const std::string& notifyName)
+{
+    if (animationName == "Attack" && notifyName == "AttackHit")
+    {
+        ResolvePendingAttack();
+        return;
+    }
+
+    if (animationName == "Skill" && notifyName == "SkillEffect")
+    {
+        ResolvePendingSkill();
     }
 }
 
@@ -408,18 +575,10 @@ void Ally::Attack()
     if (Enemy* enemy = dynamic_cast<Enemy*>(target)) {
         if (!IsAllyHostileEnemy(enemy)) return;
     }
-    if (ShouldShowCombatVisual(target)) SetTriggerAnimation("Attack", 1.0f);
-    if (!CheckHit(GetACC(), target->GetEVD())) {
-        MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
-        EndTurn();
-        return;
-    }
-
-    int damage = CalcDamage(GetATK(), target->GetDEF());
-    target->TakeDamage(damage,this);
+    StartAttackWithNotify(target);
 }
 
-void Ally::OnDeath(Unit* attacker) {
+void Ally::OnDeath(Unit*) {
     MessageLog::Instance().AddMessage(m_Name + u8"はちからつきた。");
     DismissFromParty();
 }
@@ -427,6 +586,7 @@ void Ally::OnDeath(Unit* attacker) {
 void Ally::DismissFromParty()
 {
     // 仲間一覧から外し、仲間専用の表示物も同時に破棄して安全に退場させる。
+    ClearPendingCombatActions();
     UnitManager::Instance()->RemoveAlly(this);
     if (m_AllyMark)
     {
@@ -460,6 +620,7 @@ void Ally::LevelUp()
 void Ally::Uninit()
 {
     //MapManager及びUnitManagerから自分を削除してから、モデルやエフェクトを解放する。
+    ClearPendingCombatActions();
     UnitManager::Instance()->RemoveAlly(this);
     if (m_AllyMark)
     {

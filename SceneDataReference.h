@@ -3,8 +3,8 @@
 class DataReference
 {
 public:
-    static std::string NextDungeonId;
-    static bool IsEditorTestPlay;
-    static bool RandomizeEditorTestPlaySeed;
-    static int EditorTestPlaySeedSalt;
+    static std::string m_NextDungeonId;
+    static bool m_IsEditorTestPlay;
+    static bool m_RandomizeEditorTestPlaySeed;
+    static int m_EditorTestPlaySeedSalt;
 };

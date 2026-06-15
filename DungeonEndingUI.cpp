@@ -59,7 +59,7 @@ void DungeonEndingUI::Start(
 
     MessageLog::Instance().SetVisible(false);
     if (TurnManager::Instance())
-        TurnManager::Instance()->PauseTurnProgression();
+        TurnManager::Instance()->SetTurnProgressionPaused(true);
 }
 
 void DungeonEndingUI::Update()

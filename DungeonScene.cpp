@@ -41,7 +41,7 @@ namespace
         void Init() override {}
         void Update() override
         {
-            if (DataReference::IsEditorTestPlay && Input::GetKeyTrigger(VK_ESCAPE))
+            if (DataReference::m_IsEditorTestPlay && Input::GetKeyTrigger(VK_ESCAPE))
             {
                 ReturnToEditor();
             }
@@ -50,7 +50,7 @@ namespace
         void Uninit() override {}
         void DrawImGui() override
         {
-            if (!DataReference::IsEditorTestPlay) return;
+            if (!DataReference::m_IsEditorTestPlay) return;
 
             const ImVec2 windowSize(220, 130);
             ImVec2 displaySize = ImGui::GetIO().DisplaySize;
@@ -87,7 +87,7 @@ namespace
     private:
         void ReturnToEditor()
         {
-            DataReference::IsEditorTestPlay = false;
+            DataReference::m_IsEditorTestPlay = false;
             Manager::SetScene<EditorScene>();
         }
     };
@@ -120,7 +120,7 @@ void DungeonScene::Init()
     AddGameObject<ShopUI>(2);
     AddGameObject<FloorTransitionUI>(2);
     AddGameObject<ConfirmWindow>(2);
-    if (DataReference::IsEditorTestPlay)
+    if (DataReference::m_IsEditorTestPlay)
     {
         AddGameObject<TestPlayReturnUI>(2);
     }
@@ -165,7 +165,7 @@ void DungeonScene::InitDungeonData()
 {
     // 次に入るダンジョンIDは Title/Editor 側で DataReference にセットされる。
     // 対応する JSON がなければ最低限遊べる default データを作る。
-    m_DungeonId = DataReference::NextDungeonId;
+    m_DungeonId = DataReference::m_NextDungeonId;
     DungeonData dungeon;
 
     std::string path = m_DungeonId + ".json";
@@ -175,11 +175,11 @@ void DungeonScene::InitDungeonData()
         BuildDefaultDungeonData(dungeon);
     }
 
-    if (DataReference::IsEditorTestPlay &&
-        DataReference::RandomizeEditorTestPlaySeed &&
+    if (DataReference::m_IsEditorTestPlay &&
+        DataReference::m_RandomizeEditorTestPlaySeed &&
         dungeon.UseGenerationSeed())
     {
-        dungeon.SetGenerationSeed(dungeon.GetGenerationSeed() ^ DataReference::EditorTestPlaySeedSalt);
+        dungeon.SetGenerationSeed(dungeon.GetGenerationSeed() ^ DataReference::m_EditorTestPlaySeedSalt);
     }
 
     auto* mapManager = GetGameObject<MapManager>();

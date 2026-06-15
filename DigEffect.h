@@ -20,6 +20,8 @@ public:
 
         Vector2Int dir = ctx.direction;
         if (dir.x == 0 && dir.y == 0) dir = actor->GetFacingDir();
+        // 効果対象が遠方でも、実際に掘る方向は隣接する1マスへ揃える。
+        dir.normalize();
         if (dir.x == 0 && dir.y == 0) return;
 
         Vector2Int target = actor->GetGridPos() + dir;

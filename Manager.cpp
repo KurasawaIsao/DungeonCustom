@@ -31,8 +31,7 @@
 
 Scene* Manager::m_scene = nullptr;
 Scene* Manager::m_Nextscene = nullptr;
-ImFont* Manager::fontDebug;
-ImFont* Manager::fontLog;
+ImFont* Manager::m_FontDebug;
 
 void Manager::Init()
 {
@@ -55,12 +54,8 @@ void Manager::InitImGuiFonts()
 {
     ImGuiIO& io = ImGui::GetIO();
 
-    fontDebug = io.Fonts->AddFontFromFileTTF(
+    m_FontDebug = io.Fonts->AddFontFromFileTTF(
         "C:/Windows/Fonts/meiryo.ttc", 20.0f, nullptr, io.Fonts->GetGlyphRangesJapanese()
-    );
-
-    fontLog = io.Fonts->AddFontFromFileTTF(
-        "C:/Windows/Fonts/meiryo.ttc", 36.0f, nullptr, io.Fonts->GetGlyphRangesJapanese()
     );
     io.Fonts->Build();
 }

@@ -255,9 +255,6 @@
     <ClCompile Include="Vector2Int.h">
       <Filter>ヘッダー ファイル\Vector</Filter>
     </ClCompile>
-    <ClCompile Include="Easing.cpp">
-      <Filter>ソース ファイル\Other</Filter>
-    </ClCompile>
     <ClCompile Include="Input.cpp">
       <Filter>ソース ファイル\Other</Filter>
     </ClCompile>
@@ -560,9 +557,6 @@
     <ClInclude Include="Component.h">
       <Filter>ヘッダー ファイル\Other</Filter>
     </ClInclude>
-    <ClInclude Include="Easing.h">
-      <Filter>ヘッダー ファイル\Other</Filter>
-    </ClInclude>
     <ClInclude Include="Vector2.h">
       <Filter>ヘッダー ファイル\Vector</Filter>
     </ClInclude>
@@ -826,9 +820,6 @@
     </ClInclude>
     <ClInclude Include="SpeedChangeEffect.h">
       <Filter>ソース ファイル\Effects</Filter>
-    </ClInclude>
-    <ClInclude Include="DebugTrace.h">
-      <Filter>ソース ファイル\Other</Filter>
     </ClInclude>
     <ClInclude Include="WhimAI.h">
       <Filter>ヘッダー ファイル\UnitAI</Filter>

@@ -15,9 +15,9 @@ public:
 
     static const std::unordered_map<std::string, TrapSpawnTable>& GetAll()
     {
-        return tables;
+        return m_Tables;
     }
 
 private:
-    static std::unordered_map<std::string, TrapSpawnTable> tables;
+    static std::unordered_map<std::string, TrapSpawnTable> m_Tables;
 };

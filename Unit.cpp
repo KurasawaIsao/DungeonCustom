@@ -11,7 +11,7 @@
 #include "EffectManager.h"
 #include <algorithm>
 #include <cmath>
-bool Unit::s_SkipMoveAnimation = false;
+bool Unit::m_SkipMoveAnimation = false;
 
 namespace
 {
@@ -30,12 +30,6 @@ namespace
         }
     }
 
-    Vector2Int NormalizeFacingDir(const Vector2Int& dir)
-    {
-        return Vector2Int(
-            (dir.x > 0) ? 1 : (dir.x < 0 ? -1 : 0),
-            (dir.y > 0) ? 1 : (dir.y < 0 ? -1 : 0));
-    }
 }
 
 Unit::Unit()
@@ -195,36 +189,27 @@ void Unit::BeginTurnActions()
         m_ConsumeMoveOnNextTurn = false;
     }
 }
-void Unit::PlayAnimation(const std::string& animName, float Speed)
+void Unit::PlayAnimation(const std::string& animName, float speed, bool useBlend)
 {
-    if (this == nullptr) return;
-    m_AnimSpeed = Speed;
-
-    // 現在再生中、または次に再生予定のものが同じならリセットしない
-    if (m_AnimNext == animName || (m_AnimNext.empty() && m_AnimNow == animName))
-        return;
-
-    m_AnimNext = animName;
-    m_Frame = 0; // ここでリセットされるのを防ぐ
-    m_AnimationBlend = 0.0f;
+    // Unitは再生状態を持たず、AnimationModelのループ再生APIへ委譲する。
+    if (!m_AnimationModel) return;
+    m_AnimationModel->PlayAnimation(animName, speed, true, m_DefaultAnim, useBlend);
 }
 void Unit::SetTriggerAnimation(const std::string& animName, float speed, bool waitForAnimation)
 {
-    if (s_SkipMoveAnimation) {
+    if (m_SkipMoveAnimation) {
         m_IsActingAnimation = false;
-        m_IsAnimLooping = true;
         PlayAnimation(m_DefaultAnim, 1.0f);
         return;
     }
 
     OnTriggerAnimationStarted(animName);
 
-    // 攻撃などはターン進行を待たせるが、鉄球の衝突ダメージなどは見た目だけ再生できるようにする。
+    // ターン待機フラグはゲーム側に残し、単発再生そのものはAnimationModelへ任せる。
     if (waitForAnimation) m_IsActingAnimation = true;
-    m_IsAnimLooping = false; 
-    PlayAnimation(animName, speed);
+    if (m_AnimationModel)
+        m_AnimationModel->PlayAnimation(animName, speed, false, m_DefaultAnim);
 }
-
 
 
 std::string Unit::GetMoveEndAnimation() const
@@ -294,7 +279,7 @@ void Unit::UpdateFacingRotation()
 
 void Unit::LookAt(const Vector2Int& targetGrid)
 {
-    Vector2Int dir = NormalizeFacingDir(targetGrid);
+    Vector2Int dir = targetGrid.normalized();
     if (dir.x == 0 && dir.y == 0)
         return;
 
@@ -303,7 +288,7 @@ void Unit::LookAt(const Vector2Int& targetGrid)
 }
 bool Unit::ShouldShowCombatVisual(Unit* other) const
 {
-    if (s_SkipMoveAnimation) return false;
+    if (m_SkipMoveAnimation) return false;
 
     Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
     if (!player) return true;
@@ -448,7 +433,17 @@ void Unit::SetStatus(Status effect, int duration)
         }
         return;
     }
-   
+
+    // 睡眠系から別の状態異常へ上書きする場合は、眠りモーションを基準アニメーションに残さない。
+    if (effect != Status::Sleep && effect != Status::Nap && m_DefaultAnim == "Sleep")
+    {
+        m_DefaultAnim = "Idle";
+        if (!m_IsActingAnimation && m_MoveState == MoveState::Idle)
+        {
+            // かなしばりは以後アニメーション更新を止めるため、状態設定前に待機姿勢へ戻す。
+            PlayAnimation(m_DefaultAnim, 1.0f, false);
+        }
+    }
 
     switch (effect) {
     case Status::Confusion:
@@ -523,12 +518,14 @@ void Unit::ClearStatus()
         playIdleIfFree();
         break;
     case Status::Sleep:
-        m_BlockActionOnceAfterStatusClear = true;
+        // プレイヤーは起床したターンから操作できるため、敵と仲間だけ解除後の行動を止める。
+        if (!dynamic_cast<Player*>(this)) m_BlockActionOnceAfterStatusClear = true;
         MessageLog::Instance().AddMessage(msg + u8"は目を覚ました。");
         playIdleIfFree();
         break;
     case Status::Paralysis:
-        m_BlockActionOnceAfterStatusClear = true;
+        // プレイヤーは解除されたターンから操作できるため、敵と仲間だけ解除後の行動を止める。
+        if (!dynamic_cast<Player*>(this)) m_BlockActionOnceAfterStatusClear = true;
         MessageLog::Instance().AddMessage(msg + u8"のかなしばりが解けた。");
         playIdleIfFree();
         break;
@@ -593,40 +590,15 @@ bool Unit::IsDiagonalMoveBlocked(Vector2Int cur, Vector2Int dir, MapData* map)
 void Unit::UpdateAnimation()
 {
     if (!m_AnimationModel) return;
-    if (m_Status == Status::Paralysis)return;
+    if (m_Status == Status::Paralysis) return;
 
-    m_Frame += m_AnimSpeed;
-    m_AnimationBlend += 0.1f; // ブレンド速度（固定値または変数）
-
-    if (m_AnimationBlend >= 1.0f)
-    {
-        m_AnimationBlend = 1.0f;
-        if (!m_AnimNext.empty())
+    // Notifyのゲーム処理だけをUnitへ返し、再生位置や発火判定はAnimationModel内で完結させる。
+    m_AnimationModel->SetNotifyCallback(
+        [this](const std::string& animationName, const std::string& notifyName)
         {
-            m_AnimNow = m_AnimNext;
-            m_AnimNext.clear();
-        }
-    }
-
-    // ---  Trigger (単発再生) の終了判定 ---
-    if (!m_IsAnimLooping)
-    {
-        // モデルから現在の最大フレーム数を取得
-        int maxFrame = m_AnimationModel->GetAnimationFrameCount(m_AnimNow);
-
-        // 最終フレームに達したか判定
-        if (m_Frame >= (float)(maxFrame - 1))
-        {
-            m_IsAnimLooping = true; // ループ(Idle)に戻る
-            PlayAnimation(m_DefaultAnim, 1.0f); // Idleへ遷移
-        }
-    }
-    m_AnimationModel->Update(
-        m_AnimNow.c_str(), (int)m_Frame,
-        m_AnimNext.empty() ? m_AnimNow.c_str() : m_AnimNext.c_str(),
-        (int)m_Frame,
-        m_AnimationBlend
-    );
+            OnAnimationNotify(animationName, notifyName);
+        });
+    m_AnimationModel->UpdatePlayback();
 }
 void Unit::StartMove(const Vector2Int& target, float moveTime)
 {
@@ -665,7 +637,7 @@ void Unit::StartMove(const Vector2Int& target, float moveTime)
     m_MovedThisTurn = true;
 
     //プレイヤーの視界外では演出をカット
-    bool skipMoveAnimation = s_SkipMoveAnimation;
+    bool skipMoveAnimation = m_SkipMoveAnimation;
     if (!skipMoveAnimation) {
         Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
         if (player && player != this && !player->IsInView(m_GridPos) && !player->IsInView(target)) {
@@ -688,7 +660,8 @@ void Unit::StartMove(const Vector2Int& target, float moveTime)
 
     m_MoveState = MoveState::Moving;
     m_IsAnimatingMove = true;
-    PlayAnimation("Run", 1.0f);
+    // 移動開始時は前の単発モーションを混ぜず、入力に合わせてRunへ即時切替する。
+    PlayAnimation("Run", 1.0f, false);
 }
 void Unit::RequestMove(const Vector2Int& target)
 {
@@ -782,7 +755,7 @@ void Unit::StartKnockback(const Vector2Int& target, int impactDamage, Unit* atta
     m_MovedThisTurn = true;
     m_VisualRotationOffset = Vector3(0.0f, 0.0f, 0.0f);
 
-    bool skipMoveAnimation = s_SkipMoveAnimation;
+    bool skipMoveAnimation = m_SkipMoveAnimation;
     if (!skipMoveAnimation) {
         Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
         if (player && player != this && !player->IsInView(m_GridPos) && !player->IsInView(target)) {
@@ -821,7 +794,7 @@ void Unit::StartSummonAppear(float duration)
     m_MoveTimer = 0.0f;
     m_VisualRotationOffset = Vector3(0.0f, 0.0f, 0.0f);
 
-    bool skipMoveAnimation = s_SkipMoveAnimation;
+    bool skipMoveAnimation = m_SkipMoveAnimation;
     if (!skipMoveAnimation) {
         Player* player = UnitManager::Instance() ? UnitManager::Instance()->GetPlayer() : nullptr;
         if (player && player != this && !player->IsInView(m_GridPos)) {
@@ -860,7 +833,7 @@ void Unit::StartWarp(const Vector2Int& targetGrid)
     m_GridPos = targetGrid;
     m_LastValidGridPos = targetGrid;
 
-    if (s_SkipMoveAnimation) {
+    if (m_SkipMoveAnimation) {
         m_Position = m_MoveEndPos;
         m_MoveState = MoveState::Idle;
         m_IsAnimatingMove = false;
@@ -934,6 +907,6 @@ void Unit::UpdateLerpMove() {
 }
 bool Unit::IsAnimationFinished() const
 {
-    int maxFrame = m_AnimationModel->GetAnimationFrameCount(m_AnimNow);
-    return m_Frame >= maxFrame - 1;
+    // 呼び出し互換のため入口だけ残し、完了判定はAnimationModelへ委譲する。
+    return m_AnimationModel && m_AnimationModel->IsAnimationFinished();
 }

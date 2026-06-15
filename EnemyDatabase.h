@@ -21,6 +21,8 @@ public:
     static std::vector<std::string> GetAllIds();
 
 private:
+    // EnemyData自身のIDをキーとして登録し、キーの二重指定を防ぐ。
+    static void Register(EnemyData data);
 
     static std::unordered_map<std::string,EnemyData> m_Data;
 };

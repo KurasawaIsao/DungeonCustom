@@ -27,9 +27,9 @@ class Player;
 class MapManager : public GameObject
 {
 private:
-    static MapManager* instance;
+    static MapManager* m_Instance;
     // 現在階層の盤面データ。描画・Unit配置・足元イベントはこの MapData を参照する。
-    std::unique_ptr<MapData> currentMap;
+    std::unique_ptr<MapData> m_CurrentMap;
 
     // 階段演出中に二重で階層遷移リクエストが入るのを防ぐ。
     bool m_IsFloorChanging = false;
@@ -43,7 +43,7 @@ private:
 public:
     static MapManager* Instance()
     {
-        return instance;
+        return m_Instance;
     }
     MapManager() {
         m_DefaultFloor.width = 50;
@@ -53,7 +53,7 @@ public:
         m_DefaultFloor.shopItemTableId = "early";
         m_DefaultFloor.maxEnemyCount = 10;
         m_DefaultFloor.maxItemCount = 10;
-        instance = this; }  
+        m_Instance = this; }  
 
     void StartDungeon();
     void GenerateNewMap(FloorData floor, Scene* scene)
@@ -78,13 +78,13 @@ public:
             }
             width = MapManagerDetail::ClampMapSizeForGeneration(width);
             height = MapManagerDetail::ClampMapSizeForGeneration(height);
-            currentMap = MapGenerator::Generate(width, height, scene);
+            m_CurrentMap = MapGenerator::Generate(width, height, scene);
         };
 
         if (floor.mapSource == MapSourceType::FixedMap && !floor.mapFilePath.empty())
         {
-            currentMap = MapLoader::LoadFromFile(floor.mapFilePath, scene);
-            if (!currentMap)
+            m_CurrentMap = MapLoader::LoadFromFile(floor.mapFilePath, scene);
+            if (!m_CurrentMap)
                 generateAutoMap();
         }
         else
@@ -93,16 +93,16 @@ public:
         }
 
 
-        if (currentMap)
+        if (m_CurrentMap)
         {
             // 非表示扱いのマップ外マスを、境界から10マスぶん壁として描画・判定できるようにする。
-            currentMap->ExpandActiveAreaWithWall(10);
+            m_CurrentMap->ExpandActiveAreaWithWall(10);
         }
         MapGenerator::SpawnPlayerInRoom();
     }
 
-    MapData* GetCurrentMap() { return currentMap.get(); }
-    const MapData* GetCurrentMap() const { return currentMap.get(); }
+    MapData* GetCurrentMap() { return m_CurrentMap.get(); }
+    const MapData* GetCurrentMap() const { return m_CurrentMap.get(); }
 
     void SetDungeonData(const DungeonData& data)
     {
@@ -111,12 +111,11 @@ public:
         m_CurrentFloor = 0;
     }
     const DungeonData& GetDungeonData() const { return m_DungeonData; }
-    int GetCurrentFloorNumber() { return m_CurrentFloor; }
 
     const FloorData& GetCurrentFloorData() const;
 
 
-    bool HasMap() const { return (bool)currentMap; }
+    bool HasMap() const { return (bool)m_CurrentMap; }
 
     void ClearFloor();
     void ChangeFloor();
@@ -124,7 +123,7 @@ public:
     void Init() override {}
     void Update() override;
     void Draw() override {}
-    void Uninit() override { if (instance == this) instance = nullptr; }
+    void Uninit() override { if (m_Instance == this) m_Instance = nullptr; }
     void RequestNextFloor();
     void RequestBackFloor(int count);
     void AfterUnitMoved(Unit* unit, bool suppressObjectStep = false);

@@ -21,25 +21,25 @@
 
 void MiniMapRenderer::Init(MapData* data, int drawX, int drawY, int drawW, int drawH)
 {
-    map = data;
-    mapW = data ? data->GetWidth() : 0;
-    mapH = data ? data->GetHeight() : 0;
+    m_Map = data;
+    m_MapWidth = data ? data->GetWidth() : 0;
+    m_MapHeight = data ? data->GetHeight() : 0;
 
-    posX = drawX;
-    posY = drawY;
-    width = drawW;
-    height = drawH;
+    m_PosX = drawX;
+    m_PosY = drawY;
+    m_Width = drawW;
+    m_Height = drawH;
 
     ResizeTextureForCurrentMode();
-    discoveredTiles.assign(mapW * mapH, false);
-    discoveredRooms.assign(map ? map->GetRooms().size() : 0, false);
+    m_DiscoveredTiles.assign(m_MapWidth * m_MapHeight, false);
+    m_DiscoveredRooms.assign(m_Map ? m_Map->GetRooms().size() : 0, false);
 
-    miniMapPoly.Init((float)posX, (float)posY, (float)width, (float)height, nullptr, 1.0f);
-    lookMapPoly.Init((float)(SCREEN_WIDTH - 560) * 0.5f, (float)(SCREEN_HEIGHT - 560) * 0.5f, 560.0f, 560.0f, nullptr, 1.0f);
-    blackOverlayPoly.Init(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, nullptr, 1.0f);
-    blackOverlayPoly.SetColor(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
+    m_MiniMapPoly.Init((float)m_PosX, (float)m_PosY, (float)m_Width, (float)m_Height, nullptr, 1.0f);
+    m_LookMapPoly.Init((float)(SCREEN_WIDTH - 560) * 0.5f, (float)(SCREEN_HEIGHT - 560) * 0.5f, 560.0f, 560.0f, nullptr, 1.0f);
+    m_BlackOverlayPoly.Init(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, nullptr, 1.0f);
+    m_BlackOverlayPoly.SetColor(XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f));
 
-    if (!showFullMap)
+    if (!m_ShowFullMap)
     {
         RevealFromPlayer();
     }
@@ -54,8 +54,8 @@ void MiniMapRenderer::CreateTexture()
     CreateMapSampler();
 
     D3D11_TEXTURE2D_DESC desc{};
-    desc.Width = texW;
-    desc.Height = texH;
+    desc.Width = m_TextureWidth;
+    desc.Height = m_TextureHeight;
     desc.MipLevels = 1;
     desc.ArraySize = 1;
     desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -64,27 +64,27 @@ void MiniMapRenderer::CreateTexture()
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-    if (FAILED(Renderer::GetDevice()->CreateTexture2D(&desc, nullptr, &tex)))
+    if (FAILED(Renderer::GetDevice()->CreateTexture2D(&desc, nullptr, &m_Texture)))
     {
-        tex = nullptr;
+        m_Texture = nullptr;
         return;
     }
 
-    if (FAILED(Renderer::GetDevice()->CreateShaderResourceView(tex, nullptr, &srv)))
+    if (FAILED(Renderer::GetDevice()->CreateShaderResourceView(m_Texture, nullptr, &m_ShaderResourceView)))
     {
-        srv = nullptr;
+        m_ShaderResourceView = nullptr;
     }
 }
 
 void MiniMapRenderer::ReleaseTexture()
 {
-    if (srv) { srv->Release(); srv = nullptr; }
-    if (tex) { tex->Release(); tex = nullptr; }
+    if (m_ShaderResourceView) { m_ShaderResourceView->Release(); m_ShaderResourceView = nullptr; }
+    if (m_Texture) { m_Texture->Release(); m_Texture = nullptr; }
 }
 
 void MiniMapRenderer::CreateMapSampler()
 {
-    if (mapSampler) return;
+    if (m_MapSampler) return;
 
     // ミニマップはタイル単位で表示するため、にじみ防止用にポイントサンプリングとクランプを使う。
     D3D11_SAMPLER_DESC desc{};
@@ -93,15 +93,15 @@ void MiniMapRenderer::CreateMapSampler()
     desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
     desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
     desc.MaxLOD = D3D11_FLOAT32_MAX;
-    Renderer::GetDevice()->CreateSamplerState(&desc, &mapSampler);
+    Renderer::GetDevice()->CreateSamplerState(&desc, &m_MapSampler);
 }
 
 void MiniMapRenderer::ReleaseMapSampler()
 {
-    if (mapSampler)
+    if (m_MapSampler)
     {
-        mapSampler->Release();
-        mapSampler = nullptr;
+        m_MapSampler->Release();
+        m_MapSampler = nullptr;
     }
 }
 
@@ -109,7 +109,7 @@ void MiniMapRenderer::ResizeTextureForCurrentMode()
 {
     int desiredW = DRAW_CELL_COUNT;
     int desiredH = DRAW_CELL_COUNT;
-    if (lookMode)
+    if (m_LookMode)
     {
         int left = 0;
         int top = 0;
@@ -122,12 +122,12 @@ void MiniMapRenderer::ResizeTextureForCurrentMode()
             desiredH = desiredW;
         }
     }
-    else if (showFullMap)
+    else if (m_ShowFullMap)
     {
-        desiredW = (std::max)(1, mapW);
-        desiredH = (std::max)(1, mapH);
+        desiredW = (std::max)(1, m_MapWidth);
+        desiredH = (std::max)(1, m_MapHeight);
     }
-    else if (!lookMode && showDiscoveredMap)
+    else if (!m_LookMode && m_ShowDiscoveredMap)
     {
         int left = 0;
         int top = 0;
@@ -140,10 +140,10 @@ void MiniMapRenderer::ResizeTextureForCurrentMode()
         }
     }
 
-    const bool needsRecreate = (tex == nullptr || srv == nullptr || texW != desiredW || texH != desiredH);
-    texW = desiredW;
-    texH = desiredH;
-    pixels.assign(texW * texH, 0);
+    const bool needsRecreate = (m_Texture == nullptr || m_ShaderResourceView == nullptr || m_TextureWidth != desiredW || m_TextureHeight != desiredH);
+    m_TextureWidth = desiredW;
+    m_TextureHeight = desiredH;
+    m_Pixels.assign(m_TextureWidth * m_TextureHeight, 0);
 
     if (needsRecreate)
     {
@@ -153,12 +153,12 @@ void MiniMapRenderer::ResizeTextureForCurrentMode()
 
 void MiniMapRenderer::SetShowFullMap(bool showFull)
 {
-    if (showFullMap == showFull) return;
+    if (m_ShowFullMap == showFull) return;
 
-    showFullMap = showFull;
-    if (showFullMap)
+    m_ShowFullMap = showFull;
+    if (m_ShowFullMap)
     {
-        showDiscoveredMap = false;
+        m_ShowDiscoveredMap = false;
     }
     ResizeTextureForCurrentMode();
     BuildStaticLayer();
@@ -168,12 +168,12 @@ void MiniMapRenderer::SetShowFullMap(bool showFull)
 
 void MiniMapRenderer::SetShowDiscoveredMap(bool showDiscovered)
 {
-    if (showDiscoveredMap == showDiscovered) return;
+    if (m_ShowDiscoveredMap == showDiscovered) return;
 
-    showDiscoveredMap = showDiscovered;
-    if (showDiscoveredMap)
+    m_ShowDiscoveredMap = showDiscovered;
+    if (m_ShowDiscoveredMap)
     {
-        showFullMap = false;
+        m_ShowFullMap = false;
     }
     ResizeTextureForCurrentMode();
     BuildStaticLayer();
@@ -183,14 +183,14 @@ void MiniMapRenderer::SetShowDiscoveredMap(bool showDiscovered)
 
 void MiniMapRenderer::SetLookMode(bool enabled)
 {
-    if (lookMode == enabled) return;
+    if (m_LookMode == enabled) return;
 
-    lookMode = enabled;
-    if (lookMode)
+    m_LookMode = enabled;
+    if (m_LookMode)
     {
         UnitManager* unitManager = UnitManager::Instance();
         Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
-        lookCenter = player ? player->GetGridPos() : Vector2Int(mapW / 2, mapH / 2);
+        m_LookCenter = player ? player->GetGridPos() : Vector2Int(m_MapWidth / 2, m_MapHeight / 2);
 
         int left = 0;
         int top = 0;
@@ -199,11 +199,11 @@ void MiniMapRenderer::SetLookMode(bool enabled)
         if (GetPlayerRoomBounds(left, top, right, bottom))
         {
             
-            lookCenter = Vector2Int((left + right) / 2, (top + bottom) / 2);
+            m_LookCenter = Vector2Int((left + right) / 2, (top + bottom) / 2);
         }
         ClampLookCenterToDiscoveredBounds();
     }
-    lookPanTimer = 0.0f;
+    m_LookPanTimer = 0.0f;
     ResizeTextureForCurrentMode();
     BuildStaticLayer();
     BuildDynamicLayer();
@@ -215,7 +215,7 @@ void MiniMapRenderer::UpdateLookModeInput()
     const bool tabTriggered = Input::GetKeyTrigger(VK_TAB);
     if (tabTriggered)
     {
-        if (!lookMode)
+        if (!m_LookMode)
         {
             Scene* scene = Manager::GetScene();
             PlayerInventoryUI* ui = scene ? scene->GetGameObject<PlayerInventoryUI>() : nullptr;
@@ -225,12 +225,12 @@ void MiniMapRenderer::UpdateLookModeInput()
                 return;
             }
         }
-        SetLookMode(!lookMode);
+        SetLookMode(!m_LookMode);
         return;
     }
-    if (!lookMode) return;
+    if (!m_LookMode) return;
 
-    lookPanTimer -= Time::DeltaTime();
+    m_LookPanTimer -= Time::DeltaTime();
 
     Vector2Int dir(0, 0);
     if (Input::GetKeyPress(VK_UP)) dir.y += 1;
@@ -244,11 +244,11 @@ void MiniMapRenderer::UpdateLookModeInput()
         Input::GetKeyTrigger(VK_LEFT) ||
         Input::GetKeyTrigger(VK_RIGHT);
 
-    if ((dir.x != 0 || dir.y != 0) && (triggerMove || lookPanTimer <= 0.0f))
+    if ((dir.x != 0 || dir.y != 0) && (triggerMove || m_LookPanTimer <= 0.0f))
     {
-        lookCenter = lookCenter + dir;
+        m_LookCenter = m_LookCenter + dir;
         ClampLookCenterToDiscoveredBounds();
-        lookPanTimer = 0.08f;
+        m_LookPanTimer = 0.08f;
     }
 }
 
@@ -260,35 +260,35 @@ void MiniMapRenderer::ClampLookCenterToDiscoveredBounds()
     int bottom = 0;
     if (!GetDiscoveredBounds(left, top, right, bottom))
     {
-        lookCenter.x = (std::max)(0, (std::min)(mapW - 1, lookCenter.x));
-        lookCenter.y = (std::max)(0, (std::min)(mapH - 1, lookCenter.y));
+        m_LookCenter.x = (std::max)(0, (std::min)(m_MapWidth - 1, m_LookCenter.x));
+        m_LookCenter.y = (std::max)(0, (std::min)(m_MapHeight - 1, m_LookCenter.y));
         return;
     }
 
-    const int halfW = texW / 2;
-    const int halfH = texH / 2;
+    const int halfW = m_TextureWidth / 2;
+    const int halfH = m_TextureHeight / 2;
 
     // 探索済み範囲の一部が画面内に残る範囲で、Tab視点を自由に動かせるようにする。
     const int minX = (std::max)(0, left - halfW);
-    const int maxX = (std::min)(mapW - 1, right - 1 + halfW);
+    const int maxX = (std::min)(m_MapWidth - 1, right - 1 + halfW);
     const int minY = (std::max)(0, top - halfH);
-    const int maxY = (std::min)(mapH - 1, bottom - 1 + halfH);
+    const int maxY = (std::min)(m_MapHeight - 1, bottom - 1 + halfH);
 
-    lookCenter.x = (std::max)(minX, (std::min)(maxX, lookCenter.x));
-    lookCenter.y = (std::max)(minY, (std::min)(maxY, lookCenter.y));
+    m_LookCenter.x = (std::max)(minX, (std::min)(maxX, m_LookCenter.x));
+    m_LookCenter.y = (std::max)(minY, (std::min)(maxY, m_LookCenter.y));
 }
 
 void MiniMapRenderer::MarkDiscovered(int x, int y)
 {
-    if (!map || !map->IsInside(x, y)) return;
-    discoveredTiles[y * mapW + x] = true;
+    if (!m_Map || !m_Map->IsInside(x, y)) return;
+    m_DiscoveredTiles[y * m_MapWidth + x] = true;
 }
 
 bool MiniMapRenderer::IsDiscovered(int x, int y) const
 {
-    if (!map || !map->IsInside(x, y)) return false;
-    if (discoveredTiles.size() != static_cast<size_t>(mapW * mapH)) return false;
-    return discoveredTiles[y * mapW + x];
+    if (!m_Map || !m_Map->IsInside(x, y)) return false;
+    if (m_DiscoveredTiles.size() != static_cast<size_t>(m_MapWidth * m_MapHeight)) return false;
+    return m_DiscoveredTiles[y * m_MapWidth + x];
 }
 
 void MiniMapRenderer::RevealViewArea(const Vector2Int& center, int viewDistance)
@@ -305,8 +305,8 @@ void MiniMapRenderer::RevealViewArea(const Vector2Int& center, int viewDistance)
 
 void MiniMapRenderer::RevealRoom(int roomIndex, int viewDistance)
 {
-    if (!map) return;
-    const auto& rooms = map->GetRooms();
+    if (!m_Map) return;
+    const auto& rooms = m_Map->GetRooms();
     if (roomIndex < 0 || roomIndex >= (int)rooms.size()) return;
 
     const Room& room = rooms[roomIndex];
@@ -329,9 +329,9 @@ void MiniMapRenderer::RevealRoom(int roomIndex, int viewDistance)
     {
         for (int x = pos.x - viewDistance; x < pos.x + size.x + viewDistance; ++x)
         {
-            if (!map->IsInside(x, y) || room.Contains({ x, y })) continue;
+            if (!m_Map->IsInside(x, y) || room.Contains({ x, y })) continue;
 
-            const TileType tile = map->GetTile(x, y);
+            const TileType tile = m_Map->GetTile(x, y);
             if (tile == TileType::Corridor || tile == TileType::Stair)
             {
                 MarkDiscovered(x, y);
@@ -339,33 +339,33 @@ void MiniMapRenderer::RevealRoom(int roomIndex, int viewDistance)
         }
     }
 
-    if (roomIndex >= (int)discoveredRooms.size())
+    if (roomIndex >= (int)m_DiscoveredRooms.size())
     {
-        discoveredRooms.resize(rooms.size(), false);
+        m_DiscoveredRooms.resize(rooms.size(), false);
     }
-    discoveredRooms[roomIndex] = true;
+    m_DiscoveredRooms[roomIndex] = true;
 }
 
 void MiniMapRenderer::RevealConnectedCorridors(const Vector2Int& center, int viewDistance)
 {
-    if (!map || discoveredTiles.size() != static_cast<size_t>(mapW * mapH)) return;
+    if (!m_Map || m_DiscoveredTiles.size() != static_cast<size_t>(m_MapWidth * m_MapHeight)) return;
 
     const int revealRadius = (std::max)(0, viewDistance);
     const int maxSteps = (std::max)(6, viewDistance * 4 + 6);
-    std::vector<bool> visited(mapW * mapH, false);
+    std::vector<bool> visited(m_MapWidth * m_MapHeight, false);
     std::vector<std::pair<Vector2Int, int>> queue;
 
     auto isCorridorLike = [this](const Vector2Int& p) -> bool
     {
-        if (!map->IsInside(p)) return false;
-        const TileType tile = map->GetTile(p.x, p.y);
+        if (!m_Map->IsInside(p)) return false;
+        const TileType tile = m_Map->GetTile(p.x, p.y);
         return tile == TileType::Corridor || tile == TileType::Stair;
     };
 
     auto push = [&](const Vector2Int& p, int step)
     {
         if (!isCorridorLike(p)) return;
-        const int index = p.y * mapW + p.x;
+        const int index = p.y * m_MapWidth + p.x;
         if (visited[index]) return;
         visited[index] = true;
         queue.push_back({ p, step });
@@ -401,7 +401,7 @@ void MiniMapRenderer::RevealConnectedCorridors(const Vector2Int& center, int vie
 
 void MiniMapRenderer::RevealFromPlayer()
 {
-    if (!map) return;
+    if (!m_Map) return;
 
     UnitManager* unitManager = UnitManager::Instance();
     Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
@@ -413,12 +413,12 @@ void MiniMapRenderer::RevealFromPlayer()
 
 void MiniMapRenderer::RevealFromPosition(const Vector2Int& center, int viewDistance)
 {
-    if (!map) return;
+    if (!m_Map) return;
 
     RevealViewArea(center, viewDistance);
     RevealConnectedCorridors(center, viewDistance);
 
-    const int roomIndex = map->GetRoomIndexAt(center.x, center.y);
+    const int roomIndex = m_Map->GetRoomIndexAt(center.x, center.y);
     if (roomIndex >= 0)
     {
         RevealRoom(roomIndex, viewDistance);
@@ -427,15 +427,15 @@ void MiniMapRenderer::RevealFromPosition(const Vector2Int& center, int viewDista
 
 Vector2Int MiniMapRenderer::GetViewportTopLeft() const
 {
-    if (lookMode)
+    if (m_LookMode)
     {
-        return { lookCenter.x - texW / 2, lookCenter.y - texH / 2 };
+        return { m_LookCenter.x - m_TextureWidth / 2, m_LookCenter.y - m_TextureHeight / 2 };
     }
-    if (showFullMap)
+    if (m_ShowFullMap)
     {
         return { 0, 0 };
     }
-    if (showDiscoveredMap)
+    if (m_ShowDiscoveredMap)
     {
         int left = 0;
         int top = 0;
@@ -447,7 +447,7 @@ Vector2Int MiniMapRenderer::GetViewportTopLeft() const
         }
     }
 
-    Vector2Int center(mapW / 2, mapH / 2);
+    Vector2Int center(m_MapWidth / 2, m_MapHeight / 2);
 
     UnitManager* unitManager = UnitManager::Instance();
     Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
@@ -456,23 +456,23 @@ Vector2Int MiniMapRenderer::GetViewportTopLeft() const
         center = player->GetGridPos();
     }
 
-    return { center.x - texW / 2, center.y - texH / 2 };
+    return { center.x - m_TextureWidth / 2, center.y - m_TextureHeight / 2 };
 }
 
 bool MiniMapRenderer::GetDiscoveredBounds(int& outLeft, int& outTop, int& outRight, int& outBottom) const
 {
-    if (!map || discoveredTiles.empty()) return false;
-    if (discoveredTiles.size() != static_cast<size_t>(mapW * mapH)) return false;
+    if (!m_Map || m_DiscoveredTiles.empty()) return false;
+    if (m_DiscoveredTiles.size() != static_cast<size_t>(m_MapWidth * m_MapHeight)) return false;
 
-    int left = mapW;
-    int top = mapH;
+    int left = m_MapWidth;
+    int top = m_MapHeight;
     int right = 0;
     int bottom = 0;
     bool found = false;
 
-    for (int y = 0; y < mapH; ++y)
+    for (int y = 0; y < m_MapHeight; ++y)
     {
-        for (int x = 0; x < mapW; ++x)
+        for (int x = 0; x < m_MapWidth; ++x)
         {
             if (!IsDiscovered(x, y)) continue;
 
@@ -488,21 +488,21 @@ bool MiniMapRenderer::GetDiscoveredBounds(int& outLeft, int& outTop, int& outRig
 
     outLeft = (std::max)(0, left);
     outTop = (std::max)(0, top);
-    outRight = (std::min)(mapW, right);
-    outBottom = (std::min)(mapH, bottom);
+    outRight = (std::min)(m_MapWidth, right);
+    outBottom = (std::min)(m_MapHeight, bottom);
     return outLeft < outRight && outTop < outBottom;
 }
 
 bool MiniMapRenderer::GetPlayerRoomBounds(int& outLeft, int& outTop, int& outRight, int& outBottom) const
 {
-    if (!map) return false;
+    if (!m_Map) return false;
 
     UnitManager* unitManager = UnitManager::Instance();
     Player* player = unitManager ? unitManager->GetPlayer() : nullptr;
     if (!player) return false;
 
-    const int roomIndex = map->GetRoomIndexAt(player->GetGridPos());
-    const auto& rooms = map->GetRooms();
+    const int roomIndex = m_Map->GetRoomIndexAt(player->GetGridPos());
+    const auto& rooms = m_Map->GetRooms();
     if (roomIndex < 0 || roomIndex >= (int)rooms.size()) return false;
 
     const Room& room = rooms[roomIndex];
@@ -512,8 +512,8 @@ bool MiniMapRenderer::GetPlayerRoomBounds(int& outLeft, int& outTop, int& outRig
     // Tab表示で部屋端の入口が切れないよう、部屋の周囲に1マス余白を持たせる。
     outLeft = (std::max)(0, pos.x - 1);
     outTop = (std::max)(0, pos.y - 1);
-    outRight = (std::min)(mapW, pos.x + size.x + 1);
-    outBottom = (std::min)(mapH, pos.y + size.y + 1);
+    outRight = (std::min)(m_MapWidth, pos.x + size.x + 1);
+    outBottom = (std::min)(m_MapHeight, pos.y + size.y + 1);
     return outLeft < outRight && outTop < outBottom;
 }
 
@@ -522,16 +522,16 @@ bool MiniMapRenderer::WorldToViewport(const Vector2Int& worldPos, int& outX, int
     const Vector2Int topLeft = GetViewportTopLeft();
     outX = worldPos.x - topLeft.x;
     outY = worldPos.y - topLeft.y;
-    return outX >= 0 && outX < texW && outY >= 0 && outY < texH;
+    return outX >= 0 && outX < m_TextureWidth && outY >= 0 && outY < m_TextureHeight;
 }
 
 bool MiniMapRenderer::IsShopFloorTile(int x, int y) const
 {
-    if (!map) return false;
+    if (!m_Map) return false;
 
-    for (const Room& room : map->GetRooms())
+    for (const Room& room : m_Map->GetRooms())
     {
-        if (room.specialType != RoomSpecialType::Shop) continue;
+        if (room.m_SpecialType != RoomSpecialType::Shop) continue;
 
         const Vector2Int pos = room.GetPosition();
         const Vector2Int size = room.GetSize();
@@ -553,9 +553,9 @@ bool MiniMapRenderer::IsShopFloorTile(int x, int y) const
 
 unsigned int MiniMapRenderer::GetTileColor(int x, int y) const
 {
-    if (!map || ((lookMode || !showFullMap) && !IsDiscovered(x, y))) return 0x00000000;
+    if (!m_Map || ((m_LookMode || !m_ShowFullMap) && !IsDiscovered(x, y))) return 0x00000000;
 
-    const TileType type = map->GetTile(x, y);
+    const TileType type = m_Map->GetTile(x, y);
     if (type == TileType::Stair)
     {
         return 0xFF00FFFF;
@@ -564,7 +564,7 @@ unsigned int MiniMapRenderer::GetTileColor(int x, int y) const
     {
         return 0xFF00AAFF;
     }
-    if (map->IsRoomTile(x, y) || map->IsEntranceTile(x, y))
+    if (m_Map->IsRoomTile(x, y) || m_Map->IsEntranceTile(x, y))
     {
         return 0xFF00FF00;
     }
@@ -578,16 +578,16 @@ unsigned int MiniMapRenderer::GetTileColor(int x, int y) const
 
 void MiniMapRenderer::BuildStaticLayer()
 {
-    std::fill(pixels.begin(), pixels.end(), 0x00000000);
+    std::fill(m_Pixels.begin(), m_Pixels.end(), 0x00000000);
 
     const Vector2Int topLeft = GetViewportTopLeft();
-    for (int y = 0; y < texH; ++y)
+    for (int y = 0; y < m_TextureHeight; ++y)
     {
-        for (int x = 0; x < texW; ++x)
+        for (int x = 0; x < m_TextureWidth; ++x)
         {
             const int mapX = topLeft.x + x;
             const int mapY = topLeft.y + y;
-            pixels[y * texW + x] = GetTileColor(mapX, mapY);
+            m_Pixels[y * m_TextureWidth + x] = GetTileColor(mapX, mapY);
         }
     }
 }
@@ -598,37 +598,37 @@ void MiniMapRenderer::BuildDynamicLayer()
     if (!unitManager) return;
 
     Player* player = unitManager->GetPlayer();
-    if (map)
+    if (m_Map)
     {
         const Vector2Int topLeft = GetViewportTopLeft();
-        for (int y = 0; y < texH; ++y)
+        for (int y = 0; y < m_TextureHeight; ++y)
         {
-            for (int x = 0; x < texW; ++x)
+            for (int x = 0; x < m_TextureWidth; ++x)
             {
                 const int mapX = topLeft.x + x;
                 const int mapY = topLeft.y + y;
-                if (!player || !map->IsInside(mapX, mapY)) continue;
-                if (!showFullMap)
+                if (!player || !m_Map->IsInside(mapX, mapY)) continue;
+                if (!m_ShowFullMap)
                 {
                     if (!IsDiscovered(mapX, mapY)) continue;
 
                     // アイテムは敵と同じ表示条件にそろえる。
-                    const Room* playerRoom = map->GetRoomAt(player->GetGridPos());
-                    const Room* itemRoom = map->GetRoomAt(Vector2Int(mapX, mapY));
-                    const bool revealSameRoomItemInLookMode = lookMode && playerRoom && playerRoom == itemRoom;
+                    const Room* playerRoom = m_Map->GetRoomAt(player->GetGridPos());
+                    const Room* itemRoom = m_Map->GetRoomAt(Vector2Int(mapX, mapY));
+                    const bool revealSameRoomItemInLookMode = m_LookMode && playerRoom && playerRoom == itemRoom;
                     if (!revealSameRoomItemInLookMode && !player->IsInView(Vector2Int(mapX, mapY))) continue;
                 }
-                MapObject* obj = map->GetObjectAt(mapX, mapY);
+                MapObject* obj = m_Map->GetObjectAt(mapX, mapY);
 
                 if (auto* item = dynamic_cast<Item*>(obj))
                 {
-                    pixels[y * texW + x] = 0xFFFFFF00;
+                    m_Pixels[y * m_TextureWidth + x] = 0xFFFFFF00;
                 }
                 else if (auto* trap = dynamic_cast<Trap*>(obj))
                 {
                     if (trap->IsVisible()) 
                     {
-                        pixels[y * texW + x] = 0xFF4000A0;
+                        m_Pixels[y * m_TextureWidth + x] = 0xFF4000A0;
                     }
                 }
             }
@@ -640,7 +640,7 @@ void MiniMapRenderer::BuildDynamicLayer()
         int vy = 0;
         if (WorldToViewport(player->GetGridPos(), vx, vy))
         {
-            pixels[vy * texW + vx] = 0xffff0000;
+            m_Pixels[vy * m_TextureWidth + vx] = 0xffff0000;
         }
     }
 
@@ -650,17 +650,17 @@ void MiniMapRenderer::BuildDynamicLayer()
 
         enemy->RepairInvalidGridPos("MiniMapRenderer::Enemy");
         const Vector2Int ep = enemy->GetGridPos();
-        if (map && !map->IsInBounds(ep)) {
+        if (m_Map && !m_Map->IsInBounds(ep)) {
             continue;
         }
-        if (!showFullMap)
+        if (!m_ShowFullMap)
         {
             if (!IsDiscovered(ep.x, ep.y)) continue;
 
             // Tab中は、プレイヤーと同じ部屋にいる敵だけ視界制限を外して表示する。
-            const Room* playerRoom = map ? map->GetRoomAt(player->GetGridPos()) : nullptr;
-            const Room* enemyRoom = map ? map->GetRoomAt(ep) : nullptr;
-            const bool revealSameRoomEnemyInLookMode = lookMode && playerRoom && playerRoom == enemyRoom;
+            const Room* playerRoom = m_Map ? m_Map->GetRoomAt(player->GetGridPos()) : nullptr;
+            const Room* enemyRoom = m_Map ? m_Map->GetRoomAt(ep) : nullptr;
+            const bool revealSameRoomEnemyInLookMode = m_LookMode && playerRoom && playerRoom == enemyRoom;
             if (!revealSameRoomEnemyInLookMode && !player->IsInView(ep)) continue;
         }
 
@@ -668,7 +668,7 @@ void MiniMapRenderer::BuildDynamicLayer()
         int vy = 0;
         if (WorldToViewport(ep, vx, vy))
         {
-            pixels[vy * texW + vx] = 0xff0000ff;
+            m_Pixels[vy * m_TextureWidth + vx] = 0xff0000ff;
         }
     }
 
@@ -678,57 +678,57 @@ void MiniMapRenderer::BuildDynamicLayer()
 
         ally->RepairInvalidGridPos("MiniMapRenderer::Ally");
         const Vector2Int ap = ally->GetGridPos();
-        if (map && !map->IsInBounds(ap)) {
+        if (m_Map && !m_Map->IsInBounds(ap)) {
             continue;
         }
-        if (!showFullMap && (!IsDiscovered(ap.x, ap.y) || !player->IsInView(ap))) continue;
+        if (!m_ShowFullMap && (!IsDiscovered(ap.x, ap.y) || !player->IsInView(ap))) continue;
 
         int vx = 0;
         int vy = 0;
         if (WorldToViewport(ap, vx, vy))
         {
-            pixels[vy * texW + vx] = 0xffff0000;
+            m_Pixels[vy * m_TextureWidth + vx] = 0xffff0000;
         }
     }
 }
 
 void MiniMapRenderer::ApplyToGPU()
 {
-    if (!tex) return;
+    if (!m_Texture) return;
 
     D3D11_MAPPED_SUBRESOURCE mapped{};
-    if (FAILED(Renderer::GetDeviceContext()->Map(tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
+    if (FAILED(Renderer::GetDeviceContext()->Map(m_Texture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped)))
     {
         return;
     }
 
     if (mapped.pData == nullptr)
     {
-        Renderer::GetDeviceContext()->Unmap(tex, 0);
+        Renderer::GetDeviceContext()->Unmap(m_Texture, 0);
         return;
     }
 
-    for (int y = 0; y < texH; ++y)
+    for (int y = 0; y < m_TextureHeight; ++y)
     {
-        const int srcY = texH - 1 - y;
+        const int srcY = m_TextureHeight - 1 - y;
         std::memcpy(
             (uint8_t*)mapped.pData + y * mapped.RowPitch,
-            &pixels[srcY * texW],
-            texW * 4
+            &m_Pixels[srcY * m_TextureWidth],
+            m_TextureWidth * 4
         );
     }
 
-    Renderer::GetDeviceContext()->Unmap(tex, 0);
+    Renderer::GetDeviceContext()->Unmap(m_Texture, 0);
 }
 
 void MiniMapRenderer::Update()
 {
     UpdateLookModeInput();
-    if (!showFullMap || lookMode)
+    if (!m_ShowFullMap || m_LookMode)
     {
         RevealFromPlayer();
     }
-    if (showDiscoveredMap)
+    if (m_ShowDiscoveredMap)
     {
         ResizeTextureForCurrentMode();
     }
@@ -739,30 +739,30 @@ void MiniMapRenderer::Update()
 
 void MiniMapRenderer::Draw()
 {
-    if (srv == nullptr) return;
+    if (m_ShaderResourceView == nullptr) return;
 
     Renderer::SetDepthEnable(false);
 
     ID3D11SamplerState* oldSampler = nullptr;
-    if (mapSampler)
+    if (m_MapSampler)
     {
         Renderer::GetDeviceContext()->PSGetSamplers(0, 1, &oldSampler);
-        Renderer::GetDeviceContext()->PSSetSamplers(0, 1, &mapSampler);
+        Renderer::GetDeviceContext()->PSSetSamplers(0, 1, &m_MapSampler);
     }
 
-    if (lookMode)
+    if (m_LookMode)
     {
-        blackOverlayPoly.Draw();
-        lookMapPoly.SetTexture(srv);
-        lookMapPoly.Draw();
+        m_BlackOverlayPoly.Draw();
+        m_LookMapPoly.SetTexture(m_ShaderResourceView);
+        m_LookMapPoly.Draw();
     }
     else
     {
-        miniMapPoly.SetTexture(srv);
-        miniMapPoly.Draw();
+        m_MiniMapPoly.SetTexture(m_ShaderResourceView);
+        m_MiniMapPoly.Draw();
     }
 
-    if (mapSampler)
+    if (m_MapSampler)
     {
         Renderer::GetDeviceContext()->PSSetSamplers(0, 1, &oldSampler);
         if (oldSampler) oldSampler->Release();
@@ -774,29 +774,29 @@ void MiniMapRenderer::Uninit()
 {
     ReleaseTexture();
     ReleaseMapSampler();
-    miniMapPoly.Uninit();
-    lookMapPoly.Uninit();
-    blackOverlayPoly.Uninit();
+    m_MiniMapPoly.Uninit();
+    m_LookMapPoly.Uninit();
+    m_BlackOverlayPoly.Uninit();
 }
 
 void MiniMapRenderer::ResetMap(MapData* newData)
 {
     if (!newData) return;
 
-    map = newData;
-    mapW = newData->GetWidth();
-    mapH = newData->GetHeight();
+    m_Map = newData;
+    m_MapWidth = newData->GetWidth();
+    m_MapHeight = newData->GetHeight();
 
     ResizeTextureForCurrentMode();
-    discoveredTiles.assign(mapW * mapH, false);
-    discoveredRooms.assign(map->GetRooms().size(), false);
+    m_DiscoveredTiles.assign(m_MapWidth * m_MapHeight, false);
+    m_DiscoveredRooms.assign(m_Map->GetRooms().size(), false);
 
-    if (!tex || !srv)
+    if (!m_Texture || !m_ShaderResourceView)
     {
         CreateTexture();
     }
 
-    if (!showFullMap)
+    if (!m_ShowFullMap)
     {
         RevealFromPlayer();
     }

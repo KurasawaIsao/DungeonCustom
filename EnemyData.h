@@ -31,6 +31,15 @@ enum class EnemyTurnSpeedType
     Fast,
     Triple
 };
+
+// 敵ごとに異なるNotifyタイミングを、アニメーション全体に対する0.0～1.0の割合で保持する。
+struct EnemyAnimationNotifyData
+{
+    std::string animationName;
+    float normalizedTime = 0.0f;
+    std::string notifyName;
+};
+
 struct EnemyVisualData
 {
     std::string modelPath;
@@ -44,6 +53,9 @@ struct EnemyVisualData
 
     Vector3 scale;
     float yOffset;
+
+    // モデルの尺が異なっても同じ形式で設定できる、敵種別固有のNotify一覧。
+    std::vector<EnemyAnimationNotifyData> animationNotifies;
 };
 enum class SleepType
 {

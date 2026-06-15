@@ -7,8 +7,7 @@ class Manager
 private:
 	static class Scene* m_scene;
 	static class Scene* m_Nextscene;
-	static ImFont* fontDebug;
-	static ImFont* fontLog;
+	static ImFont* m_FontDebug;
 
 public:
 	static void Init();
@@ -38,6 +37,5 @@ public:
 	{
 		m_Nextscene = new T();
 	}
-	static ImFont* GetDebugFont() { return fontDebug; };
-	static ImFont* GetLogFont() { return fontLog; };
+	static ImFont* GetDebugFont() { return m_FontDebug; };
 };

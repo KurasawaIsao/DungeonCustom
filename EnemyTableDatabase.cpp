@@ -7,7 +7,7 @@ namespace fs = std::filesystem;
 
 std::unordered_map<
     std::string,
-    EnemySpawnTable> EnemyTableDatabase::tables;
+    EnemySpawnTable> EnemyTableDatabase::m_Tables;
 
 void EnemyTableDatabase::Init()
 {
@@ -17,8 +17,8 @@ void EnemyTableDatabase::Init()
 const EnemySpawnTable*
 EnemyTableDatabase::Get(const std::string& id)
 {
-    auto it = tables.find(id);
-    if (it == tables.end())
+    auto it = m_Tables.find(id);
+    if (it == m_Tables.end())
         return nullptr;
 
     return &it->second;
@@ -26,7 +26,7 @@ EnemyTableDatabase::Get(const std::string& id)
 
 bool EnemyTableDatabase::Exists(const std::string& id)
 {
-    return tables.find(id) != tables.end();
+    return m_Tables.find(id) != m_Tables.end();
 }
 
 std::vector<std::string>
@@ -34,7 +34,7 @@ EnemyTableDatabase::GetAllIds()
 {
     std::vector<std::string> ids;
 
-    for (const auto& [id, _] : tables)
+    for (const auto& [id, _] : m_Tables)
         ids.push_back(id);
 
     return ids;
@@ -43,7 +43,7 @@ EnemyTableDatabase::GetAllIds()
 void EnemyTableDatabase::LoadAll(
     const std::string& dir)
 {
-    tables.clear();
+    m_Tables.clear();
 
     if (!fs::exists(dir))
     {
@@ -65,12 +65,12 @@ void EnemyTableDatabase::LoadAll(
         if (EnemyTableIO::LoadFromFile(
             entry.path().string(), table))
         {
-            if (tables.find(table.tableId) != tables.end())
+            if (m_Tables.find(table.tableId) != m_Tables.end())
             {
                 MessageLog::Instance().AddMessage("[Data] Duplicate enemy tableId: " + table.tableId);
                 continue;
             }
-            tables.emplace(
+            m_Tables.emplace(
                 table.tableId,
                 std::move(table));
         }

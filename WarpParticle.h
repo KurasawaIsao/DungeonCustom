@@ -4,7 +4,7 @@
 class WarpParticle : public Particle
 {
 public:
-    Vector3 Center;
+    Vector3 m_Center;
 
 protected:
     void OnParticleSpawn(PARTICLE& p) override;

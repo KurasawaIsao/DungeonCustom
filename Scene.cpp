@@ -82,7 +82,7 @@ void Scene::Draw()
 
 			std::sort(sortTargets.begin(), sortTargets.end(), [&](GameObject* obj1, GameObject* obj2)
 				{
-					return obj1->GetZ(camposition, camForward) > obj2->GetZ(camposition, camForward);
+					return obj1->GetZ(camposition) > obj2->GetZ(camposition);
 				});
 
 			for (auto gameobject : sortTargets)
