@@ -82,7 +82,6 @@ private:
     std::string GetMapPath(const std::string& name, ExportDirectory directory) const;
     std::string GetDungeonPath() const;
     std::string GetSelectedTestDungeonPath() const;
-    std::string GetTestMapPath() const;
     void SyncTestDungeonSelection(bool force);
     void DrawTestPlayControls();
     void DrawThemeEditorTab();

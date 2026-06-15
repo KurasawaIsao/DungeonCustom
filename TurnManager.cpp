@@ -14,7 +14,7 @@
 #include "DungeonEndingUI.h"
 #include <vector>
 
-TurnManager* TurnManager::instance = nullptr;
+TurnManager* TurnManager::m_Instance = nullptr;
 
 // ターン進行を扱うステートマシン。
 // 基本順序は PlayerTurn -> EnemyAction -> EnemyMove -> MoveResolution -> PlayerTurn。
@@ -240,7 +240,7 @@ void TurnManager::FinishTurnCycle()
 {
     // 全ユニットの行動と移動が解決したらターン数を進め、自然湧きを判定して次のプレイヤーターンへ戻る。
     for (Enemy* enemy : UnitManager::Instance()->GetEnemies()) {
-        if (enemy) enemy->ClearHostileRecognitionSuppression();
+        if (enemy) enemy->SetHostileRecognitionSuppressed(false);
     }
     m_TurnCount++;
     if (HandleWindTurnLimit()) return;
@@ -388,6 +388,8 @@ void TurnManager::Update()
         case Phase::EnemyAction:
         {
             // 敵/仲間の「攻撃・特技」だけを処理するフェーズ。
+            // 先に攻撃/特技処理を行って後から移動フェーズへと移行する。
+            //
             // 移動は EnemyMove へ分けることで、倍速時の行動回数と移動回数を独立して扱える。
             //
             // - allChecked は「このフェーズで全員を確認し終えたか」。false なら次フレームも EnemyAction を続ける。
@@ -424,7 +426,8 @@ void TurnManager::Update()
 
             if (!actionStarted) {
                 // 敵側で演出が始まらなかった時だけ仲間の行動を確認する。
-                // 仲間も同じく、演出が始まったら1体で止める。
+				// 仲間も同じく、演出が始まったらその一体で止め、終わったら残りのユニットを処理していく。
+                // これを繰り返すための allChecked と m_EnemyActionLoopHadProgressのチェックが入っている。
                 for (Ally* a : allies)
                 {
                     if (!a) continue;
@@ -463,11 +466,11 @@ void TurnManager::Update()
                     // 倍速/三倍速などで追加行動できるユニットを、次の EnemyAction 周回で再確認できるようにする。
                     for (Enemy* e : enemies)
                     {
-                        if (e && e->CanActThisTurn()) e->ResetActionPhaseCheck();
+                        if (e && e->CanActThisTurn()) e->SetActionPhaseChecked(false);
                     }
                     for (Ally* a : allies)
                     {
-                        if (a && a->CanActThisTurn()) a->ResetActionPhaseCheck();
+                        if (a && a->CanActThisTurn()) a->SetActionPhaseChecked(false);
                     }
                     m_EnemyActionLoopHadProgress = false;
                 }
@@ -520,14 +523,14 @@ void TurnManager::Update()
                 for (Enemy* e : enemies)
                 {
                     if (e && e->CanMoveThisTurn()) {
-                        e->ResetMovePhaseCheck();
+                        e->SetMovePhaseChecked(false);
                         hasExtraMove = true;
                     }
                 }
                 for (Ally* a : allies)
                 {
                     if (a && a->CanMoveThisTurn()) {
-                        a->ResetMovePhaseCheck();
+                        a->SetMovePhaseChecked(false);
                         hasExtraMove = true;
                     }
                 }
@@ -558,14 +561,14 @@ void TurnManager::Update()
                 for (Enemy* e : enemies)
                 {
                     if (ShouldRunPostMoveAction(e, currentMap)) {
-                        e->ResetActionPhaseCheck();
+                        e->SetActionPhaseChecked(false);
                         hasPostMoveAction = true;
                     }
                 }
                 for (Ally* a : allies)
                 {
                     if (ShouldRunPostMoveAction(a, currentMap)) {
-                        a->ResetActionPhaseCheck();
+                        a->SetActionPhaseChecked(false);
                         hasPostMoveAction = true;
                     }
                 }
@@ -645,11 +648,11 @@ void TurnManager::Update()
                 if (hasExtraAction && m_EnemyActionLoopHadProgress) {
                     for (Enemy* e : enemies)
                     {
-                        if (ShouldRunPostMoveAction(e, currentMap)) e->ResetActionPhaseCheck();
+                        if (ShouldRunPostMoveAction(e, currentMap)) e->SetActionPhaseChecked(false);
                     }
                     for (Ally* a : allies)
                     {
-                        if (ShouldRunPostMoveAction(a, currentMap)) a->ResetActionPhaseCheck();
+                        if (ShouldRunPostMoveAction(a, currentMap)) a->SetActionPhaseChecked(false);
                     }
                     m_EnemyActionLoopHadProgress = false;
                 }

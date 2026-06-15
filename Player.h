@@ -64,6 +64,9 @@ private:
     int m_TemporaryTurnSpeedTurns = 0;
     bool m_HasTemporaryTurnSpeed = false;
 
+    // 攻撃アニメーションのNotifyまで、対象と事前に確定した命中結果を保持する。
+    Unit* m_PendingAttackTarget = nullptr;
+    bool m_PendingAttackHit = false;
 
     // --- 定数パラメータ ---
     static constexpr float MOVE_TIME_NORMAL = 0.09f;
@@ -81,10 +84,14 @@ private:
     bool IsItemAt(const Vector2Int& gridPos, MapData* map);
     bool IsItemAdjacent(const Vector2Int& gridPos, MapData* map);
     bool ShouldStopDashForRoomEnemyAdjacent(MapData* map);
+    void ResolvePendingAttack();
+    void ClearPendingAttack();
 
 protected:
     std::string GetMoveEndAnimation() const override;
     void OnTriggerAnimationStarted(const std::string& animName) override;
+    // AttackHit Notifyを、保留中の通常攻撃処理へ変換する。
+    void OnAnimationNotify(const std::string& animationName, const std::string& notifyName) override;
 
 public:
     // 基本ライフサイクル
@@ -120,7 +127,9 @@ public:
     void ThrowItem(int index);
     void ShootArrow(int index);
     void EquipItem(int index);
-    void EndTurn();
+    void EndTurn() override;
+    // 行動不能ターンの開始時に状態時間を更新済みの場合、二重更新せずターンだけ終了する。
+    void EndTurn(bool updateStatusCount);
     void ClearMoveRunHold(bool playDefaultIfIdle = true);
     void RefreshTemporaryTurnSpeed(int turns);
     void ClearTemporaryTurnSpeed();
@@ -160,6 +169,5 @@ public:
     bool IsStairConfirming() const;
     std::vector<InventoryItem>& GetItems() { return m_Items; }
     int GetEquippedWeaponIndex() const { return m_EquippedWeaponIndex; }
-    int GetEquippedArrowIndex() const { return m_EquippedArrowIndex; }
     Vector2Int GetPreviousGridPos() const { return m_PreviousGridPos; }
 };

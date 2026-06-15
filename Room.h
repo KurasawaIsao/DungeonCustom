@@ -26,16 +26,16 @@ public:
     // ============================
     // 部屋ID及び入口マス（巡回・管理用）
     // ============================
-    int id = -1;
-    std::vector<Vector2Int>  entrances;
+    int m_Id = -1;
+    std::vector<Vector2Int>  m_Entrances;
 
     //自分で作ったした部屋か
-    bool isFixed = false;
+    bool m_IsFixed = false;
 
-    RoomSpecialType specialType = RoomSpecialType::Normal;
-    int specialTrapDensity = 0;
-    bool specialMessageShown = false;
-    std::string specialItemTableId;
+    RoomSpecialType m_SpecialType = RoomSpecialType::Normal;
+    int m_SpecialTrapDensity = 0;
+    bool m_SpecialMessageShown = false;
+    std::string m_SpecialItemTableId;
 
     Room() = default;
     Room(const Vector2Int& pos, const Vector2Int& sz)
@@ -48,7 +48,6 @@ public:
     const Vector2Int& GetSize() const { return m_size; }
 
     void SetPosition(const Vector2Int& pos) { m_position = pos; }
-    void SetSize(const Vector2Int& size) { m_size = size; }
 
     // ============================
     // 部屋中心

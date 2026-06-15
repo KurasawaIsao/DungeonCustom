@@ -37,22 +37,8 @@ public:
 
 	Vector3 GetPosition() { return m_Position; };
 	void SetPosition(Vector3 Pos) { m_Position = Pos; };
-	Vector3 GetRotation() { return m_Rotation; };
 	void SetRotation(Vector3 rot) { m_Rotation = rot; };
-	Vector3 GetScale() { return m_Scale; };
 	void SetScale(Vector3 scale) { m_Scale = scale; };
-
-
-	Vector3 GetRight()
-	{
-		XMMATRIX matrix;
-		matrix = XMMatrixRotationRollPitchYaw(m_Rotation.x, m_Rotation.y, m_Rotation.z);
-
-		Vector3 right;
-		XMStoreFloat3((XMFLOAT3*)&right, matrix.r[0]);
-
-		return right;
-	}
 
 	virtual Vector3 GetForward()//デフォルト。継承先にこれと同じものがあればそちらが優先的に呼ばれる
 	{
@@ -64,7 +50,7 @@ public:
 
 		return right;
 	}
-	float GetZ(Vector3 position, Vector3 Forward)
+	float GetZ(Vector3 position)
 	{
 		Vector3 diff = m_Position - position;
 		return diff.Length(); // ← OK：距離順

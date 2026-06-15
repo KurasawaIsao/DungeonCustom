@@ -27,7 +27,7 @@ private:
     bool m_TargetRecognized = false;
     bool m_SuppressHostileRecognitionThisTurn = false;
 
-    bool IsDead = false;
+    bool m_IsDead = false;
     int m_ExpReward;
     int m_RecruitmentModifier;
     bool m_IsShopKeeper = false;
@@ -35,6 +35,14 @@ private:
     bool m_EditorPreviewOnly = false;
     bool m_ConsumeTurnAfterNapConditionWake = false;
     bool m_RecruitByPlayerNormalAttack = false;
+
+    // 攻撃アニメーションのNotifyまで、対象と事前に確定した命中結果を保持する。
+    Unit* m_PendingAttackTarget = nullptr;
+    bool m_PendingAttackHit = false;
+    // 特技アニメーションのNotifyまで、効果と対象情報を保持する。
+    std::shared_ptr<EffectBase> m_PendingSkillEffect;
+    EffectContext m_PendingSkillContext;
+    std::vector<Unit*> m_PendingSkillTargets;
   
 
 public:
@@ -48,6 +56,13 @@ public:
     void OnDeath(Unit* attacker = nullptr) override;
 
     void Attack()override;
+    // UnitAIから選択済みの特技を受け取り、SkillEffect Notifyまで効果適用を待機する。
+    bool QueueSkillForNotify(
+        const Skill& skill,
+        const EffectContext& context,
+        const std::vector<Unit*>& targets);
+    // 混乱攻撃を含む敵の通常攻撃を、AttackHit Notifyへ接続する。
+    void StartAttackWithNotify(Unit* target);
 
     virtual void UpdateUnit() override;
     void UpdateActionPhase();
@@ -62,19 +77,23 @@ public:
 
     EnemyData GetEnemyData() const { return m_Data; }
     void SetEditorPreviewOnly(bool previewOnly) { m_EditorPreviewOnly = previewOnly; }
-    bool IsEditorPreviewOnly() const { return m_EditorPreviewOnly; }
     void SetShopKeeperMode(bool hostile);
     void ChangeAI(EnemyAIType aiType);
     bool IsShopKeeper() const { return m_IsShopKeeper; }
     bool IsShopHostile() const { return m_IsShopHostile; }
-    void MarkPlayerNormalAttackDamage() { m_RecruitByPlayerNormalAttack = true; }
-    void ClearPlayerNormalAttackDamage() { m_RecruitByPlayerNormalAttack = false; }
-    void SuppressHostileRecognitionThisTurn();
-    void ClearHostileRecognitionSuppression() { m_SuppressHostileRecognitionThisTurn = false; }
+    // プレイヤーの通常攻撃によるダメージ中かどうかを設定し、勧誘判定に利用する。
+    void SetPlayerNormalAttackDamage(bool damaged) { m_RecruitByPlayerNormalAttack = damaged; }
+    // 現在の敵ターン中に索敵を抑制するか設定する。
+    void SetHostileRecognitionSuppressed(bool suppressed);
 
-    int GetRecruitmentModifier() const { return m_RecruitmentModifier; }
+protected:
+    // AnimationModelから届いた攻撃・特技通知を、保留中のゲーム処理へ変換する。
+    void OnAnimationNotify(const std::string& animationName, const std::string& notifyName) override;
 
 private:
+    void ResolvePendingAttack();
+    void ResolvePendingSkill();
+    void ClearPendingCombatActions();
     void DropItem();
     // 描画とアニメ更新で同じ視界判定を使い、視界外の敵処理をまとめて省く。
     bool IsVisibleForPlayerUpdate(class Player* player) const;
@@ -87,10 +106,10 @@ private:
     void ClearTargetRecognition();
     void ReturnToPatrolFromCurrentPos();
     void ResetAI(EnemyAIType aiType);
-    EnemyState state = EnemyState::Patrol;
+    EnemyState m_State = EnemyState::Patrol;
 
-    std::unique_ptr<UnitAI> patrolAI;
-    std::unique_ptr<UnitAI> chaseAI;
-    UnitAI* currentAI = nullptr;
+    std::unique_ptr<UnitAI> m_PatrolAI;
+    std::unique_ptr<UnitAI> m_ChaseAI;
+    UnitAI* m_CurrentAI = nullptr;
 
 };

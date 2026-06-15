@@ -134,7 +134,7 @@ bool UnitAI::ExecuteSkill(Unit& self, Unit* target) {
             ctx.user = &self;
             ctx.target = target; // 攻撃なら敵、回復なら自分など、AIの文脈で決まる
             ctx.pos = target->GetGridPos();
-            ctx.direction = target->GetGridPos() - self.GetGridPos();
+            ctx.direction = (target->GetGridPos() - self.GetGridPos()).normalized();
             ctx.targetType = skill.targetType;
             ctx.targetRadius = skill.targetRadius;
 
@@ -144,8 +144,29 @@ bool UnitAI::ExecuteSkill(Unit& self, Unit* target) {
                 if (collectedTargets.empty()) continue;
             }
 
+            // 敵の特技も、Notifyや効果処理より前に行動内容の一文を先頭へ表示する。
+            if (dynamic_cast<Enemy*>(&self)) MessageLog::Instance().Clear();
             MessageLog::Instance().AddMessage(self.GetName() + u8"の" + skill.name + u8"！");
             ClearPlayerMoveRunHoldIfSkillTargets(&self, target, collectedTargets);
+
+            bool queuedForNotify = false;
+            if (skill.waitForAnimationNotify && self.ShouldShowCombatVisual(target))
+            {
+                // 特技ごとの設定が有効な場合だけ、敵または仲間のSkillEffect Notifyへ接続する。
+                if (Enemy* enemy = dynamic_cast<Enemy*>(&self))
+                    queuedForNotify = enemy->QueueSkillForNotify(skill, ctx, collectedTargets);
+                else if (Ally* ally = dynamic_cast<Ally*>(&self))
+                    queuedForNotify = ally->QueueSkillForNotify(skill, ctx, collectedTargets);
+            }
+
+            if (queuedForNotify)
+            {
+                // 通知を使う特技はSkillEffect Notifyまで効果適用を保留する。
+                self.SetTriggerAnimation("Skill");
+                return true;
+            }
+
+            // 通知を使わない設定、視界外、Notify未登録時は即時適用する。
             if (ctx.targetType == EffectTargetType::Single) skill.effect->Apply(ctx);
             else {
                 for (Unit* unit : collectedTargets) {
@@ -156,7 +177,6 @@ bool UnitAI::ExecuteSkill(Unit& self, Unit* target) {
                 }
             }
 
-            // アニメーション等のトリガー
             if (self.ShouldShowCombatVisual(target)) self.SetTriggerAnimation("Skill");
             return true;
         }
@@ -253,6 +273,21 @@ void UnitAI::ExecuteConfusion(Unit& self, MapData* map) {
             if (target && target != &self) {
                 // 混乱中の直接攻撃も、通常攻撃と同じく表示中ログをリセットする。
                 MessageLog::Instance().Clear();
+                if (Enemy* enemy = dynamic_cast<Enemy*>(&self)) {
+                    // 混乱中の敵攻撃も通常攻撃と同じAttackHit Notifyへ接続する。
+                    enemy->StartAttackWithNotify(target);
+                    self.EndTurn();
+                    self.ConsumeAllMoves();
+                    return;
+                }
+                if (Ally* ally = dynamic_cast<Ally*>(&self)) {
+                    // 混乱中の仲間攻撃も通常攻撃と同じAttackHit Notifyへ接続する。
+                    ally->StartAttackWithNotify(target);
+                    self.EndTurn();
+                    self.ConsumeAllMoves();
+                    return;
+                }
+
                 if (self.ShouldShowCombatVisual(target)) self.SetTriggerAnimation("Attack", 1.0f);
                 if (!self.CheckHit(self.GetACC(), target->GetEVD())) {
                     MessageLog::Instance().AddMessage(self.GetName() + u8"の攻撃は外れた。");
@@ -295,13 +330,6 @@ std::vector<Vector2Int> UnitAI::BFSPath(Unit& self, const Vector2Int& start, con
 
     //どこから来たのかの配列に最初の位置を入れる(これがないと始まらない)
     cameFrom[encode(start)] = start;
-
-    // 8方向に拡張
-    const Vector2Int dirs[8] = {
-        {1,0}, {-1,0}, {0,1}, {0,-1},  // 上下左右
-        {1,1}, {1,-1}, {-1,1}, {-1,-1} // 斜め
-    };
-
     bool found = false;
     while (!q.empty())
     {
@@ -331,6 +359,11 @@ std::vector<Vector2Int> UnitAI::BFSPath(Unit& self, const Vector2Int& start, con
                 Vector2Int nextA = cur + a;
                 Vector2Int nextB = cur + b;
 
+                int chebyshevA = goal.Chebyshev(nextA);
+                int chebyshevB = goal.Chebyshev(nextB);
+                if (chebyshevA != chebyshevB) return chebyshevA < chebyshevB;
+
+                // 必要手数が同じ場合は、直交方向へ寄る順で探索する。
                 return goal.Manhattan(nextA) < goal.Manhattan(nextB);
             });
 

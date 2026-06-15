@@ -83,7 +83,7 @@ namespace
         int count = 0;
         for (const Room& room : map->GetRooms())
         {
-            if (room.specialType != RoomSpecialType::Shop) continue;
+            if (room.m_SpecialType != RoomSpecialType::Shop) continue;
 
             Vector2Int topLeft;
             int side = 0;
@@ -164,7 +164,7 @@ bool ShopUI::IsPlayerOnShopTile(Player* player)
 
     const Vector2Int playerPos = player->GetGridPos();
     Room* room = map->GetRoomAt(playerPos);
-    if (!room || room->specialType != RoomSpecialType::Shop) return false;
+    if (!room || room->m_SpecialType != RoomSpecialType::Shop) return false;
 
     Vector2Int topLeft;
     int side = 0;
@@ -222,7 +222,7 @@ int ShopUI::GetPendingShopSaleTotal(Player* player)
     int total = 0;
     for (const Room& room : map->GetRooms())
     {
-        if (room.specialType != RoomSpecialType::Shop) continue;
+        if (room.m_SpecialType != RoomSpecialType::Shop) continue;
 
         Vector2Int topLeft;
         int side = 0;
@@ -249,7 +249,7 @@ int ShopUI::FinalizePendingShopSales(Player* player)
     int total = 0;
     for (const Room& room : map->GetRooms())
     {
-        if (room.specialType != RoomSpecialType::Shop) continue;
+        if (room.m_SpecialType != RoomSpecialType::Shop) continue;
 
         Vector2Int topLeft;
         int side = 0;

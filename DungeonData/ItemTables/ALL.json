@@ -71,6 +71,14 @@
         {
             "id": "Pot_Storage",
             "weight": 1
+        },
+        {
+            "id": "Wep_CopperSword",
+            "weight": 1
+        },
+        {
+            "id": "Sh_LeatherShield",
+            "weight": 1
         }
     ],
     "tableId": "ALL"

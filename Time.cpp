@@ -1,6 +1,6 @@
 #include "Time.h"
 
-float Time::deltaTime = 0.0f;
+float Time::m_DeltaTime = 0.0f;
 
 void Time::Update()
 {
@@ -17,6 +17,6 @@ void Time::Update()
     LARGE_INTEGER now;
     QueryPerformanceCounter(&now);
 
-    deltaTime = (float)(now.QuadPart - prev.QuadPart) / (float)freq.QuadPart;
+    m_DeltaTime = (float)(now.QuadPart - prev.QuadPart) / (float)freq.QuadPart;
     prev = now;
 }

@@ -9,6 +9,7 @@
 #include "JsonIO.h"
 #include "MessageLog.h"
 #include <algorithm>
+#include <utility>
 
 std::unordered_map<std::string, EnemyData>
 EnemyDatabase::m_Data;
@@ -26,42 +27,37 @@ namespace
     {
         MessageLog::Instance().AddMessage("[Data] " + message);
     }
-
-
-    EnemyAIType StringToEnemyAIType(const std::string& value, EnemyAIType fallback)
-    {
-        if (value == "Patrol") return EnemyAIType::Patrol;
-        if (value == "PatrolAndChase") return EnemyAIType::PatrolAndChase;
-        if (value == "KeepDistance") return EnemyAIType::KeepDistance;
-        if (value == "Berserk") return EnemyAIType::Berserk;
-        if (value == "RunAway") return EnemyAIType::RunAway;
-        if (value == "WhimAlwaysAttack") return EnemyAIType::WhimAlwaysAttack;
-        if (value == "WhimRandomAttack") return EnemyAIType::WhimRandomAttack;
-        if (value == "Passive") return EnemyAIType::Passive;
-        LogDataWarning("Unknown aiType: " + value);
-        return fallback;
-    }
-
-    EnemyTurnSpeedType StringToEnemyTurnSpeedType(const std::string& value, EnemyTurnSpeedType fallback)
-    {
-        if (value == "Slow") return EnemyTurnSpeedType::Slow;
-        if (value == "Normal") return EnemyTurnSpeedType::Normal;
-        if (value == "Fast") return EnemyTurnSpeedType::Fast;
-        if (value == "Triple") return EnemyTurnSpeedType::Triple;
-        LogDataWarning("Unknown turnSpeed: " + value);
-        return fallback;
-    }
-    SleepType StringToSleepType(const std::string& value, SleepType fallback)
-    {
-        if (value == "None") return SleepType::None;
-        if (value == "WakeOnRoom") return SleepType::WakeOnRoom;
-        if (value == "WakeOnAdjacent") return SleepType::WakeOnAdjacent;
-        if (value == "WakeOnDamage") return SleepType::WakeOnDamage;
-        LogDataWarning("Unknown sleepType: " + value);
-        return fallback;
-    }
 }
 
+
+static void SetCombatAnimationNotifies(
+    EnemyData& data,
+    float attackHit,
+    float skillEffect)
+{
+    // 現在使用する攻撃と特技だけを登録し、未使用アニメーションには通知を持たせない。
+    data.visual.animationNotifies = {
+        { "Attack", attackHit, "AttackHit" },
+        { "Skill", skillEffect, "SkillEffect" }
+    };
+}
+
+void EnemyDatabase::Register(EnemyData data)
+{
+    // 登録キーはEnemyData自身のIDから取得し、呼び出し側での二重指定をなくす。
+    if (data.id.empty())
+    {
+        LogDataWarning("Enemy has empty id.");
+        return;
+    }
+
+    const std::string id = data.id;
+    const auto result = m_Data.emplace(id, std::move(data));
+    if (!result.second)
+    {
+        LogDataWarning("Duplicate enemy id: " + id);
+    }
+}
 
 void EnemyDatabase::Init()
 {
@@ -75,14 +71,13 @@ void EnemyDatabase::Init()
     //HP、ATK、DEF,ACC,EVD,EXP,視界範囲、勧誘修正値、アイテムドロップ率、ドロップするアイテム(ない場合アイテムテーブル)
 	//仮眠率、仮眠タイプ、スキル、AIタイプ(1:〇回行動、2:〇倍速移動)、行動速度、移動速度、距離を保つタイプの敵の理想距離、ビジュアルデータ
 
-    m_Data.emplace(
-        "Kingyo",
+    Register(
         EnemyData(
             "Kingyo", u8"にらみきんぎょ",
             9, 5, 2, 90, 5, 3, 8,
             10, 0.2f,"",1.0f,SleepType::WakeOnRoom,
             {
-                Skill(u8"あやしい光", 0.1f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget)
+                Skill(u8"あやしい光", 0.1f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget, EffectTargetType::Single)
             },
             EnemyAIType::PatrolAndChase,
             EnemyTurnSpeedType::Normal, EnemyTurnSpeedType::Normal, 3,
@@ -99,11 +94,11 @@ void EnemyDatabase::Init()
             }
         )
     );
+
     m_Data["Kingyo"].talkMessage[0] = u8"プクプク……。";
     m_Data["Kingyo"].talkMessage[1] = u8"がんばるよ！";
     m_Data["Kingyo"].talkMessage[2] = u8"";
-    m_Data.emplace(
-        "Obie",
+    Register(
         EnemyData(
             "Obie", u8"おびえピラニア",
             10, 12, 4, 90, 5, 5, 10,
@@ -130,12 +125,11 @@ void EnemyDatabase::Init()
     m_Data["Obie"].talkMessage[1] = u8"戦いたくないよぉ...";
     m_Data["Obie"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "FishEye",
+    Register(
         EnemyData(
             "FishEye", u8"フィッシュアイ",
             13, 7, 4, 90, 5, 5, 10,
-            2, 0.1f, "", 0.0f, SleepType::WakeOnRoom,
+            2, 0.1f, "", 1.0f, SleepType::WakeOnRoom,
             {
 
             },
@@ -154,12 +148,11 @@ void EnemyDatabase::Init()
             }
         )
     );
-    m_Data["FishEye"].talkMessage[0] = u8"じーーーーっ...";
-    m_Data["FishEye"].talkMessage[1] = u8"おまえ、食用に仲間にしたわけじゃないよな？";
+    m_Data["FishEye"].talkMessage[0] = u8"間違ってオイラを食っちゃダメだよ。";
+    m_Data["FishEye"].talkMessage[1] = u8"腹こわすからな！";
     m_Data["FishEye"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "Uonome",
+    Register(
         EnemyData(
             "Uonome", u8"うおのめかいぎょ",
             26, 10, 6, 90, 7, 8, 10,
@@ -186,14 +179,14 @@ void EnemyDatabase::Init()
     m_Data["Uonome"].talkMessage[1] = u8"足あるやつみんな嫌いなんだよなぁ";
     m_Data["Uonome"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "PypeDevil",
+    Register(
         EnemyData(
             "PypeDevil", u8"パイプデビル",
             29, 14, 8, 90, 8, 12, 10,
             0, 0.1f, "", 0.6f, SleepType::WakeOnAdjacent,
             {
-                Skill(u8"甘い息", 0.1f, std::shared_ptr<EffectBase>(&g_Sleep, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget)
+                Skill(u8"甘い息", 0.2f, std::shared_ptr<EffectBase>(&g_Sleep, [](EffectBase*) {}),
+                    Skill::Condition::AdjacentToTarget, EffectTargetType::Single, 1, true)
             },
             EnemyAIType::PatrolAndChase,
             EnemyTurnSpeedType::Normal, EnemyTurnSpeedType::Normal, 3,
@@ -214,14 +207,13 @@ void EnemyDatabase::Init()
     m_Data["PypeDevil"].talkMessage[1] = u8"やりおるな。";
     m_Data["PypeDevil"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "BlueJoker",
+    Register(
         EnemyData(
             "BlueJoker", u8"ブルージョーカー",
             36, 18, 10, 92, 10, 15, 12,
             -5, 0.1f, "", 0.1f, SleepType::WakeOnAdjacent,
             {
-                Skill(u8"かなしばりの術", 0.3f, std::shared_ptr<EffectBase>(&g_Paralysis, [](EffectBase*) {}), Skill::Condition::HPBelowHalf)
+                Skill(u8"かなしばりの術", 0.3f, std::shared_ptr<EffectBase>(&g_Paralysis, [](EffectBase*) {}), Skill::Condition::HPBelowHalf,EffectTargetType::Single, 1, true)
             },
             EnemyAIType::PatrolAndChase,
             EnemyTurnSpeedType::Normal, EnemyTurnSpeedType::Normal, 3,
@@ -242,15 +234,14 @@ void EnemyDatabase::Init()
     m_Data["BlueJoker"].talkMessage[1] = u8"これも例外ではありませんよ！";
     m_Data["BlueJoker"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "Tormas",
+    Register(
         EnemyData(
             "Tormas", u8"トーマス・パクター",
             44, 22, 12, 92, 12, 20, 12,
             0, 0.0f, "", 0.0f, SleepType::WakeOnAdjacent,
             {
-                Skill(u8"強風", 0.2f, std::shared_ptr<EffectBase>(&g_Warp, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget),
-                  Skill(u8"あやしい光", 0.15f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget),
+                Skill(u8"強風", 0.2f, std::shared_ptr<EffectBase>(&g_Warp, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget, EffectTargetType::Single, 1, true),
+                  Skill(u8"あやしい光", 0.15f, std::shared_ptr<EffectBase>(&g_Confuse, [](EffectBase*) {}), Skill::Condition::AdjacentToTarget, EffectTargetType::Single, 1, true),
             },
             EnemyAIType::PatrolAndChase,
             EnemyTurnSpeedType::Normal, EnemyTurnSpeedType::Normal, 3,
@@ -270,8 +261,7 @@ void EnemyDatabase::Init()
     m_Data["Tormas"].talkMessage[0] = u8"嫌がらせがすぎるだと？";
     m_Data["Tormas"].talkMessage[1] = u8"何を言う。これも戦略であるぞ。";
     m_Data["Tormas"].talkMessage[2] = u8"";
-    m_Data.emplace(
-        "Blood",
+    Register(
         EnemyData(
             "Blood", u8"返り血アーマー",
             13, 26, 10, 92, 12, 50, 12,
@@ -295,8 +285,7 @@ void EnemyDatabase::Init()
     m_Data["Blood"].talkMessage[0] = u8"お前敵か？ なに！ちがうのか！";
     m_Data["Blood"].talkMessage[1] = u8"なんでもいい、殴らせろ！";
     m_Data["Blood"].talkMessage[2] = u8"";
-    m_Data.emplace(
-        "Armor",
+    Register(
         EnemyData(
             "Armor", u8"めだまのよろい",
             54, 16, 22, 92, 12, 34, 12,
@@ -321,8 +310,7 @@ void EnemyDatabase::Init()
     m_Data["Armor"].talkMessage[1] = u8"本体はおなかの方だよ。";
     m_Data["Armor"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "Dark",
+    Register(
         EnemyData(
             "Dark", u8"ダークゲイザー",
             74, 46, 16, 82, 12, 46, 12,
@@ -349,8 +337,7 @@ void EnemyDatabase::Init()
 
 
 
-    m_Data.emplace(
-        "CurseFish",
+    Register(
         EnemyData(
             "CurseFish", u8"災厄回遊魚",
             58, 20, 14, 90, 10, 42, 12,
@@ -377,8 +364,7 @@ void EnemyDatabase::Init()
     m_Data["CurseFish"].talkMessage[1] = u8"あんまりこっち見ないでね。";
     m_Data["CurseFish"].talkMessage[2] = u8"";
 
-    m_Data.emplace(
-        "Hitoride",
+    Register(
         EnemyData(
             "Hitoride", u8"ひとりでハンマー",
             100, 35, 10, 85, 5, 35, 20,
@@ -404,8 +390,7 @@ void EnemyDatabase::Init()
     m_Data["Hitoride"].talkMessage[2] = u8"";
  
 
-    m_Data.emplace(
-        "ShopKeeper",
+    Register(
         EnemyData(
             "ShopKeeper", u8"店番",
             999, 180, 120, 100, 50, 0, 30,
@@ -428,9 +413,28 @@ void EnemyDatabase::Init()
     );
 
     // =========================
+    // アニメーション通知設定
+    // =========================
+    // 値は各アニメーション全体に対する0.0～1.0の割合。
+    // 同じFBXを使う敵でも、将来個別モデルへ差し替えやすいよう敵ID単位で保持する。
+
+    SetCombatAnimationNotifies(m_Data["Kingyo"],     0.46f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["Obie"],       0.42f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["FishEye"],    0.48f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["Uonome"],     0.50f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["PypeDevil"],  0.40f, 0.58f);
+    SetCombatAnimationNotifies(m_Data["BlueJoker"],  0.40f, 0.58f);
+    SetCombatAnimationNotifies(m_Data["Tormas"],     0.40f, 0.58f);
+    SetCombatAnimationNotifies(m_Data["Blood"],      0.58f, 0.58f);
+    SetCombatAnimationNotifies(m_Data["Armor"],      0.40f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["Dark"],       0.40f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["CurseFish"],  0.55f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["Hitoride"],   0.44f, 0.00f);
+    SetCombatAnimationNotifies(m_Data["ShopKeeper"], 0.40f, 0.500f);
+
+    // =========================
     // SpawnTable読み込み
     // =========================
-
     EnemyTableDatabase::LoadAll(
         "DungeonData\\EnemyTables\\");
     // =========================

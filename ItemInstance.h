@@ -48,16 +48,8 @@ public:
         }
     }
     void InitIdentify(bool applyBlessOrCurse = true);
-    bool HasCustomName() const { return !m_CustomName.empty(); }
-    bool CanRename() { return m_Data->canRename; }
-
-    void SetCustomName(const std::string& name)
-    {
-        m_CustomName = name;
-    }
 
     void SetPlusValue(int v) { m_PlusValue = v; }
-    int GetPlusValue() const { return m_PlusValue; }
     //アイテム名は大体ここから参照する
     std::string GetDisplayName() const;
     ImU32 GetNameColor() const;
@@ -137,8 +129,6 @@ private:
     int m_UnidentifiedUsageCount = 0;//未識別時の杖の回数
     std::unique_ptr<PotData> m_Pot;//つぼ?
     int m_PlusValue = 0;//武器修正値
-
-    std::string m_CustomName;
 
     BlessState m_Bless = BlessState::Normal;
     IdentifyState m_Identify = IdentifyState::Unidentified;

@@ -72,13 +72,18 @@ public:
 
 	void normalize()
 	{
-		float magSq = x * x + y * y;
-		if (magSq > 0.0f)
-		{
-			float oneOverMag = 1.0f / sqrtf(magSq);
-			x *= oneOverMag;
-			y *= oneOverMag;
-		}
+		// グリッド上の方向として扱えるように、各成分を -1、0、1 のいずれかに揃える。
+		x = (x > 0) - (x < 0);
+		y = (y > 0) - (y < 0);
+	}
+
+	Vector2Int normalized() const
+	{
+		// 元の値を変更せず、グリッド上で正規化した方向を返す。
+		return Vector2Int(
+			(x > 0) - (x < 0),
+			(y > 0) - (y < 0)
+		);
 	}
 
 	float Length()const

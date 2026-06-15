@@ -10,6 +10,11 @@ class BasicPatrolAI : public UnitAI
 {
 public:
     void Update(Unit& self, MapData* map) override;
+    void OnEnter(Unit& self, MapData* map) override
+    {
+        // AIへ戻った位置を起点に、巡回経路を選び直す。
+        ResetFromCurrentPos(self, map);
+    }
     // AI切り替え後に、現在位置を基準として巡回状態を作り直す。
     void ResetFromCurrentPos(Unit& self, MapData* map);
 
@@ -28,14 +33,14 @@ private:
 
 private:
     // 状態管理
-    int currentRoomId = -1;
-    Vector2Int lastPos = { -1, -1 };          // 1歩前の物理座標（逆流防止用）
-    Vector2Int lastEntrancePos = { -1, -1 };  // 最後に利用した/詰まった入り口座標
+    int m_CurrentRoomId = -1;
+    Vector2Int m_LastPos = { -1, -1 };          // 1歩前の物理座標（逆流防止用）
+    Vector2Int m_LastEntrancePos = { -1, -1 };  // 最後に利用した/詰まった入り口座標
 
     // スタック対策
-    int moveFailureCount = 0;
-    const int MAX_FAILURE_RETRY = 2;
+    int m_MoveFailureCount = 0;
+    const int m_MaxFailureRetry = 2;
 
     // 現在の予定ルート
-    std::vector<Vector2Int> patrolRoute;
+    std::vector<Vector2Int> m_PatrolRoute;
 };

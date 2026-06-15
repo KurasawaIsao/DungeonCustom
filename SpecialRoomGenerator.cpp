@@ -73,7 +73,7 @@ namespace
         {
             auto tiles = GeneraterPlacer::CollectRoomTiles(room, map, false);
             if (tiles.empty()) break;
-            GeneraterPlacer::PlaceItemAt(map, scene, tiles[GameRandom::Index(tiles.size())], room.specialItemTableId);
+            GeneraterPlacer::PlaceItemAt(map, scene, tiles[GameRandom::Index(tiles.size())], room.m_SpecialItemTableId);
         }
 
         for (int i = 0; i < trapCount; ++i)
@@ -101,7 +101,7 @@ namespace
     {
         for (const Vector2Int& pos : GeneraterPlacer::CollectRoomTiles(room, map, true))
         {
-            if (GameRandom::Percent(room.specialTrapDensity))
+            if (GameRandom::Percent(room.m_SpecialTrapDensity))
                 GeneraterPlacer::PlaceTrapAt(map, scene, pos, floor.trapTableId);
         }
 
@@ -118,12 +118,12 @@ namespace
                 if (!IsInsideShopFloorSquare(pos, shopTopLeft, shopSide)) continue;
                 if (!room.Contains(pos)) continue;
                 if (map->GetTile(pos.x, pos.y) != TileType::Floor) continue;
-                GeneraterPlacer::PlaceItemAt(map, scene, pos, room.specialItemTableId, true);
+                GeneraterPlacer::PlaceItemAt(map, scene, pos, room.m_SpecialItemTableId, true);
             }
         }
 
         std::vector<Vector2Int> keeperTiles;
-        for (const Vector2Int& ent : room.entrances)
+        for (const Vector2Int& ent : room.m_Entrances)
         {
             static const Vector2Int dirs[4] = { {1,0}, {-1,0}, {0,1}, {0,-1} };
             for (const Vector2Int& d : dirs)
@@ -148,14 +148,14 @@ void SpecialRoomGenerator::AssignSpecialRooms(MapData* map, const FloorData& flo
     std::vector<Room*> candidates;
     for (Room& room : map->GetRooms())
     {
-        const bool isTreasureRoom = (room.specialType == RoomSpecialType::Treasure);
+        const bool isTreasureRoom = (room.m_SpecialType == RoomSpecialType::Treasure);
         if (!isTreasureRoom)
-            room.specialType = RoomSpecialType::Normal;
-        room.specialTrapDensity = 0;
-        room.specialMessageShown = false;
-        room.specialItemTableId = isTreasureRoom ? floor.itemTableId : "";
+            room.m_SpecialType = RoomSpecialType::Normal;
+        room.m_SpecialTrapDensity = 0;
+        room.m_SpecialMessageShown = false;
+        room.m_SpecialItemTableId = isTreasureRoom ? floor.itemTableId : "";
 
-        if (!room.isFixed && !isTreasureRoom)
+        if (!room.m_IsFixed && !isTreasureRoom)
             candidates.push_back(&room);
     }
 
@@ -165,17 +165,17 @@ void SpecialRoomGenerator::AssignSpecialRooms(MapData* map, const FloorData& flo
     {
         const int index = GameRandom::Index(candidates.size());
         Room* room = candidates[index];
-        room->specialType = RoomSpecialType::Shop;
-        room->specialTrapDensity = GeneraterPlacer::ClampPercent(floor.shopTrapDensity);
-        room->specialItemTableId = floor.shopItemTableId.empty() ? floor.itemTableId : floor.shopItemTableId;
+        room->m_SpecialType = RoomSpecialType::Shop;
+        room->m_SpecialTrapDensity = GeneraterPlacer::ClampPercent(floor.shopTrapDensity);
+        room->m_SpecialItemTableId = floor.shopItemTableId.empty() ? floor.itemTableId : floor.shopItemTableId;
         candidates.erase(candidates.begin() + index);
     }
 
     if (!candidates.empty() && GameRandom::Percent(GeneraterPlacer::ClampPercent(floor.monsterHouseAppearanceRate)))
     {
         Room* room = candidates[GameRandom::Index(candidates.size())];
-        room->specialType = RoomSpecialType::MonsterHouse;
-        room->specialItemTableId = floor.itemTableId;
+        room->m_SpecialType = RoomSpecialType::MonsterHouse;
+        room->m_SpecialItemTableId = floor.itemTableId;
     }
 }
 
@@ -185,11 +185,11 @@ void SpecialRoomGenerator::PlaceSpecialRoomObjects(MapData* map, Scene* scene, c
 
     for (Room& room : map->GetRooms())
     {
-        if (room.specialType == RoomSpecialType::MonsterHouse)
+        if (room.m_SpecialType == RoomSpecialType::MonsterHouse)
             PlaceMonsterHouseObjects(map, scene, room, floor);
-        else if (room.specialType == RoomSpecialType::Shop)
+        else if (room.m_SpecialType == RoomSpecialType::Shop)
             PlaceShopObjects(map, scene, room, floor);
-        else if (room.specialType == RoomSpecialType::Treasure)
+        else if (room.m_SpecialType == RoomSpecialType::Treasure)
             PlaceTreasureRoomObjects(map, scene, room, floor);
     }
 }

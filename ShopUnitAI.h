@@ -9,8 +9,6 @@ class ShopUnitAI : public UnitAI
 public:
     explicit ShopUnitAI(bool hostile = false) : m_Hostile(hostile) {}
     void Update(Unit& self, MapData* map) override;
-    void SetHostile(bool hostile) { m_Hostile = hostile; }
-    bool IsHostile() const { return m_Hostile; }
 
 private:
     bool m_Hostile = false;

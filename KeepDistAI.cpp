@@ -5,7 +5,7 @@
 
 void KeepDistAI::Update(Unit& self, MapData* map)
 {
-    UpdateWithTarget(self, m_Target, map);
+    UpdateWithTarget(self, nullptr, map);
 }
 
 void KeepDistAI::UpdateWithTarget(Unit& self, Unit* target, MapData* map)

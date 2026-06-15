@@ -8,10 +8,7 @@ public:
     void Update();
     void Draw();
     void Uninit();
-    void OnStartButtonPressed();
     void Start();   // •\Ž¦ŠJŽn
-
-    ID3D11ShaderResourceView* m_StartButtonSRV;
 
 
 private:

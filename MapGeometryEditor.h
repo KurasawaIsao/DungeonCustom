@@ -28,5 +28,4 @@ public:
     void UpdateRoomDataFromTiles(MapData* map);
 
     // ÉQÉbÉ^Å[
-    TileType GetSelectedTileType() const { return m_SelectedTileType; }
 };

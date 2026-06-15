@@ -26,5 +26,5 @@ private:
     Polygon2D* m_Polygon = nullptr;
     State      m_State = State::None;
     float      m_Alpha = 0.0f;
-    const float FADE_SPEED = 0.02f; // フェードの速さ
+    const float m_FadeSpeed = 0.02f; // フェードの速さ
 };

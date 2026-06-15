@@ -22,7 +22,7 @@
 #include <cstdlib>
 #include <ctime>
 
-MapManager* MapManager::instance = nullptr;
+MapManager* MapManager::m_Instance = nullptr;
 
 namespace
 {
@@ -359,19 +359,19 @@ void MapManager::AfterUnitMoved(Unit* unit, bool suppressObjectStep)
             if (enemy) enemy->UpdateNap();
         }
 
-        if (room && room->specialType == RoomSpecialType::MonsterHouse && !room->specialMessageShown)
+        if (room && room->m_SpecialType == RoomSpecialType::MonsterHouse && !room->m_SpecialMessageShown)
         {
-            const int roomIndex = currentMap->GetRoomIndexAt(room->GetCenter());
+            const int roomIndex = m_CurrentMap->GetRoomIndexAt(room->GetCenter());
             for (Enemy* enemy : enemies)
             {
                 if (!enemy) continue;
-                if (roomIndex >= 0 && currentMap->IsInsideRoom(roomIndex, enemy->GetGridPos().x, enemy->GetGridPos().y))
+                if (roomIndex >= 0 && m_CurrentMap->IsInsideRoom(roomIndex, enemy->GetGridPos().x, enemy->GetGridPos().y))
                     enemy->ClearNap();
             }
 
             EffectManager::PlayBGM("Asset\\Sound\\maitati.wav");
             MessageLog::Instance().AddMessage(u8"モンスターハウスだ！");
-            room->specialMessageShown = true;
+            room->m_SpecialMessageShown = true;
         }
     }
 

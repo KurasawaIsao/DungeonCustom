@@ -11,9 +11,10 @@
 namespace
 {
     constexpr int kCorridorSearchRadius = 8;
+
     constexpr int kQuietUnitDistance = 3;
 
-
+	//部屋外の通路で、他ユニットがいない場所かどうか。逃走先の候補にするための条件をまとめる。
     bool IsPlainCorridor(MapData* map, const Vector2Int& pos)
     {
         return map
@@ -40,27 +41,29 @@ namespace
         return unit && unit != &self;
     }
 
-    // 脅威として避けたい位置と、単に混雑として避けたい位置を分けて集める。
+    // 自分の勢力に応じて、脅威として避けたい位置と単に混雑として避けたい位置を分けて集める。
     void CollectAvoidPositions(Unit& self, std::vector<Vector2Int>& hostilePositions, std::vector<Vector2Int>& unitPositions)
     {
         UnitManager* um = UnitManager::Instance();
         if (!um) return;
 
+        const bool selfIsAlly = dynamic_cast<Ally*>(&self) != nullptr;
         if (Player* player = um->GetPlayer()) {
             if (player != &self) {
-                hostilePositions.push_back(player->GetGridPos());
+                if (!selfIsAlly) hostilePositions.push_back(player->GetGridPos());
                 unitPositions.push_back(player->GetGridPos());
             }
         }
 
         for (Ally* ally : um->GetAllies()) {
             if (!ally || ally == &self) continue;
-            hostilePositions.push_back(ally->GetGridPos());
+            if (!selfIsAlly) hostilePositions.push_back(ally->GetGridPos());
             unitPositions.push_back(ally->GetGridPos());
         }
 
         for (Enemy* enemy : um->GetEnemies()) {
             if (!enemy || enemy == &self) continue;
+            if (selfIsAlly) hostilePositions.push_back(enemy->GetGridPos());
             unitPositions.push_back(enemy->GetGridPos());
         }
     }
@@ -113,12 +116,12 @@ namespace
 
 void RunAwayAI::Update(Unit& self, MapData* map)
 {
-    MoveAwayFromTarget(self, m_ThreatTarget, m_SafeTarget, map);
+    MoveAwayFromTarget(self, nullptr, nullptr, map);
 }
 
 void RunAwayAI::UpdateWithTarget(Unit& self, Unit* threat, MapData* map)
 {
-    MoveAwayFromTarget(self, threat, m_SafeTarget, map);
+    MoveAwayFromTarget(self, threat, nullptr, map);
 }
 
 void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, MapData* map)
@@ -152,6 +155,7 @@ void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, M
     int bestScore = INT_MIN;
     Vector2Int best = current;
 
+    //8方向ループによる移動優先スコアランキング
     for (const auto& dir : dirs) {
         Vector2Int next = current + dir;
         if (!CanStepOn(self, next, map)) continue;
@@ -162,10 +166,14 @@ void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, M
         int safeDist = safeTarget ? Vector2Int::ChebyshevDistance(next, safePos) : currentSafeDist;
         int hostileDist = MinDistanceToAny(next, hostilePositions);
         int unitDist = MinDistanceToAny(next, unitPositions);
+        // 静通路:プレイヤー、仲間、ほかの敵が近くにいない通路のこと。
         int quietCorridorDist = FindNearestCorridorDistance(self, next, map, unitPositions, true);
         int corridorDist = quietCorridorDist >= 0
             ? quietCorridorDist
             : FindNearestCorridorDistance(self, next, map, unitPositions, false);
+
+		//一番スコアの高いマスを選んで移動する。
+        // スコアの付け方は要調整だが、基本的には「脅威から離れること」を最優先にしつつ、「安全目標に近づくこと」「混雑を避けること」「通路に近づくこと」を加味する形で。
         int score = 0;
 
         // 脅威から離れることを最優先しつつ、混雑しない通路へ寄る移動を高評価にする。
@@ -178,16 +186,20 @@ void RunAwayAI::MoveAwayFromTarget(Unit& self, Unit* threat, Unit* safeTarget, M
         if (hostileDist <= 1) score -= 80;
         else if (hostileDist == 2) score -= 35;
         if (unitDist <= 1) score -= 30;
+
+		//静通路が最も確実な逃げ場所になるため、静通路が近いほど大幅にスコアを上げる。静通路がない場合も、通路が近いほどスコアを上げる。
         if (quietCorridorDist >= 0) score += (kCorridorSearchRadius - quietCorridorDist + 1) * 12;
         else if (corridorDist >= 0) score += (kCorridorSearchRadius - corridorDist + 1) * 5;
         if (IsPlainCorridor(map, next)) score += 35;
 
+		// 逃げる候補マスの中で一番スコアの高いマスを選ぶ(bestscoreは念のためのガードで、スコアがマイナスでも最もマシな選択をするために初期値は十分小さくしておく)。
         if (score > bestScore) {
             bestScore = score;
+			// 次に進もうとしている方向が前のスコアより高い場合は、そこを新しい逃げ先候補として採用する。
             best = next;
         }
     }
-
+	// 次の方向が今の位置と違うなら、そこに移動する。移動できない場合はそのまま立ち止まる。
     if (!(best == current)) {
         TryStartMove(self, best);
     }

@@ -103,7 +103,7 @@ std::unique_ptr<MapData> MapGenerator::Generate(int width, int height, Scene* sc
     std::vector<Room*> normalRooms;
     for (Room& room : rooms)
     {
-        if (room.specialType == RoomSpecialType::Normal)
+        if (room.m_SpecialType == RoomSpecialType::Normal)
             normalRooms.push_back(&room);
     }
 
@@ -120,9 +120,17 @@ std::unique_ptr<MapData> MapGenerator::Generate(int width, int height, Scene* sc
         }
     }
 
-    if (!normalRooms.empty())
+    std::vector<Room*> stairRooms = normalRooms;
+    if (stairRooms.empty())
     {
-        Room& room = *normalRooms[GameRandom::Index(normalRooms.size())];
+        // 大部屋が店やモンスターハウスになった場合でも、唯一の部屋を階段候補として残す。
+        for (Room& room : rooms)
+            stairRooms.push_back(&room);
+    }
+
+    if (!stairRooms.empty())
+    {
+        Room& room = *stairRooms[GameRandom::Index(stairRooms.size())];
         auto tiles = GeneraterPlacer::CollectRoomTiles(room, map.get(), false);
         if (!tiles.empty())
         {
@@ -244,7 +252,7 @@ void MapGenerator::SetEnemies(const FloorData& floor)
     std::vector<Room*> enemyRooms;
     for (Room& room : map->GetRooms())
     {
-        if (&room != playerRoom && room.specialType != RoomSpecialType::Shop)
+        if (&room != playerRoom && room.m_SpecialType != RoomSpecialType::Shop)
             enemyRooms.push_back(&room);
     }
 
@@ -292,7 +300,7 @@ void MapGenerator::SetEnemiesOne(const FloorData& floor)
     std::vector<Room*> candidateRooms;
     for (Room& room : map->GetRooms())
     {
-        if (&room != playerRoom && room.specialType != RoomSpecialType::Shop)
+        if (&room != playerRoom && room.m_SpecialType != RoomSpecialType::Shop)
             candidateRooms.push_back(&room);
     }
 
@@ -303,7 +311,8 @@ void MapGenerator::SetEnemiesOne(const FloorData& floor)
         if (!tiles.empty())
         {
             pos = tiles[GameRandom::Index(tiles.size())];
-            found = true;
+            if (!player->IsInView(pos))
+                found = true;
         }
     }
 
@@ -332,7 +341,7 @@ void MapGenerator::SetItems(const FloorData& floor)
     std::vector<Room*> candidateRooms;
     for (Room& room : currentMap->GetRooms())
     {
-        if (!room.isFixed && room.specialType == RoomSpecialType::Normal)
+        if (!room.m_IsFixed && room.m_SpecialType == RoomSpecialType::Normal)
             candidateRooms.push_back(&room);
     }
 

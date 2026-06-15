@@ -12,7 +12,6 @@ public:
 
     bool GetConfirm() { return m_Yes; };
     void SetEnable(bool e) { m_Enable = e; };
-    bool GetEnable() { return m_Enable; };
     void SetDecided(bool d) { m_Decided = d; };
     bool GetDecided(){ return m_Decided; };
 

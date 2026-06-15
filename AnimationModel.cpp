@@ -1,11 +1,12 @@
 #include "main.h"
 #include "renderer.h"
 #include "animationModel.h"
-#include "DebugTrace.h"
 #include <fstream>
+#include <algorithm>
 
 namespace
 {
+    // 読み込み前にファイルの存在を確認し、Assimpへ不正なパスを渡さないようにする。
     bool AnimationFileExists(const char* fileName)
     {
         if (!fileName || fileName[0] == '\0') return false;
@@ -16,12 +17,15 @@ namespace
 
 void AnimationModel::Draw()
 {
+    // 読み込みが完了していないモデルは描画できないため、GPUへ命令を送らず終了する。
     if (!m_AiScene || !m_VertexBuffer || !m_IndexBuffer) return;
 
+    // 頂点シェーダーのスロット7へ、更新済みのボーン行列を設定する。
     Renderer::GetDeviceContext()->VSSetConstantBuffers(7, 1, &m_BoneConstantBuffer);
     // このモデルは三角形リスト前提。描画前に入力アセンブラの状態を明示しておく。
     Renderer::GetDeviceContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    // マテリアル情報が欠けている場合にも描画できるよう、白色を初期値にする。
     MATERIAL material;
     ZeroMemory(&material, sizeof(material));
     material.Diffuse = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -33,6 +37,7 @@ void AnimationModel::Draw()
     {
         aiMesh* mesh = m_AiScene->mMeshes[m];
 
+        // Assimpのマテリアルから、メッシュに対応する色・透明度・テクスチャを取得する。
         aiString texture;
         aiColor3D diffuse;
         float opacity = 1.0f;
@@ -56,6 +61,7 @@ void AnimationModel::Draw()
         material.Ambient = material.Diffuse;
         Renderer::SetMaterial(material);
 
+        // メッシュに対応するバッファを設定し、三角形インデックスをまとめて描画する。
         UINT stride = sizeof(VERTEX_3D);
         UINT offset = 0;
         Renderer::GetDeviceContext()->IASetVertexBuffers(0, 1, &m_VertexBuffer[m], &stride, &offset);
@@ -66,23 +72,21 @@ void AnimationModel::Draw()
 
 void AnimationModel::Load(const char* FileName)
 {
+    // 空のパスや存在しないファイルは読み込み対象にしない。
     if (!FileName || FileName[0] == '\0') {
-        DebugTrace::Log("MODEL_LOAD_REJECT_EMPTY file=", FileName ? FileName : "null");
         return;
     }
     if (!AnimationFileExists(FileName)) {
-        DebugTrace::Log("MODEL_LOAD_REJECT_MISSING file=", FileName);
         return;
     }
 
     m_AiScene = aiImportFile(FileName, aiProcessPreset_TargetRealtime_MaxQuality | aiProcess_ConvertToLeftHanded);
     if (!m_AiScene)
     {
-        DebugTrace::Log("MODEL_LOAD_FAILED file=", FileName,
-            " error=", aiGetErrorString() ? aiGetErrorString() : "null");
         return;
     }
 
+    // メッシュ数に合わせて、GPUバッファとCPU側の変形頂点配列を確保する。
     m_VertexBuffer = new ID3D11Buffer * [m_AiScene->mNumMeshes];
     m_IndexBuffer = new ID3D11Buffer * [m_AiScene->mNumMeshes];
     m_DeformVertex = new std::vector<DEFORM_VERTEX>[m_AiScene->mNumMeshes];
@@ -90,6 +94,7 @@ void AnimationModel::Load(const char* FileName)
     // ノード階層からボーン辞書を先に作り、アニメーション更新時に名前で引けるようにする。
     CreateBone(m_AiScene->mRootNode);
 
+    // 全ボーンの最終行列を頂点シェーダーへ渡す定数バッファを作成する。
     D3D11_BUFFER_DESC cbd;
     ZeroMemory(&cbd, sizeof(cbd));
     cbd.Usage = D3D11_USAGE_DEFAULT;
@@ -102,6 +107,7 @@ void AnimationModel::Load(const char* FileName)
     {
         aiMesh* mesh = m_AiScene->mMeshes[m];
 
+        // 元頂点をCPU側へ複製し、後からボーン番号とウェイトを登録できる形にする。
         for (unsigned int v = 0; v < mesh->mNumVertices; v++)
         {
             DEFORM_VERTEX deformVertex;
@@ -139,6 +145,7 @@ void AnimationModel::Load(const char* FileName)
         }
 
         {
+            // DirectXの頂点形式へ変換した配列から、メッシュ単位の頂点バッファを作成する。
             // 頂点には座標・法線・UVに加えて、GPUスキニング用のボーン番号と重みを詰める。
             VERTEX_3D* vertex = new VERTEX_3D[mesh->mNumVertices];
             std::vector<int> weightCount(mesh->mNumVertices, 0);
@@ -203,6 +210,7 @@ void AnimationModel::Load(const char* FileName)
         }
 
         {
+            // Assimpの面情報を三角形インデックスへ展開し、インデックスバッファを作成する。
             unsigned int* index = new unsigned int[mesh->mNumFaces * 3];
             for (unsigned int f = 0; f < mesh->mNumFaces; f++)
             {
@@ -228,6 +236,7 @@ void AnimationModel::Load(const char* FileName)
         }
     }
 
+    // モデルファイルに埋め込まれたテクスチャをDirectXのSRVへ変換する。
     for (int i = 0; i < (int)m_AiScene->mNumTextures; i++)
     {
         aiTexture* aitexture = m_AiScene->mTextures[i];
@@ -244,30 +253,30 @@ void AnimationModel::Load(const char* FileName)
 
 void AnimationModel::LoadAnimation(const char* FileName, const char* Name)
 {
+    // ファイルパスまたは登録名が不正な場合は、同名の古い登録も残さない。
     const char* animName = (Name && Name[0] != '\0') ? Name : "<null>";
     if (!FileName || FileName[0] == '\0' || !Name || Name[0] == '\0') {
-        DebugTrace::Log("ANIMATION_LOAD_REJECT_EMPTY file=", FileName ? FileName : "null",
-            " name=", animName);
         if (Name) m_Animation.erase(Name);
         return;
     }
 
     if (!AnimationFileExists(FileName)) {
-        DebugTrace::Log("ANIMATION_LOAD_REJECT_MISSING file=", FileName, " name=", animName);
         m_Animation.erase(Name);
         return;
     }
 
+    // アニメーション用ファイルは座標系を左手系へ変換して読み込む。
     const aiScene* scene = aiImportFile(FileName, aiProcess_ConvertToLeftHanded);
 
 
+    // アニメーションを含まないシーンは登録せず、その場で解放する。
     if (!scene->HasAnimations()) {
-        DebugTrace::Log("ANIMATION_LOAD_NO_ANIMATION file=", FileName, " name=", animName);
         aiReleaseImport(scene);
         m_Animation.erase(Name);
         return;
     }
 
+    // 同名データを再読み込みした場合は、所有中の古いシーンを解放して差し替える。
     auto old = m_Animation.find(Name);
     if (old != m_Animation.end() && old->second && old->second != scene && m_OwnsImportedScenes) {
         aiReleaseImport(old->second);
@@ -277,6 +286,7 @@ void AnimationModel::LoadAnimation(const char* FileName, const char* Name)
 
 void AnimationModel::CreateBone(aiNode* node)
 {
+    // すべてのノードを単位行列で初期化し、名前から参照できるボーン辞書へ登録する。
     BONE bone{};
     aiMatrix4x4 identity(aiVector3D(1.0f, 1.0f, 1.0f), aiQuaternion(1.0f, 0.0f, 0.0f, 0.0f), aiVector3D(0.0f, 0.0f, 0.0f));
     bone.Matrix = identity;
@@ -285,6 +295,7 @@ void AnimationModel::CreateBone(aiNode* node)
     bone.DefaultMatrix = identity;
     m_Bone[node->mName.C_Str()] = bone;
 
+    // 子ノードも再帰的に登録して、モデル全体の階層を走査する。
     for (unsigned int n = 0; n < node->mNumChildren; n++)
     {
         CreateBone(node->mChildren[n]);
@@ -293,15 +304,17 @@ void AnimationModel::CreateBone(aiNode* node)
 
 void AnimationModel::CreateClone(const AnimationModel& src)
 {
+    // 読み込み未完了のモデルからは有効なクローンを作成できない。
     if (!src.m_AiScene || !src.m_VertexBuffer || !src.m_IndexBuffer)
     {
-        DebugTrace::Log("CREATE_CLONE_REJECT_EMPTY src=", static_cast<const void*>(&src));
         return;
     }
 
+    // Assimpシーンとアニメーションは読み込み元と共有し、クローン側では解放しない。
     m_AiScene = src.m_AiScene;
     m_OwnsImportedScenes = false;
     m_Animation = src.m_Animation;
+    // COMリソースは参照カウントを増やし、読み込み元が残っている間も共有できるようにする。
     m_Texture = src.m_Texture;
     for (auto& texture : m_Texture)
     {
@@ -310,6 +323,7 @@ void AnimationModel::CreateClone(const AnimationModel& src)
     m_Bone = src.m_Bone;
     m_BoneNames = src.m_BoneNames;
 
+    // メッシュごとのGPUバッファもAddRefして共有する。
     int meshCount = src.m_AiScene->mNumMeshes;
     m_IndexBuffer = new ID3D11Buffer * [meshCount];
     m_VertexBuffer = new ID3D11Buffer * [meshCount];
@@ -329,6 +343,7 @@ void AnimationModel::CreateClone(const AnimationModel& src)
         m_DeformVertex[i] = src.m_DeformVertex[i];
     }
 
+    // ボーン姿勢は個体ごとに異なるため、定数バッファだけはクローン専用に作成する。
     D3D11_BUFFER_DESC cbd;
     ZeroMemory(&cbd, sizeof(cbd));
     cbd.Usage = D3D11_USAGE_DEFAULT;
@@ -337,17 +352,28 @@ void AnimationModel::CreateClone(const AnimationModel& src)
     cbd.CPUAccessFlags = 0;
     Renderer::GetDevice()->CreateBuffer(&cbd, nullptr, &m_BoneConstantBuffer);
 
-    NowFrame = 0.0f;
+    // 読み込み済みモデルに登録された通知はクローンへ引き継ぎ、再生状態とコールバックは個体ごとに初期化する。
+    m_AnimationNotifies = src.m_AnimationNotifies;
+    m_CurrentAnimation = "Idle";
+    m_NextAnimation.clear();
+    m_CurrentFrame = 0.0f;
+    m_PlaybackSpeed = 0.5f;
+    m_BlendRate = 1.0f;
+    m_IsLooping = true;
+    m_NotifyPlaybackAnimation.clear();
+    m_NotifyCallback = nullptr;
 }
 
 int AnimationModel::GetBoneIndex(const std::string& name)
 {
+    // 登録済みなら既存インデックスを返し、ボーン配列の並びを変えない。
     auto it = std::find(m_BoneNames.begin(), m_BoneNames.end(), name);
     if (it != m_BoneNames.end())
     {
         return (int)std::distance(m_BoneNames.begin(), it);
     }
 
+    // 初めて参照されたボーンは末尾へ追加し、その位置をGPU用インデックスとする。
     int index = (int)m_BoneNames.size();
     m_BoneNames.push_back(name);
     return index;
@@ -355,20 +381,24 @@ int AnimationModel::GetBoneIndex(const std::string& name)
 
 void AnimationModel::Uninit()
 {
+    // モデル未読み込み時は解放対象が無いため終了する。
     if (!m_AiScene) return;
 
+    // 個体ごとに所有するボーン定数バッファを解放する。
     if (m_BoneConstantBuffer)
     {
         m_BoneConstantBuffer->Release();
         m_BoneConstantBuffer = nullptr;
     }
 
+    // 各メッシュの頂点・インデックスバッファの参照を解放する。
     for (unsigned int m = 0; m < m_AiScene->mNumMeshes; m++)
     {
         if (m_VertexBuffer && m_VertexBuffer[m]) m_VertexBuffer[m]->Release();
         if (m_IndexBuffer && m_IndexBuffer[m]) m_IndexBuffer[m]->Release();
     }
 
+    // メッシュ数に合わせて確保したCPU側配列を破棄する。
     delete[] m_VertexBuffer;
     delete[] m_IndexBuffer;
     delete[] m_DeformVertex;
@@ -376,12 +406,14 @@ void AnimationModel::Uninit()
     m_IndexBuffer = nullptr;
     m_DeformVertex = nullptr;
 
+    // 読み込んだテクスチャの参照をすべて解放する。
     for (std::pair<const std::string, ID3D11ShaderResourceView*> pair : m_Texture)
     {
         pair.second->Release();
     }
     m_Texture.clear();
 
+    // 元モデルだけがAssimpシーンを解放し、共有クローンからの二重解放を防ぐ。
     if (m_OwnsImportedScenes)
     {
         aiReleaseImport(m_AiScene);
@@ -390,12 +422,235 @@ void AnimationModel::Uninit()
             if (pair.second) aiReleaseImport(pair.second);
         }
     }
+    // 外部コールバックを含む登録情報を消去し、解放後に参照されない状態へ戻す。
     m_AiScene = nullptr;
     m_Animation.clear();
+    m_AnimationNotifies.clear();
+    m_NotifyCallback = nullptr;
+}
+
+void AnimationModel::PlayAnimation(
+    const std::string& animationName,
+    float speed,
+    bool loop,
+    const std::string& fallbackAnimation,
+    bool useBlend)
+{
+    // 空の名前では再生状態を変更しない。
+    if (animationName.empty()) return;
+
+    // 再生速度、ループ設定、単発終了後の戻り先を更新する。
+    m_PlaybackSpeed = speed;
+    m_IsLooping = loop;
+    if (!fallbackAnimation.empty()) m_FallbackAnimation = fallbackAnimation;
+
+    // 確定済みの同じモーションを継続する場合は、再生位置を不用意に巻き戻さない。
+    if (m_NextAnimation.empty() && m_CurrentAnimation == animationName) return;
+
+    const bool isPendingSameAnimation = (m_NextAnimation == animationName);
+    // 通常切替で同じ遷移先が設定済みなら、進行中のブレンドをそのまま継続する。
+    if (useBlend && isPendingSameAnimation) return;
+
+    // 即時切替では遷移元の姿勢を破棄し、指定モーションだけを次の更新から再生する。
+    if (!useBlend)
+    {
+        m_CurrentAnimation = animationName;
+        m_NextAnimation.clear();
+        // 同じ遷移先を確定するだけなら、再生中のフレーム位置は維持する。
+        if (!isPendingSameAnimation) m_CurrentFrame = 0.0f;
+        m_BlendRate = 1.0f;
+        return;
+    }
+
+    // 遷移先を設定し、先頭フレームからブレンドを開始する。
+    m_NextAnimation = animationName;
+    m_CurrentFrame = 0.0f;
+    m_BlendRate = 0.0f;
+}
+
+void AnimationModel::UpdatePlayback()
+{
+    if (!m_AiScene) return;
+
+    // ブレンド中は遷移先を実際の再生対象としてNotifyを判定する。
+    const std::string playbackAnimation =
+        m_NextAnimation.empty() ? m_CurrentAnimation : m_NextAnimation;
+    const bool animationChanged = (m_NotifyPlaybackAnimation != playbackAnimation);
+    const float previousFrame = m_CurrentFrame;
+
+    m_CurrentFrame += m_PlaybackSpeed;
+    m_NotifyPlaybackAnimation = playbackAnimation;
+
+    // 現在のフレームと前のフレームを渡し、更新中に通過した通知を発火させる。
+    DispatchAnimationNotifies(
+        playbackAnimation,
+        previousFrame,
+        m_CurrentFrame,
+        animationChanged);
+
+    // ブレンド率を徐々に進め、完了時に遷移先を現在アニメーションとして確定する。
+    m_BlendRate = (std::min)(1.0f, m_BlendRate + 0.1f);
+    if (m_BlendRate >= 1.0f && !m_NextAnimation.empty())
+    {
+        m_CurrentAnimation = m_NextAnimation;
+        m_NextAnimation.clear();
+    }
+
+    // 単発アニメーションの終端へ到達したら、指定された待機アニメーションへ戻す。
+    if (!m_IsLooping)
+    {
+        const int maxFrame = GetAnimationFrameCount(playbackAnimation);
+        if (maxFrame > 0 && m_CurrentFrame >= static_cast<float>(maxFrame - 1))
+        {
+            m_IsLooping = true;
+            PlayAnimation(m_FallbackAnimation, 1.0f, true, m_FallbackAnimation);
+        }
+    }
+
+    // 現在と遷移先の姿勢をブレンドし、GPUへ渡すボーン行列を更新する。
+    Update(
+        m_CurrentAnimation.c_str(),
+        static_cast<int>(m_CurrentFrame),
+        m_NextAnimation.empty() ? m_CurrentAnimation.c_str() : m_NextAnimation.c_str(),
+        static_cast<int>(m_CurrentFrame),
+        m_BlendRate);
+}
+
+bool AnimationModel::IsAnimationFinished() const
+{
+    // ブレンド中は遷移先を、通常時は現在のアニメーションを判定対象にする。
+    const std::string& playbackAnimation =
+        m_NextAnimation.empty() ? m_CurrentAnimation : m_NextAnimation;
+    auto it = m_Animation.find(playbackAnimation);
+    if (it == m_Animation.end() || !it->second || !it->second->HasAnimations()) return false;
+
+    // 再生位置が終端フレーム以上なら完了とみなす。
+    const int maxFrame = static_cast<int>(it->second->mAnimations[0]->mDuration);
+    return maxFrame > 0 && m_CurrentFrame >= static_cast<float>(maxFrame - 1);
+}
+
+bool AnimationModel::AddAnimationNotify(
+    const std::string& animationName,
+    float frame,
+    const std::string& notifyName)
+{
+    // 名前やフレームが不正な通知は登録しない。
+    if (animationName.empty() || notifyName.empty() || frame < 0.0f) return false;
+
+    // 発火順が安定するよう、追加後にフレーム昇順へ並べる。
+    std::vector<AnimationNotify>& notifies = m_AnimationNotifies[animationName];
+    notifies.push_back({ frame, notifyName });
+    std::stable_sort(
+        notifies.begin(),
+        notifies.end(),
+        [](const AnimationNotify& lhs, const AnimationNotify& rhs)
+        {
+            return lhs.Frame < rhs.Frame;
+        });
+    return true;
+}
+
+bool AnimationModel::AddAnimationNotifyNormalized(
+    const std::string& animationName,
+    float normalizedTime,
+    const std::string& notifyName)
+{
+    // 敵ごとに尺が異なる場合でも扱いやすいよう、0.0～1.0の割合指定をフレームへ変換する。
+    if (normalizedTime < 0.0f || normalizedTime > 1.0f) return false;
+
+    const int frameCount = GetAnimationFrameCount(animationName);
+    if (frameCount <= 0) return false;
+    const float frame = normalizedTime * static_cast<float>((std::max)(0, frameCount - 1));
+    return AddAnimationNotify(animationName, frame, notifyName);
+}
+
+bool AnimationModel::HasAnimationNotify(
+    const std::string& animationName,
+    const std::string& notifyName) const
+{
+    // 指定アニメーションに対応する通知一覧だけを検索する。
+    auto it = m_AnimationNotifies.find(animationName);
+    if (it == m_AnimationNotifies.end()) return false;
+
+    return std::any_of(
+        it->second.begin(),
+        it->second.end(),
+        [&](const AnimationNotify& notify)
+        {
+            return notify.Name == notifyName;
+        });
+}
+
+void AnimationModel::ClearAllAnimationNotifies()
+{
+    // コールバック自体は残し、登録済みの通知タイミングだけを消去する。
+    m_AnimationNotifies.clear();
+}
+
+void AnimationModel::DispatchAnimationNotifies(
+    const std::string& animationName,
+    float previousFrame,
+    float currentFrame,
+    bool animationChanged)
+{
+
+    // 始めに、アニメーション名と対応した通知リストを引く。
+    auto notifyIt = m_AnimationNotifies.find(animationName);
+
+    // 通知リストが存在しない場合は発火対象がないため終了する。
+    if (notifyIt == m_AnimationNotifies.end()) return;
+
+    const int frameCount = GetAnimationFrameCount(animationName);
+    if (frameCount <= 0) return;
+
+    // 切替直後は0フレームの通知も発火対象へ含める。
+    const float rangeStart = animationChanged ? -0.0001f : previousFrame;
+    if (currentFrame < rangeStart) return;
+
+    // 今回の更新範囲に含まれる通知を一旦集め、発火順を後から整える。
+    std::vector<AnimationNotify> firedNotifies;
+    for (const AnimationNotify& notify : notifyIt->second)
+    {
+        if (notify.Frame >= static_cast<float>(frameCount)) continue;
+
+        if (!m_IsLooping)
+        {
+            if (rangeStart < notify.Frame && notify.Frame <= currentFrame)
+                firedNotifies.push_back(notify);
+            continue;
+        }
+
+        // ループ再生では複数周回を一度に跨いだ場合も、通過した回数だけ通知する。
+        const int firstLoop = (std::max)(0, static_cast<int>(rangeStart / frameCount));
+        const int lastLoop = static_cast<int>(currentFrame / frameCount);
+        for (int loop = firstLoop; loop <= lastLoop; ++loop)
+        {
+            const float notifyFrame = notify.Frame + static_cast<float>(loop * frameCount);
+            if (rangeStart < notifyFrame && notifyFrame <= currentFrame)
+                firedNotifies.push_back({ notifyFrame, notify.Name });
+        }
+    }
+
+    // 複数周回を跨いだ場合も、実際に通過した時刻の順で通知する。
+    std::stable_sort(
+        firedNotifies.begin(),
+        firedNotifies.end(),
+        [](const AnimationNotify& lhs, const AnimationNotify& rhs)
+        {
+            return lhs.Frame < rhs.Frame;
+        });
+
+    // コールバック内で通知設定が変更されても、抽出済み一覧を使って安全に発火する。
+    if (!m_NotifyCallback) return;
+    for (const AnimationNotify& notify : firedNotifies)
+    {
+        m_NotifyCallback(animationName, notify.Name);
+    }
 }
 
 void AnimationModel::Update(const char* AnimationName1, int Frame1, const char* AnimationName2, int Frame2, float BlendRate)
 {
+    // 両方のアニメーションが有効な場合のみ、ブレンド姿勢を計算する。
     auto it1 = m_Animation.find(AnimationName1);
     auto it2 = m_Animation.find(AnimationName2);
     if (it1 == m_Animation.end() || !it1->second || !it1->second->HasAnimations()) return;
@@ -409,12 +664,14 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1, const char* 
     double animTime1 = GetAnimationTime(animation1, Frame1);
     double animTime2 = GetAnimationTime(animation2, Frame2);
 
+    // 全ボーンについて、2つのアニメーションから同名チャンネルを探す。
     for (auto pair : m_Bone)
     {
         BONE* bone = &m_Bone[pair.first];
         aiNodeAnim* nodeAnim1 = nullptr;
         aiNodeAnim* nodeAnim2 = nullptr;
 
+        // 1つ目と2つ目のアニメーションから、このボーンのキーフレーム列を取得する。
         for (unsigned int c = 0; c < animation1->mNumChannels; c++)
         {
             if (animation1->mChannels[c]->mNodeName == aiString(pair.first))
@@ -432,6 +689,7 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1, const char* 
             }
         }
 
+        // チャンネルが無い場合に備え、移動なし・回転なし・等倍を初期姿勢とする。
         aiQuaternion rot1(1.0f, 0.0f, 0.0f, 0.0f);
         aiVector3D pos1(0.0f, 0.0f, 0.0f);
         aiVector3D scale1(1.0f, 1.0f, 1.0f);
@@ -462,9 +720,11 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1, const char* 
         bone->AnimationMatrix = aiMatrix4x4(scale, rot, pos);
     }
 
+    // ルートから子へ姿勢を伝播し、各ボーンの最終行列を作成する。
     aiMatrix4x4 rootMatrix = aiMatrix4x4(aiVector3D(1.0f, 1.0f, 1.0f), aiQuaternion((float)AI_MATH_PI, 0.0f, 0.0f), aiVector3D(0.0f, 0.0f, 0.0f));
     UpdateBoneMatrix(m_AiScene->mRootNode, rootMatrix);
 
+    // 未使用ボーンを単位行列で埋め、登録済みボーンだけを定数バッファへ設定する。
     CONSTANT_BUFFER_BONE cbBone{};
     for (int i = 0; i < MAX_BONES; i++) cbBone.BoneMatrices[i] = XMMatrixIdentity();
     for (int i = 0; i < (int)m_BoneNames.size(); i++)
@@ -478,12 +738,14 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1, const char* 
 
 void AnimationModel::Update(const char* AnimationName1, int Frame1)
 {
+    // 指定アニメーションが読み込まれていない場合は姿勢を変更しない。
     auto it = m_Animation.find(AnimationName1);
     if (it == m_Animation.end() || !it->second || !it->second->HasAnimations()) return;
 
     aiAnimation* animation = it->second->mAnimations[0];
     if (!animation) return;
 
+    // 各ボーンに対応するチャンネルから、指定フレームの回転と位置を取得する。
     for (auto pair : m_Bone)
     {
         BONE* bone = &m_Bone[pair.first];
@@ -501,6 +763,7 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1)
         aiQuaternion rot(1.0f, 0.0f, 0.0f, 0.0f);
         aiVector3D pos(0.0f, 0.0f, 0.0f);
 
+        // キー配列の範囲内へフレームを折り返し、該当キーをそのまま使用する。
         if (nodeAnim)
         {
             if (nodeAnim->mNumRotationKeys > 0) {
@@ -517,6 +780,7 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1)
         bone->AnimationMatrix = aiMatrix4x4(aiVector3D(1.0f, 1.0f, 1.0f), rot, pos);
     }
 
+    // 単体再生でも階層行列を更新し、GPU用の最終ボーン行列を作成する。
     aiMatrix4x4 rootMatrix = aiMatrix4x4(aiVector3D(1.0f, 1.0f, 1.0f), aiQuaternion((float)AI_MATH_PI, 0.0f, 0.0f), aiVector3D(0.0f, 0.0f, 0.0f));
     UpdateBoneMatrix(m_AiScene->mRootNode, rootMatrix);
 
@@ -532,10 +796,12 @@ void AnimationModel::Update(const char* AnimationName1, int Frame1)
 
 void AnimationModel::UpdateBoneMatrix(aiNode* node, aiMatrix4x4 matrix)
 {
+    // 親の変換と現在ボーンのローカル姿勢を合成し、逆バインド行列を適用する。
     BONE* bone = &m_Bone[node->mName.C_Str()];
     aiMatrix4x4 worldMatrix = matrix * bone->AnimationMatrix;
     bone->Matrix = worldMatrix * bone->OffsetMatrix;
 
+    // 合成済みの行列を親行列として、子ボーンへ再帰的に伝える。
     for (unsigned int n = 0; n < node->mNumChildren; n++)
     {
         UpdateBoneMatrix(node->mChildren[n], worldMatrix);
@@ -552,9 +818,11 @@ double AnimationModel::GetAnimationTime(aiAnimation* anim, int frame)
 
 aiVector3D AnimationModel::CalcInterpolatedPosition(double animTime, aiNodeAnim* nodeAnim)
 {
+    // キーが無い場合は移動なし、1つだけならその値を返す。
     if (!nodeAnim || nodeAnim->mNumPositionKeys == 0) return aiVector3D(0.0f, 0.0f, 0.0f);
     if (nodeAnim->mNumPositionKeys == 1) return nodeAnim->mPositionKeys[0].mValue;
 
+    // 指定時刻を挟む2キーを探し、経過割合で線形補間する。
     for (unsigned int i = 0; i < nodeAnim->mNumPositionKeys - 1; i++)
     {
         if (animTime < nodeAnim->mPositionKeys[i + 1].mTime)
@@ -564,14 +832,17 @@ aiVector3D AnimationModel::CalcInterpolatedPosition(double animTime, aiNodeAnim*
             return nodeAnim->mPositionKeys[i].mValue * (float)(1.0 - factor) + nodeAnim->mPositionKeys[i + 1].mValue * (float)factor;
         }
     }
+    // 最終キー以降の時刻では、最後の位置を維持する。
     return nodeAnim->mPositionKeys[nodeAnim->mNumPositionKeys - 1].mValue;
 }
 
 aiQuaternion AnimationModel::CalcInterpolatedRotation(double animTime, aiNodeAnim* nodeAnim)
 {
+    // キーが無い場合は回転なし、1つだけならその値を返す。
     if (!nodeAnim || nodeAnim->mNumRotationKeys == 0) return aiQuaternion(1.0f, 0.0f, 0.0f, 0.0f);
     if (nodeAnim->mNumRotationKeys == 1) return nodeAnim->mRotationKeys[0].mValue;
 
+    // 指定時刻を挟む2キーを球面線形補間し、回転の長さを正規化する。
     for (unsigned int i = 0; i < nodeAnim->mNumRotationKeys - 1; i++)
     {
         if (animTime < nodeAnim->mRotationKeys[i + 1].mTime)
@@ -584,14 +855,17 @@ aiQuaternion AnimationModel::CalcInterpolatedRotation(double animTime, aiNodeAni
             return out;
         }
     }
+    // 最終キー以降の時刻では、最後の回転を維持する。
     return nodeAnim->mRotationKeys[nodeAnim->mNumRotationKeys - 1].mValue;
 }
 
 aiVector3D AnimationModel::CalcInterpolatedScaling(double animTime, aiNodeAnim* nodeAnim)
 {
+    // キーが無い場合は等倍、1つだけならその値を返す。
     if (!nodeAnim || nodeAnim->mNumScalingKeys == 0) return aiVector3D(1.0f, 1.0f, 1.0f);
     if (nodeAnim->mNumScalingKeys == 1) return nodeAnim->mScalingKeys[0].mValue;
 
+    // 指定時刻を挟む2キーを探し、経過割合で線形補間する。
     for (unsigned int i = 0; i < nodeAnim->mNumScalingKeys - 1; i++)
     {
         if (animTime < nodeAnim->mScalingKeys[i + 1].mTime)
@@ -601,11 +875,13 @@ aiVector3D AnimationModel::CalcInterpolatedScaling(double animTime, aiNodeAnim* 
             return nodeAnim->mScalingKeys[i].mValue * (float)(1.0 - factor) + nodeAnim->mScalingKeys[i + 1].mValue * (float)factor;
         }
     }
+    // 最終キー以降の時刻では、最後の拡大率を維持する。
     return nodeAnim->mScalingKeys[nodeAnim->mNumScalingKeys - 1].mValue;
 }
 
 int AnimationModel::GetAnimationFrameCount(const std::string& name)
 {
+    // アニメーションの尺はAssimpのtick時間で管理されているため、フレーム数相当の整数値へ丸める。
     auto it = m_Animation.find(name);
     if (it == m_Animation.end()) return 0;
 
@@ -617,6 +893,7 @@ int AnimationModel::GetAnimationFrameCount(const std::string& name)
 
 XMMATRIX AnimationModel::AiMatrixToXMMatrix(aiMatrix4x4 m)
 {
+    // Assimp行列の各要素を同じ並びでDirectXMathの行列へ詰め替える。
     return XMMATRIX(
         m.a1, m.a2, m.a3, m.a4,
         m.b1, m.b2, m.b3, m.b4,

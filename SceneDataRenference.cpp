@@ -1,5 +1,5 @@
 #include "SceneDataReference.h"
-std::string DataReference::NextDungeonId = "";
-bool DataReference::IsEditorTestPlay = false;
-bool DataReference::RandomizeEditorTestPlaySeed = false;
-int DataReference::EditorTestPlaySeedSalt = 0;
+std::string DataReference::m_NextDungeonId = "";
+bool DataReference::m_IsEditorTestPlay = false;
+bool DataReference::m_RandomizeEditorTestPlaySeed = false;
+int DataReference::m_EditorTestPlaySeedSalt = 0;

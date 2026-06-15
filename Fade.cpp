@@ -16,14 +16,14 @@ void Fade::Init() {
 
 void Fade::Update() {
     if (m_State == State::FadeIn) {
-        m_Alpha -= FADE_SPEED;
+        m_Alpha -= m_FadeSpeed;
         if (m_Alpha <= 0.0f) {
             m_Alpha = 0.0f;
             m_State = State::None;
         }
     }
     else if (m_State == State::FadeOut) {
-        m_Alpha += FADE_SPEED;
+        m_Alpha += m_FadeSpeed;
         if (m_Alpha >= 1.0f) {
             m_Alpha = 1.0f;
             m_State = State::None;

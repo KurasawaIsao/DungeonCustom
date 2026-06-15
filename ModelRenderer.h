@@ -63,9 +63,6 @@ private:
 	MODEL* m_Model{};
 
 public:
-
-	static void Preload( const char *FileName );
-	static void UnloadAll();
 	static void LoadObj(const char* FileName, MODEL_OBJ* ModelObj);
 
 	using Component::Component;
@@ -73,7 +70,5 @@ public:
 	void Load( const char *FileName );
 	void Draw() override;
 	void Draw(bool suppressSpecular);
-
-	ID3D11Buffer* GetVertexBuffer() { return m_Model->VertexBuffer; }
 
 };

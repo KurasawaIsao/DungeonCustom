@@ -37,6 +37,5 @@ public:
     void SetVisible(bool vis) { m_Visible = vis; }
 
     // 表示される最大行数（0 = 無制限）
-    void SetMaxLines(size_t maxLines) { m_MaxLines = maxLines; }  
 
 };

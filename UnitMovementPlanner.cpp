@@ -16,23 +16,16 @@ namespace UnitMovementPlanner
             {1,1}, {1,-1}, {-1,1}, {-1,-1}
         };
     }
-
-    Vector2Int NormalizeDir(const Vector2Int& dir)
-    {
-        Vector2Int result(0, 0);
-        result.x = (dir.x > 0) ? 1 : ((dir.x < 0) ? -1 : 0);
-        result.y = (dir.y > 0) ? 1 : ((dir.y < 0) ? -1 : 0);
-        return result;
-    }
-
+    // 座標差を上下左右の4方向へ変換し、プレイヤーの前後ラインを決めるために使用する。
     Vector2Int CardinalDir(const Vector2Int& dir)
     {
-        Vector2Int n = NormalizeDir(dir);
+        Vector2Int n = dir.normalized();
         if (n.x == 0 && n.y == 0) return n;
         if (abs(dir.x) >= abs(dir.y)) return { n.x, 0 };
         return { 0, n.y };
     }
 
+    // 現在位置から複数の目標候補までの最小チェビシェフ距離を求め、移動候補の評価に使用する。
     int DistanceToGoals(const Vector2Int& pos, const std::vector<Vector2Int>& goals)
     {
         int best = 999999;
@@ -42,6 +35,7 @@ namespace UnitMovementPlanner
         return best;
     }
 
+    // プレイヤーの移動方向または向きを基準に、前方・後方の追従候補マスを作成する。
     std::vector<Vector2Int> BuildPlayerLinePositions(Player* player, int rearCount, int frontCount)
     {
         std::vector<Vector2Int> positions;
@@ -65,6 +59,7 @@ namespace UnitMovementPlanner
         return positions;
     }
 
+    // 指定マスがマップ内の通行可能マスで、他ユニットに占有されていないか判定する。
     bool CanStandAt(Unit& self, const Vector2Int& pos, MapData* map)
     {
         if (!map || !map->IsInBounds(pos) || !map->IsWalkable(pos)) return false;
@@ -72,6 +67,7 @@ namespace UnitMovementPlanner
         return !unit || unit == &self;
     }
 
+    // 隣接マスへの移動条件と斜めの角抜けを確認し、移動可能なら移動を開始する。
     bool TryStartMove(Unit& self, const Vector2Int& next, MapData* map)
     {
         if (next == self.GetGridPos()) return false;
@@ -86,6 +82,7 @@ namespace UnitMovementPlanner
         return true;
     }
 
+    // 対象へ攻撃可能な隣接位置を探し、現在位置から一歩だけ近づく。既に隣接済みの場合もtrueを返す。
     bool TryMoveToAdjacentTarget(Unit& self, Unit* target, MapData* map, UnitAI& pathAI)
     {
         if (!target || !map) return false;
@@ -112,6 +109,11 @@ namespace UnitMovementPlanner
             }
 
             std::sort(goals.begin(), goals.end(), [&](const Vector2Int& a, const Vector2Int& b) {
+                int chebyshevA = a.Chebyshev(selfPos);
+                int chebyshevB = b.Chebyshev(selfPos);
+                if (chebyshevA != chebyshevB) return chebyshevA < chebyshevB;
+
+                // 必要手数が同じ場合は、直交方向へ寄る候補を優先する。
                 return a.Manhattan(selfPos) < b.Manhattan(selfPos);
             });
 
@@ -144,13 +146,14 @@ namespace UnitMovementPlanner
         return tryMoveToGoals(attackGoals) || tryMoveToGoals(cornerGoals);
     }
 
+    // 対象への隣接移動を試した後、移動の成否にかかわらず自分のターンを終了する。
     bool MoveAdjacentAndEndTurn(Unit& self, Unit* target, MapData* map, UnitAI& pathAI)
     {
         TryMoveToAdjacentTarget(self, target, map, pathAI);
         self.EndTurn();
         return true;
     }
-
+    // プレイヤーの前後ラインへの追従を試し、到達できない場合は設定に応じて隣接移動へ切り替えてターンを終了する。
     bool MoveToPlayerLineAndEndTurn(
         Unit& self,
         Player* player,
@@ -225,6 +228,7 @@ namespace UnitMovementPlanner
         return true;
     }
 
+    // 対象との部屋関係と対象種別に応じて、直接接近またはプレイヤー追従を選択してターンを終了する。
     bool MoveToTargetByAreaAndEndTurn(
         Unit& self,
         Unit* target,

@@ -13,29 +13,29 @@ namespace
     // マップ本体の外側に追加で敷く壁の厚み。
     constexpr int kOuterWallPadding = 10;
 }
-ModelRenderer* MapRenderer::s_FloorModel = nullptr;
-ModelRenderer* MapRenderer::s_WallModel = nullptr;
-ModelRenderer* MapRenderer::s_StairModel = nullptr;
-ModelRenderer* MapRenderer::s_CorridorModel= nullptr;
-ModelRenderer* MapRenderer::s_EditorCorridorModel = nullptr;
-ModelRenderer* MapRenderer::s_ShopFloorModel = nullptr;
-std::string MapRenderer::s_CurrentThemeId = "default";
-ID3D11VertexShader* MapRenderer::s_GridVertexShader = nullptr;
-ID3D11PixelShader* MapRenderer::s_GridPixelShader = nullptr;
-ID3D11InputLayout* MapRenderer::s_GridVertexLayout = nullptr;
+ModelRenderer* MapRenderer::m_FloorModel = nullptr;
+ModelRenderer* MapRenderer::m_WallModel = nullptr;
+ModelRenderer* MapRenderer::m_StairModel = nullptr;
+ModelRenderer* MapRenderer::m_CorridorModel= nullptr;
+ModelRenderer* MapRenderer::m_EditorCorridorModel = nullptr;
+ModelRenderer* MapRenderer::m_ShopFloorModel = nullptr;
+std::string MapRenderer::m_CurrentThemeId = "default";
+ID3D11VertexShader* MapRenderer::m_GridVertexShader = nullptr;
+ID3D11PixelShader* MapRenderer::m_GridPixelShader = nullptr;
+ID3D11InputLayout* MapRenderer::m_GridVertexLayout = nullptr;
 void MapRenderer::SetTheme(const std::string& themeId)
 {
-    s_CurrentThemeId = themeId.empty() ? "default" : themeId;
+    m_CurrentThemeId = themeId.empty() ? "default" : themeId;
 
     // 既にモデルが作られている場合は、次の描画から指定テーマのモデルに差し替える。
-    if (s_FloorModel || s_WallModel || s_StairModel || s_CorridorModel || s_EditorCorridorModel || s_ShopFloorModel)
+    if (m_FloorModel || m_WallModel || m_StairModel || m_CorridorModel || m_EditorCorridorModel || m_ShopFloorModel)
         LoadCurrentThemeModels();
 }
 
 void MapRenderer::LoadCurrentThemeModels()
 {
-    const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(s_CurrentThemeId);
-    s_CurrentThemeId = theme.id;
+    const DungeonThemeData& theme = DungeonThemeDatabase::GetOrDefault(m_CurrentThemeId);
+    m_CurrentThemeId = theme.id;
 
     auto loadModel = [](ModelRenderer*& model, const std::string& path)
         {
@@ -45,49 +45,49 @@ void MapRenderer::LoadCurrentThemeModels()
         };
 
     // タイル種別ごとのモデルをテーマ設定から読み込む。
-    loadModel(s_FloorModel, theme.models.floor);
-    loadModel(s_WallModel, theme.models.wall);
+    loadModel(m_FloorModel, theme.models.floor);
+    loadModel(m_WallModel, theme.models.wall);
 }
 void MapRenderer::Init()
 {
-    if (!s_FloorModel)
+    if (!m_FloorModel)
     {
-        s_FloorModel = new ModelRenderer();
-        s_FloorModel->Load("Asset\\Model\\Floor.obj");
+        m_FloorModel = new ModelRenderer();
+        m_FloorModel->Load("Asset\\Model\\Floor.obj");
     }
 
-    if (!s_WallModel)
+    if (!m_WallModel)
     {
-        s_WallModel = new ModelRenderer();
-        s_WallModel->Load("Asset\\Model\\Wall.obj");
+        m_WallModel = new ModelRenderer();
+        m_WallModel->Load("Asset\\Model\\Wall.obj");
     }
 
-    if (!s_StairModel)
+    if (!m_StairModel)
     {
-        s_StairModel = new ModelRenderer();
-        s_StairModel->Load("Asset\\Model\\Stair.obj");
+        m_StairModel = new ModelRenderer();
+        m_StairModel->Load("Asset\\Model\\Stair.obj");
     }
-    if (!s_CorridorModel)
+    if (!m_CorridorModel)
     {
-        s_CorridorModel = new ModelRenderer();
-        s_CorridorModel->Load("Asset\\Model\\Floor.obj");
+        m_CorridorModel = new ModelRenderer();
+        m_CorridorModel->Load("Asset\\Model\\Floor.obj");
     }
-    if (!s_EditorCorridorModel)
+    if (!m_EditorCorridorModel)
     {
-        s_EditorCorridorModel = new ModelRenderer();
-        s_EditorCorridorModel->Load("Asset\\Model\\Corridor.obj");
+        m_EditorCorridorModel = new ModelRenderer();
+        m_EditorCorridorModel->Load("Asset\\Model\\Corridor.obj");
     }
-    if (!s_ShopFloorModel)
+    if (!m_ShopFloorModel)
     {
-        s_ShopFloorModel = new ModelRenderer();
-        s_ShopFloorModel->Load("Asset\\Model\\ShopFloor.obj");
+        m_ShopFloorModel = new ModelRenderer();
+        m_ShopFloorModel->Load("Asset\\Model\\ShopFloor.obj");
     }
     LoadCurrentThemeModels();
 
-    if (!s_GridVertexShader)
+    if (!m_GridVertexShader)
     {
-        Renderer::CreateVertexShader(&s_GridVertexShader, &s_GridVertexLayout, "shader\\unlitColorVS.cso");
-        Renderer::CreatePixelShader(&s_GridPixelShader, "shader\\unlitColorPS.cso");
+        Renderer::CreateVertexShader(&m_GridVertexShader, &m_GridVertexLayout, "shader\\unlitColorVS.cso");
+        Renderer::CreatePixelShader(&m_GridPixelShader, "shader\\unlitColorPS.cso");
     }
 
 
@@ -117,7 +117,7 @@ void MapRenderer::Build(const MapData& map)
 
     for (const Room& room : map.GetRooms())
     {
-        if (room.specialType != RoomSpecialType::Shop) continue;
+        if (room.m_SpecialType != RoomSpecialType::Shop) continue;
         const Vector2Int pos = room.GetPosition();
         const Vector2Int size = room.GetSize();
         const int innerW = (std::max)(0, size.x - 2);
@@ -190,7 +190,7 @@ void MapRenderer::Draw()
     {
         Renderer::SetWorldMatrix(shopMatrix);
         // エディタ上の床は鏡面反射を無効化し、局所的な白い光が出ないようにする。
-        s_ShopFloorModel->Draw(m_IsEditor);
+        m_ShopFloorModel->Draw(m_IsEditor);
     }
 
     // マップ本体の外側10マス分を壁として描画する。
@@ -198,7 +198,7 @@ void MapRenderer::Draw()
     {
         XMMATRIX matrix = XMMatrixTranslation(static_cast<float>(outerWallTile.x * TILE_DISTANCE), 0.0f, static_cast<float>(outerWallTile.y * TILE_DISTANCE));
         Renderer::SetWorldMatrix(matrix);
-        s_WallModel->Draw();
+        m_WallModel->Draw();
     }
 
     for (int i = 0; i < (int)m_AllMatrices.size(); i++)
@@ -211,17 +211,17 @@ void MapRenderer::Draw()
         switch (m_TileTypes[i])
         {
         case TileType::Floor:
-            s_FloorModel->Draw(m_IsEditor);
+            m_FloorModel->Draw(m_IsEditor);
             break;
         case TileType::Corridor:
-            if (m_IsEditor) s_EditorCorridorModel->Draw(true);
-            else s_FloorModel->Draw();
+            if (m_IsEditor) m_EditorCorridorModel->Draw(true);
+            else m_FloorModel->Draw();
             break;
         case TileType::Wall:
-            s_WallModel->Draw();
+            m_WallModel->Draw();
             break;
         case TileType::Stair:
-            s_StairModel->Draw();
+            m_StairModel->Draw();
             break;
         }
     }
@@ -230,17 +230,17 @@ void MapRenderer::Draw()
 }
 void MapRenderer::Uninit()
 {
-    s_WallModel->Uninit();
-    s_FloorModel->Uninit();
-    s_StairModel->Uninit();
-    if (s_CorridorModel) s_CorridorModel->Uninit();
-    if (s_EditorCorridorModel) s_EditorCorridorModel->Uninit();
-    if (s_ShopFloorModel) s_ShopFloorModel->Uninit();
+    m_WallModel->Uninit();
+    m_FloorModel->Uninit();
+    m_StairModel->Uninit();
+    if (m_CorridorModel) m_CorridorModel->Uninit();
+    if (m_EditorCorridorModel) m_EditorCorridorModel->Uninit();
+    if (m_ShopFloorModel) m_ShopFloorModel->Uninit();
     if (m_GridVertexBuffer) { m_GridVertexBuffer->Release(); m_GridVertexBuffer = nullptr; }
     m_GridVertexBufferCapacity = 0;
-    if (s_GridVertexShader) { s_GridVertexShader->Release(); s_GridVertexShader = nullptr; }
-    if (s_GridPixelShader) { s_GridPixelShader->Release(); s_GridPixelShader = nullptr; }
-    if (s_GridVertexLayout) { s_GridVertexLayout->Release(); s_GridVertexLayout = nullptr; }
+    if (m_GridVertexShader) { m_GridVertexShader->Release(); m_GridVertexShader = nullptr; }
+    if (m_GridPixelShader) { m_GridPixelShader->Release(); m_GridPixelShader = nullptr; }
+    if (m_GridVertexLayout) { m_GridVertexLayout->Release(); m_GridVertexLayout = nullptr; }
 }
 
 void MapRenderer::Clear()
@@ -358,7 +358,7 @@ void MapRenderer::DrawGrid()
     CreateGridVertexBuffer();
 
 	//頂点バッファとシェーダーが揃ってないなら描画しない
-    if (!m_GridVertexBuffer || !s_GridVertexShader || !s_GridPixelShader || !s_GridVertexLayout) return;
+    if (!m_GridVertexBuffer || !m_GridVertexShader || !m_GridPixelShader || !m_GridVertexLayout) return;
 
     const float t = timeGetTime() * 0.006f;
     const float pulse = (std::sin(t) + 1.0f) * 0.5f;
@@ -378,9 +378,9 @@ void MapRenderer::DrawGrid()
     std::memcpy(mapped.pData, m_GridVertices.data(), sizeof(VERTEX_3D) * m_GridVertices.size());
     Renderer::GetDeviceContext()->Unmap(m_GridVertexBuffer, 0);
 
-    Renderer::GetDeviceContext()->IASetInputLayout(s_GridVertexLayout);
-    Renderer::GetDeviceContext()->VSSetShader(s_GridVertexShader, nullptr, 0);
-    Renderer::GetDeviceContext()->PSSetShader(s_GridPixelShader, nullptr, 0);
+    Renderer::GetDeviceContext()->IASetInputLayout(m_GridVertexLayout);
+    Renderer::GetDeviceContext()->VSSetShader(m_GridVertexShader, nullptr, 0);
+    Renderer::GetDeviceContext()->PSSetShader(m_GridPixelShader, nullptr, 0);
 
     UINT stride = sizeof(VERTEX_3D);
     UINT offset = 0;

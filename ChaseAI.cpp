@@ -23,17 +23,9 @@ namespace
         return dynamic_cast<Enemy*>(&unit) != nullptr;
     }
 
-    Vector2Int NormalizeDir(const Vector2Int& dir)
-    {
-        return {
-            (dir.x > 0) ? 1 : ((dir.x < 0) ? -1 : 0),
-            (dir.y > 0) ? 1 : ((dir.y < 0) ? -1 : 0)
-        };
-    }
-
     Vector2Int CardinalDir(const Vector2Int& dir)
     {
-        Vector2Int normalized = NormalizeDir(dir);
+        Vector2Int normalized = dir.normalized();
         if (normalized.x == 0 && normalized.y == 0) return normalized;
         if (abs(dir.x) >= abs(dir.y)) return { normalized.x, 0 };
         return { 0, normalized.y };
@@ -98,29 +90,29 @@ void ChaseAI::MoveOnlyWithTarget(Unit& self, Unit* target, MapData* map)
     Vector2Int selfPos = self.GetGridPos();
     std::vector<Vector2Int> goals = BuildAdjacentGoals(self, target, map);
     if (goals.empty()) {
-        path.clear();
+        m_Path.clear();
         self.EndTurn();
         return;
     }
 
     bool selfMovedOutsidePath = (m_LastSelfPos.x != -999 && selfPos != m_LastSelfPos);
-    bool nextStepInvalid = (!path.empty() && Vector2Int::ChebyshevDistance(path.front(), selfPos) != 1);
+    bool nextStepInvalid = (!m_Path.empty() && Vector2Int::ChebyshevDistance(m_Path.front(), selfPos) != 1);
     // ターゲット位置・自分の位置・次の一歩がずれた時だけ経路を作り直す。
-    if (path.empty() || targetPos != m_LastTargetPos || selfMovedOutsidePath || nextStepInvalid) {
-        path = BFSPathToAny(self, selfPos, goals, map);
+    if (m_Path.empty() || targetPos != m_LastTargetPos || selfMovedOutsidePath || nextStepInvalid) {
+        m_Path = BFSPathToAny(self, selfPos, goals, map);
         m_LastTargetPos = targetPos;
         m_LastSelfPos = selfPos;
     }
 
-    if (!path.empty()) {
-        Vector2Int next = path.front();
+    if (!m_Path.empty()) {
+        Vector2Int next = m_Path.front();
         if (TryStartMove(self, next, map)) {
-            path.erase(path.begin());
+            m_Path.erase(m_Path.begin());
             m_LastSelfPos = next;
             self.EndTurn();
             return;
         }
-        path.clear();
+        m_Path.clear();
     }
 
     self.EndTurn();
@@ -134,9 +126,9 @@ std::vector<Vector2Int> ChaseAI::BuildPlayerFollowGoals(Player* player, bool all
     Vector2Int playerPos = player->GetGridPos();
     // プレイヤーの移動方向から前後の立ち位置を作り、味方が正面に詰まり続けるのを避ける。
     Vector2Int moveDir = playerPos - player->GetPreviousGridPos();
-    Vector2Int dir = NormalizeDir(moveDir);
+    Vector2Int dir = moveDir.normalized();
     if (dir.x == 0 && dir.y == 0) {
-        dir = NormalizeDir(player->GetFacingDir());
+        dir = player->GetFacingDir().normalized();
     }
     if (dir.x == 0 && dir.y == 0) dir = { 0, 1 };
 
@@ -200,8 +192,8 @@ std::vector<Vector2Int> ChaseAI::BuildAdjacentGoals(Unit& self, Unit* target, Ma
     Vector2Int selfPos = self.GetGridPos();
     // 候補が複数ある時は、自分から近く、かつ直交寄りの位置を先に試す。
     std::sort(adjacentGoals.begin(), adjacentGoals.end(), [&](const Vector2Int& a, const Vector2Int& b) {
-        int distA = Vector2Int::ManhattanDistance(a, selfPos);
-        int distB = Vector2Int::ManhattanDistance(b, selfPos);
+        int distA = Vector2Int::ChebyshevDistance(a, selfPos);
+        int distB = Vector2Int::ChebyshevDistance(b, selfPos);
         if (distA != distB) return distA < distB;
 
         int cardinalA = Vector2Int::ManhattanDistance(a, targetPos);
@@ -250,11 +242,18 @@ std::vector<Vector2Int> ChaseAI::BFSPathToAny(Unit& self, const Vector2Int& star
             Vector2Int nextB = cur + b;
             int distA = INT_MAX;
             int distB = INT_MAX;
+            int tieBreakA = INT_MAX;
+            int tieBreakB = INT_MAX;
             for (const auto& goal : activeGoals) {
-                distA = (std::min)(distA, Vector2Int::ManhattanDistance(goal, nextA));
-                distB = (std::min)(distB, Vector2Int::ManhattanDistance(goal, nextB));
+                distA = (std::min)(distA, Vector2Int::ChebyshevDistance(goal, nextA));
+                distB = (std::min)(distB, Vector2Int::ChebyshevDistance(goal, nextB));
+                tieBreakA = (std::min)(tieBreakA, Vector2Int::ManhattanDistance(goal, nextA));
+                tieBreakB = (std::min)(tieBreakB, Vector2Int::ManhattanDistance(goal, nextB));
             }
-            return distA < distB;
+            if (distA != distB) return distA < distB;
+
+            // 必要手数が同じ場合は、直交方向へ寄る順で探索する。
+            return tieBreakA < tieBreakB;
         });
 
         for (const auto& dir : dirs) {

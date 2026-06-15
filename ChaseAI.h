@@ -12,19 +12,24 @@ public:
     void Reset()
     {
         // ターゲットや自分の位置が変わったとき、古い経路を使い続けないようにする。
-        path.clear();
+        m_Path.clear();
         m_LastTargetPos = { -999, -999 };
         m_LastSelfPos = { -999, -999 };
     }
 
     void Update(Unit& self, MapData* map) override;
+    void OnEnter(Unit&, MapData*) override
+    {
+        // 切替前の対象へ向かう古い経路を持ち越さないようにする。
+        Reset();
+    }
     void UpdateWithTarget(Unit& self, Unit* target, MapData* map);
     // 攻撃はせず、ターゲットに近づく移動だけを行う。味方の追従や移動フェーズ分離で使う。
     void MoveOnlyWithTarget(Unit& self, Unit* target, MapData* map);
 
 private:
     // 直前に計算した経路を保持し、ターゲット位置が変わらない間は再計算を抑える。
-    std::vector<Vector2Int> path;
+    std::vector<Vector2Int> m_Path;
 
     Vector2Int m_LastTargetPos = { -999, -999 };
     Vector2Int m_LastSelfPos = { -999, -999 };

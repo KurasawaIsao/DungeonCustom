@@ -83,7 +83,7 @@ namespace
 
         // 固定部屋は外周に壁を含むことがあるため、歩けるタイルだけを部屋判定に使う。
         outRoom = Room(offset + Vector2Int(minX, minY), Vector2Int(maxX - minX + 1, maxY - minY + 1));
-        outRoom.isFixed = true;
+        outRoom.m_IsFixed = true;
         for (const Vector2Int& tile : floorTiles)
             outRoom.AddSubRect(tile, Vector2Int(1, 1));
 
@@ -243,9 +243,9 @@ namespace
             map->SetActiveRect(x - 2, y - 2, x + rect.w + 1, y + rect.h + 1, true);
 
             Room room({ x, y }, { rect.w, rect.h });
-            room.id = (int)map->GetRooms().size();
+            room.m_Id = (int)map->GetRooms().size();
             if (rect.treasure)
-                room.specialType = RoomSpecialType::Treasure;
+                room.m_SpecialType = RoomSpecialType::Treasure;
 
             map->AddRoom(room);
             map->ApplyRoom(map->GetRooms().back());
@@ -431,7 +431,7 @@ namespace
         map->SetActiveRect(x - 2, y - 2, x + roomW + 1, y + roomH + 1, true);
 
         Room room({ x, y }, { roomW, roomH });
-        room.id = 0;
+        room.m_Id = 0;
         map->AddRoom(room);
         map->ApplyRoom(map->GetRooms().back());
         return true;
@@ -536,9 +536,9 @@ namespace
             map->SetActiveRect(x - 2, y - 2, x + roomW + 1, y + roomH + 1, true);
 
             Room room({ x, y }, { roomW, roomH });
-            room.id = (int)map->GetRooms().size();
+            room.m_Id = (int)map->GetRooms().size();
             if (spec.treasure)
-                room.specialType = RoomSpecialType::Treasure;
+                room.m_SpecialType = RoomSpecialType::Treasure;
 
             map->AddRoom(room);
             map->ApplyRoom(map->GetRooms().back());
@@ -593,7 +593,7 @@ namespace
                 if (!BuildFixedRoomFromTiles(*fixedData, Vector2Int(rx, ry), newFixedRoom))
                     continue;
 
-                newFixedRoom.id = (int)map->GetRooms().size();
+                newFixedRoom.m_Id = (int)map->GetRooms().size();
                 map->AddRoom(newFixedRoom);
                 break;
             }
@@ -683,7 +683,7 @@ namespace
                 }
             }
 
-            newRoom.id = (int)map->GetRooms().size();
+            newRoom.m_Id = (int)map->GetRooms().size();
             map->AddRoom(newRoom);
             RebuildRoomSubRects(map);
             return true;
@@ -724,7 +724,7 @@ void RoomGenerator::ScanRoomEntrances(MapData* map)
         const Vector2Int pos = room.GetPosition();
         const Vector2Int size = room.GetSize();
 
-        room.entrances.clear();
+        room.m_Entrances.clear();
 
         for (int y = pos.y - 1; y <= pos.y + size.y; ++y)
         {
@@ -733,7 +733,7 @@ void RoomGenerator::ScanRoomEntrances(MapData* map)
                 if (!map->IsInBounds(x, y)) continue;
 
                 if (map->IsEntranceTile(x, y))
-                    room.entrances.push_back({ x, y });
+                    room.m_Entrances.push_back({ x, y });
             }
         }
     }

@@ -42,14 +42,14 @@ private:
     ID3D11Buffer* m_GridVertexBuffer = nullptr;
     int m_GridVertexBufferCapacity = 0;
 
-    static ModelRenderer* s_FloorModel;
-    static ModelRenderer* s_WallModel;
-    static ModelRenderer* s_StairModel;
-    static ModelRenderer* s_CorridorModel;
-    static ModelRenderer* s_EditorCorridorModel;
-    static ModelRenderer* s_ShopFloorModel;
-    static std::string s_CurrentThemeId;
-    static ID3D11VertexShader* s_GridVertexShader;
-    static ID3D11PixelShader* s_GridPixelShader;
-    static ID3D11InputLayout* s_GridVertexLayout;
+    static ModelRenderer* m_FloorModel;
+    static ModelRenderer* m_WallModel;
+    static ModelRenderer* m_StairModel;
+    static ModelRenderer* m_CorridorModel;
+    static ModelRenderer* m_EditorCorridorModel;
+    static ModelRenderer* m_ShopFloorModel;
+    static std::string m_CurrentThemeId;
+    static ID3D11VertexShader* m_GridVertexShader;
+    static ID3D11PixelShader* m_GridPixelShader;
+    static ID3D11InputLayout* m_GridVertexLayout;
 };

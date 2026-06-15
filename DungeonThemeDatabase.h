@@ -39,5 +39,4 @@ public:
     static bool Exists(const std::string& themeId);
     static const DungeonThemeData& GetOrDefault(const std::string& themeId);
     static const std::vector<DungeonThemeData>& GetAll();
-    static const std::vector<DungeonTileTypeSetting>& GetTileTypes();
 };

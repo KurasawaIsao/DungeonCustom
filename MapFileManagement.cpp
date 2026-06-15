@@ -27,7 +27,7 @@ bool MapFileManagement::ExportMap(const std::string& path, MapData* map, const s
         r["y"] = room.GetPosition().y;
         r["w"] = room.GetSize().x;
         r["h"] = room.GetSize().y;
-        r["isFixed"] = room.isFixed;
+        r["isFixed"] = room.m_IsFixed;
 
         nlohmann::json subRectsJson = nlohmann::json::array();
         for (const auto& rect : room.GetSubRects()) {
@@ -103,7 +103,7 @@ bool MapFileManagement::ImportMap(const std::string& path, MapData* map, MapObje
     if (root.contains("rooms")) {
         for (const auto& rj : root["rooms"]) {
             Room room({ rj["x"], rj["y"] }, { rj["w"], rj["h"] });
-            room.isFixed = rj.value("isFixed", false);
+            room.m_IsFixed = rj.value("isFixed", false);
             if (rj.contains("subRects")) {
                 for (const auto& srj : rj["subRects"]) {
                     room.AddSubRect({ srj["x"], srj["y"] }, { 1, 1 });

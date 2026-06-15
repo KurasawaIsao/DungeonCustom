@@ -5,7 +5,6 @@
 #include "MessageLog.h"
 #include "Unit.h"
 #include "UnitManager.h"
-#include "Enemy.h"
 #include <algorithm>
 #include <cstdlib>
 
@@ -14,27 +13,15 @@ class KnockbackEffect : public EffectBase
 private:
     int m_Distance;
 
-    Vector2Int NormalizeDir(Vector2Int dir) const
-    {
-        if (dir.x != 0) dir.x = dir.x > 0 ? 1 : -1;
-        if (dir.y != 0) dir.y = dir.y > 0 ? 1 : -1;
-        return dir;
-    }
-
     Vector2Int GetLeftSourceDir(Unit* target) const
     {
         if (!target) return { 0, 0 };
 
-        Vector2Int forward = NormalizeDir(target->GetFacingDir());
+        Vector2Int forward = target->GetFacingDir().normalized();
         if (forward.x == 0 && forward.y == 0) forward = { 0, 1 };
 
         Vector2Int left = { -forward.y, forward.x };
-        return NormalizeDir(left);
-    }
-
-    Vector2Int GetIncomingFromLeftDir(Unit* target) const
-    {
-        return NormalizeDir(-GetLeftSourceDir(target));
+        return left.normalized();
     }
 
     Vector2Int GetLineStart(Unit* target, MapData* map, const Vector2Int& fromDir) const
@@ -57,7 +44,7 @@ private:
         if (!fallbackTarget) return nullptr;
 
         Vector2Int targetGrid = fallbackTarget->GetGridPos();
-        Vector2Int step = NormalizeDir(targetGrid - startGrid);
+        Vector2Int step = (targetGrid - startGrid).normalized();
         Vector2Int current = startGrid;
 
         for (int guard = 0; guard < 256; ++guard)
@@ -95,13 +82,13 @@ public:
         if (ctx.source == EffectSourceType::Trap && UnitManager::Instance() && triggerTarget == UnitManager::Instance()->GetPlayer())
             triggerTarget->LookAt(trapFromDir);
 
-        Vector2Int dir = NormalizeDir(ctx.direction);
+        Vector2Int dir = ctx.direction.normalized();
         if (ctx.source == EffectSourceType::Trap)
-            dir = NormalizeDir(-trapFromDir);
+            dir = (-trapFromDir).normalized();
         if (dir.x == 0 && dir.y == 0 && ctx.user)
-            dir = NormalizeDir(target->GetGridPos() - ctx.user->GetGridPos());
+            dir = (target->GetGridPos() - ctx.user->GetGridPos()).normalized();
         if (dir.x == 0 && dir.y == 0)
-            dir = NormalizeDir(target->GetFacingDir());
+            dir = target->GetFacingDir().normalized();
         if (dir.x == 0 && dir.y == 0) return;
 
         Vector2Int current = target->GetGridPos();
@@ -138,10 +125,7 @@ public:
         Unit* impactAttacker = collisionUnit ? collisionUnit : ctx.user;
         int collisionDamage = collisionUnit ? 5 : 0;
         target->StartKnockback(finalGrid, impactDamage, impactAttacker, collisionUnit, collisionDamage);
-        if (Enemy* enemy = dynamic_cast<Enemy*>(target)) {
-            // 強制移動で位置関係が壊れた敵は、一度追跡を切って次の巡回判断に戻す。
-            enemy->SuppressHostileRecognitionThisTurn();
-        }
+        // 強制移動後も敵の認識状態は維持し、必要な経路再計算はAI側の座標ずれ判定に任せる。
         Unit::SetSkipMoveAnimation(prevSkip);
         MessageLog::Instance().AddMessage(target->GetName() + u8"は吹き飛ばされた。");
     }

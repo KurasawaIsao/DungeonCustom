@@ -15,10 +15,10 @@ public:
     static std::vector<std::string> GetAllIds();
     static const std::unordered_map<std::string, ItemSpawnTable>& GetAll()
     {
-        return tables;
+        return m_Tables;
     }
 
 
 private:
-    static std::unordered_map<std::string, ItemSpawnTable> tables;
+    static std::unordered_map<std::string, ItemSpawnTable> m_Tables;
 };

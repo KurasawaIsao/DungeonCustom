@@ -13,7 +13,7 @@ void TitleCharacter::Init(
 {
     m_AnimationModel = new AnimationModel();
     m_AnimationModel->Load(modelName.c_str());
-    m_AnimNow = tag;
+    PlayAnimation(tag, 0.5f);
     InitToonShader();
 
     m_Type = type;
@@ -34,7 +34,6 @@ void TitleCharacter::Init(
         m_StartPos = targetPos + Vector3(0, -12.0f, 0);
         break;
     }
-    m_AnimSpeed = 0.5f;
     SetPosition(m_StartPos);
 }
 void TitleCharacter::Start()
@@ -86,7 +85,7 @@ void TitleCharacter::UpdateWarp()
     {
         WarpParticle* warp = Manager::GetScene()->AddGameObject<WarpParticle>(1);
 
-        warp->Center = m_TargetPos;
+        warp->m_Center = m_TargetPos;
 
         for (int i = 0; i < 60; i++)
         {

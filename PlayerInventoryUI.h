@@ -96,7 +96,6 @@ public:
         m_State = UIState::PotMenu;      
     }
     void OpenShrineConfirm();
-    void SetState(UIState state) { m_State = state; }
     void CloseAllMenus();
 
     bool IsAnyMenuOpen() const { return m_State != UIState::Normal; }

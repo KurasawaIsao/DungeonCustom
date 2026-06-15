@@ -50,17 +50,17 @@ private:
     static constexpr unsigned int MAX_ALPHA = 170;
 
     // 画面全体へ重ねる2Dポリゴン。
-    Polygon2D maskPoly;
+    Polygon2D m_MaskPoly;
     // CPU側で作成するRGBAマスク画像。アルファだけを使って暗さを表現する。
-    std::vector<unsigned int> pixels;
+    std::vector<unsigned int> m_Pixels;
     // CPU側で作ったマスクをGPUへ渡すための動的テクスチャ。
-    ID3D11Texture2D* tex = nullptr;
-    // 描画時にmaskPolyへ設定するテクスチャビュー。
-    ID3D11ShaderResourceView* srv = nullptr;
-    // trueの間はプレイヤー位置ではなくfocusGridPosを視界中心に使う。
-    bool hasFocusOverride = false;
-    Vector2Int focusGridPos{ 0, 0 };
-    Vector3 focusWorldPos{ 0.0f, 0.0f, 0.0f };
+    ID3D11Texture2D* m_Texture = nullptr;
+    // 描画時にm_MaskPolyへ設定するテクスチャビュー。
+    ID3D11ShaderResourceView* m_ShaderResourceView = nullptr;
+    // trueの間はプレイヤー位置ではなくm_FocusGridPosを視界中心に使う。
+    bool m_HasFocusOverride = false;
+    Vector2Int m_FocusGridPos{ 0, 0 };
+    Vector3 m_FocusWorldPos{ 0.0f, 0.0f, 0.0f };
 
     // マスク描画に使うGPUテクスチャを生成する。
     void CreateTexture();
@@ -70,15 +70,11 @@ private:
     void BuildMask(float centerX, float centerY, float radius);
     // 部屋や部屋扱いの領域をまとめて明るくする視界マスクを作成する。
     void BuildRoomAndViewMask(class MapData* map, const Vector2Int& centerPos, int viewDistance);
-    // グリッド範囲を画面上の矩形へ変換する。
-    bool GetGridAreaScreenRect(int left, int top, int right, int bottom, ScreenRect& outRect) const;
     // グリッド範囲をカメラ投影後の四角形へ変換する。
     bool GetGridAreaScreenQuad(int left, int top, int right, int bottom, ScreenQuad& outQuad) const;
-    // 指定した画面矩形の内側を透明化し、端だけ少しぼかす。
-    void ClearScreenRectSmooth(const ScreenRect& rect);
     // 指定した画面四角形の内側を透明化し、端だけ少しぼかす。
     void ClearScreenQuadSmooth(const ScreenQuad& quad);
-    // CPU側のpixelsをGPUテクスチャへ転送する。
+    // CPU側のm_PixelsをGPUテクスチャへ転送する。
     void ApplyToGPU();
     // 現在の階層設定とプレイヤー状態から、マスクを描画するか判定する。
     bool ShouldDrawMask(int& outViewDistance) const;

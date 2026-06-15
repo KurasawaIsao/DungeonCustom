@@ -57,7 +57,7 @@ std::unique_ptr<MapData> MapLoader::LoadFromFile(const std::string& path, Scene*
         std::vector<Room> loadedRooms;
         for (const auto& rj : root["rooms"]) {
             Room room({ rj["x"], rj["y"] }, { rj["w"], rj["h"] });
-            room.isFixed = rj.value("isFixed", false);
+            room.m_IsFixed = rj.value("isFixed", false);
 
             if (rj.contains("subRects")) {
                 for (const auto& srj : rj["subRects"]) {

@@ -10,19 +10,19 @@ class Ally;
 class UnitManager
 {
 private:
-    static UnitManager* instance;
+    static UnitManager* m_Instance;
 
-    Player* player = nullptr;
-    std::vector<Enemy*> enemies;
-    std::vector<Ally*> allies;
+    Player* m_Player = nullptr;
+    std::vector<Enemy*> m_Enemies;
+    std::vector<Ally*> m_Allies;
 
     UnitManager() {}
 
 public:
     static UnitManager* Instance()
     {
-        if (!instance) instance = new UnitManager();
-        return instance;
+        if (!m_Instance) m_Instance = new UnitManager();
+        return m_Instance;
     }
 
 
@@ -34,25 +34,22 @@ public:
     void ClearAllAllies();
     void ClearSceneReferences();
    
-    void SetPlayer(Player* p) { player = p; }
-    Player* GetPlayer() const { return player; }
+    void SetPlayer(Player* p) { m_Player = p; }
+    Player* GetPlayer() const { return m_Player; }
 
     void RegisterEnemy(Enemy* enemy);
 
     const std::vector<Enemy*>& GetEnemies() const
     {
-        return enemies;
+        return m_Enemies;
     }
 
     void RegisterAlly(Ally* a);
     const std::vector<Ally*>& GetAllies() const 
     { 
-        return allies; 
+        return m_Allies; 
     }
-    int GetEnemyCount() const { return static_cast<int>(enemies.size()); }
- 
-
-    bool HasEnemy(const Vector2Int& pos) const;
+    int GetEnemyCount() const { return static_cast<int>(m_Enemies.size()); }
     Unit* GetUnitAt(const Vector2Int& pos) const;
 
     void RemoveEnemy(Enemy* enemy);

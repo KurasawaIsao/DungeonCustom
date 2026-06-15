@@ -47,13 +47,6 @@ public:
         return Range(0.0f, 1.0f);
     }
 
-    static bool Chance(float probability)
-    {
-        if (probability <= 0.0f) return false;
-        if (probability >= 1.0f) return true;
-        return Value() < probability;
-    }
-
     static bool Percent(int percent)
     {
         const int clamped = (std::max)(0, (std::min)(100, percent));

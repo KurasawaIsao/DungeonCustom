@@ -60,21 +60,6 @@ public:
         return ray;
     }
 
-    // ƒŒƒC‚Æ Y=0 ‚Ì•½–Ê‚Æ‚ÌŒğ·
-    static bool RayPlaneIntersection(
-        const Vector3& origin,
-        const Vector3& dir,
-        float& t,
-        float planeY = 0.0f) 
-    {
-        Vector3 n = { 0, 1, 0 };
-        float denom = Vector3::dot(n, dir);
-        if (fabs(denom) < 1e-6f) return false;
-
-        t = (planeY - origin.y) / denom;
-        return (t >= 0);
-    }
-
 private:
 
     // === View s—ñ‚©‚ç Camera ‚Ì world À•W‚ğ‹‚ß‚é ===

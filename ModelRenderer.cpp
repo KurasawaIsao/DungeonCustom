@@ -58,41 +58,6 @@ void ModelRenderer::Draw(bool suppressSpecular)
 
 }
 
-void ModelRenderer::Preload(const char *FileName)
-{
-	if (m_ModelPool.count(FileName) > 0)
-	{
-		return;
-	}
-
-	MODEL* model = new MODEL;
-	LoadModel(FileName, model);
-
-	m_ModelPool[FileName] = model;
-
-}
-
-
-void ModelRenderer::UnloadAll()
-{
-	for (std::pair<const std::string, MODEL*> pair : m_ModelPool)
-	{
-		pair.second->VertexBuffer->Release();
-		pair.second->IndexBuffer->Release();
-
-		for (unsigned int i = 0; i < pair.second->SubsetNum; i++)
-		{
-			if (pair.second->SubsetArray[i].Material.Texture)
-				pair.second->SubsetArray[i].Material.Texture->Release();
-		}
-
-		delete[] pair.second->SubsetArray;
-
-		delete pair.second;
-	}
-
-	m_ModelPool.clear();
-}
 
 
 void ModelRenderer::Load(const char *FileName)

@@ -56,7 +56,3 @@ void TitleUI::Draw()
 void TitleUI::Uninit()
 {
 }
-void TitleUI::OnStartButtonPressed()
-{
-   
-}

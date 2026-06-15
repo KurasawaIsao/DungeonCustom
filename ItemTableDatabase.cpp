@@ -4,7 +4,7 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
-std::unordered_map<std::string, ItemSpawnTable> ItemTableDatabase::tables;
+std::unordered_map<std::string, ItemSpawnTable> ItemTableDatabase::m_Tables;
 void ItemTableDatabase::Init()
 {
     LoadAll("DungeonData\\ItemTables");
@@ -12,23 +12,23 @@ void ItemTableDatabase::Init()
 
 const ItemSpawnTable* ItemTableDatabase::Get(const std::string& id)
 {
-    auto it = tables.find(id);
-    if (it == tables.end())
+    auto it = m_Tables.find(id);
+    if (it == m_Tables.end())
         return nullptr;
     return &it->second;
 }
 
 bool ItemTableDatabase::Exists(const std::string& id)
 {
-    return tables.find(id) != tables.end();
+    return m_Tables.find(id) != m_Tables.end();
 }
 
 std::vector<std::string> ItemTableDatabase::GetAllIds()
 {
     std::vector<std::string> ids;
-    ids.reserve(tables.size());
+    ids.reserve(m_Tables.size());
 
-    for (const auto& [id, table] : tables)
+    for (const auto& [id, table] : m_Tables)
     {
         ids.push_back(id);
     }
@@ -36,7 +36,7 @@ std::vector<std::string> ItemTableDatabase::GetAllIds()
 }
 void ItemTableDatabase::LoadAll(const std::string& dir)
 {
-    tables.clear();
+    m_Tables.clear();
 
     if (!fs::exists(dir))
     {
@@ -55,12 +55,12 @@ void ItemTableDatabase::LoadAll(const std::string& dir)
         ItemSpawnTable table;
         if (ItemTableIO::LoadFromFile(entry.path().string(), table))
         {
-            if (tables.find(table.tableId) != tables.end())
+            if (m_Tables.find(table.tableId) != m_Tables.end())
             {
                 MessageLog::Instance().AddMessage("[Data] Duplicate item tableId: " + table.tableId);
                 continue;
             }
-            tables.emplace(table.tableId, std::move(table));
+            m_Tables.emplace(table.tableId, std::move(table));
         }
     }
 }

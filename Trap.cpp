@@ -7,6 +7,7 @@
 #include "EffectManager.h"
 #include "TurnManager.h"
 #include "MapManager.h"
+#include "UnitManager.h"
 #include "Time.h"
 #include <algorithm>
 #include <cmath>
@@ -83,7 +84,7 @@ void Trap::Activate(Unit* target) {
         SetDestroy();
     }
 }
-bool Trap::ActivateByItem()
+bool Trap::ActivateByItem(ItemInstance* item)
 {
     if (!m_Data || !m_Data->effect) return false;
 
@@ -99,7 +100,10 @@ bool Trap::ActivateByItem()
 
     EffectContext ctx;
     ctx.source = EffectSourceType::Trap;
-    ctx.target = nullptr;
+    // アイテムで作動した場合だけ、罠マス上の敵・仲間も効果対象として渡す。
+    ctx.target = UnitManager::Instance() ? UnitManager::Instance()->GetUnitAt(m_GridPos) : nullptr;
+    // 泥の罠などが、作動させた落下アイテム自体を変更できるように渡す。
+    ctx.item = item;
     ctx.pos = m_GridPos;
     m_Data->effect->Apply(ctx);
 
@@ -107,8 +111,9 @@ bool Trap::ActivateByItem()
     {
         if (auto* map = MapManager::Instance()->GetCurrentMap())
         {
-            // 配置判定からはすぐ外し、見た目だけ起動演出が終わるまで残す。
-            map->RemoveMapObject(this);
+            // 効果側が罠を別アイテムへ置き換えた場合、新しく置いたアイテムは削除しない。
+            if (map->GetObjectAt(m_GridPos) == this)
+                map->RemoveMapObject(this);
         }
         m_DestroyAfterItemActivation = true;
     }

@@ -111,9 +111,9 @@ namespace
 // 視界マスク用のCPUバッファ、GPUテクスチャ、全画面ポリゴンを初期化する。
 void VisionMaskRenderer::Init()
 {
-    pixels.assign(MASK_WIDTH * MASK_HEIGHT, 0x00000000);
+    m_Pixels.assign(MASK_WIDTH * MASK_HEIGHT, 0x00000000);
     CreateTexture();
-    maskPoly.Init(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, nullptr, 1.0f);
+    m_MaskPoly.Init(0.0f, 0.0f, (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, nullptr, 1.0f);
 }
 
 // 毎フレームCPUから書き換えるため、動的なマスクテクスチャを作成する。
@@ -132,23 +132,23 @@ void VisionMaskRenderer::CreateTexture()
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 
-    if (FAILED(Renderer::GetDevice()->CreateTexture2D(&desc, nullptr, &tex)))
+    if (FAILED(Renderer::GetDevice()->CreateTexture2D(&desc, nullptr, &m_Texture)))
     {
-        tex = nullptr;
+        m_Texture = nullptr;
         return;
     }
 
-    if (FAILED(Renderer::GetDevice()->CreateShaderResourceView(tex, nullptr, &srv)))
+    if (FAILED(Renderer::GetDevice()->CreateShaderResourceView(m_Texture, nullptr, &m_ShaderResourceView)))
     {
-        srv = nullptr;
+        m_ShaderResourceView = nullptr;
     }
 }
 
 // DirectXリソースを解放し、二重解放を避けるためポインタをnullptrへ戻す。
 void VisionMaskRenderer::ReleaseTexture()
 {
-    if (srv) { srv->Release(); srv = nullptr; }
-    if (tex) { tex->Release(); tex = nullptr; }
+    if (m_ShaderResourceView) { m_ShaderResourceView->Release(); m_ShaderResourceView = nullptr; }
+    if (m_Texture) { m_Texture->Release(); m_Texture = nullptr; }
 }
 
 // 現在の階層設定とプレイヤー状態から、視界マスクが必要か判定する。
@@ -193,15 +193,15 @@ bool VisionMaskRenderer::WorldToScreen(const Vector3& world, float& outX, float&
 // 移動演出中などに使う一時的な視界中心を設定する。
 void VisionMaskRenderer::SetFocusOverride(const Vector2Int& gridPos, const Vector3& worldPos)
 {
-    focusGridPos = gridPos;
-    focusWorldPos = worldPos;
-    hasFocusOverride = true;
+    m_FocusGridPos = gridPos;
+    m_FocusWorldPos = worldPos;
+    m_HasFocusOverride = true;
 }
 
 // 一時的な視界中心を解除し、通常のプレイヤー位置基準に戻す。
 void VisionMaskRenderer::ClearFocusOverride()
 {
-    hasFocusOverride = false;
+    m_HasFocusOverride = false;
 }
 
 // 視界距離を、画面上に描く円形マスクの中心と半径へ変換する。
@@ -258,61 +258,9 @@ void VisionMaskRenderer::BuildMask(float centerX, float centerY, float radius)
                 alpha = (unsigned int)(MAX_ALPHA * t);
             }
 
-            pixels[y * MASK_WIDTH + x] = (alpha << 24);
+            m_Pixels[y * MASK_WIDTH + x] = (alpha << 24);
         }
     }
-}
-
-// グリッド範囲を画面上の外接矩形へ変換する。
-bool VisionMaskRenderer::GetGridAreaScreenRect(int left, int top, int right, int bottom, ScreenRect& outRect) const
-{
-    const float halfTile = (float)TILE_DISTANCE * 0.5f;
-    const float worldLeft = (float)left * (float)TILE_DISTANCE - halfTile;
-    const float worldTop = (float)top * (float)TILE_DISTANCE - halfTile;
-    const float worldRight = (float)(right - 1) * (float)TILE_DISTANCE + halfTile;
-    const float worldBottom = (float)(bottom - 1) * (float)TILE_DISTANCE + halfTile;
-
-    bool hasPoint = false;
-    outRect = { (float)SCREEN_WIDTH, (float)SCREEN_HEIGHT, 0.0f, 0.0f };
-
-    const float xs[] = { worldLeft, worldRight };
-    const float zs[] = { worldTop, worldBottom };
-
-    for (float x : xs)
-    {
-        for (float z : zs)
-        {
-            float screenX = 0.0f;
-            float screenY = 0.0f;
-            if (!WorldToScreen(Vector3(x, 0.0f, z), screenX, screenY)) continue;
-
-            outRect.left = (std::min)(outRect.left, screenX);
-            outRect.top = (std::min)(outRect.top, screenY);
-            outRect.right = (std::max)(outRect.right, screenX);
-            outRect.bottom = (std::max)(outRect.bottom, screenY);
-            hasPoint = true;
-        }
-    }
-
-    if (!hasPoint) return false;
-
-    const float padding = 2.0f;
-    outRect.left -= padding;
-    outRect.top -= padding;
-    outRect.right += padding;
-    outRect.bottom += padding;
-
-    if (outRect.right < 0.0f || outRect.bottom < 0.0f ||
-        outRect.left > (float)SCREEN_WIDTH || outRect.top > (float)SCREEN_HEIGHT)
-    {
-        return false;
-    }
-
-    outRect.left = (std::max)(0.0f, outRect.left);
-    outRect.top = (std::max)(0.0f, outRect.top);
-    outRect.right = (std::min)((float)SCREEN_WIDTH, outRect.right);
-    outRect.bottom = (std::min)((float)SCREEN_HEIGHT, outRect.bottom);
-    return outRect.left < outRect.right && outRect.top < outRect.bottom;
 }
 
 // グリッド範囲を画面上の四角形として取得し、斜め投影された形を保つ。
@@ -360,39 +308,6 @@ bool VisionMaskRenderer::GetGridAreaScreenQuad(int left, int top, int right, int
     outQuad.bounds.right = (std::min)((float)SCREEN_WIDTH, outQuad.bounds.right);
     outQuad.bounds.bottom = (std::min)((float)SCREEN_HEIGHT, outQuad.bounds.bottom);
     return outQuad.bounds.left < outQuad.bounds.right && outQuad.bounds.top < outQuad.bounds.bottom;
-}
-
-// 指定した画面矩形の内側を透明化し、端だけ滑らかに暗く戻す。
-void VisionMaskRenderer::ClearScreenRectSmooth(const ScreenRect& rect)
-{
-    const float edgeWidth = 8.0f;
-    const float paddedLeft = rect.left - edgeWidth;
-    const float paddedTop = rect.top - edgeWidth;
-    const float paddedRight = rect.right + edgeWidth;
-    const float paddedBottom = rect.bottom + edgeWidth;
-
-    const int left = (std::max)(0, (int)std::floor(paddedLeft * MASK_WIDTH / (float)SCREEN_WIDTH));
-    const int top = (std::max)(0, (int)std::floor(paddedTop * MASK_HEIGHT / (float)SCREEN_HEIGHT));
-    const int right = (std::min)(MASK_WIDTH, (int)std::ceil(paddedRight * MASK_WIDTH / (float)SCREEN_WIDTH));
-    const int bottom = (std::min)(MASK_HEIGHT, (int)std::ceil(paddedBottom * MASK_HEIGHT / (float)SCREEN_HEIGHT));
-
-    for (int y = top; y < bottom; ++y)
-    {
-        const float screenY = ((float)y + 0.5f) * SCREEN_HEIGHT / MASK_HEIGHT;
-        for (int x = left; x < right; ++x)
-        {
-            const float screenX = ((float)x + 0.5f) * SCREEN_WIDTH / MASK_WIDTH;
-            const float outsideX = (std::max)((std::max)(rect.left - screenX, screenX - rect.right), 0.0f);
-            const float outsideY = (std::max)((std::max)(rect.top - screenY, screenY - rect.bottom), 0.0f);
-            const float outside = (std::max)(outsideX, outsideY);
-            if (outside >= edgeWidth) continue;
-
-            const unsigned int alpha = (unsigned int)(MAX_ALPHA * (outside / edgeWidth));
-            unsigned int& pixel = pixels[y * MASK_WIDTH + x];
-            const unsigned int currentAlpha = pixel >> 24;
-            pixel = ((std::min)(currentAlpha, alpha) << 24);
-        }
-    }
 }
 
 // 指定した画面四角形の内側を透明化し、端だけ滑らかに暗く戻す。
@@ -466,7 +381,7 @@ void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
                 alpha = (unsigned int)(MAX_ALPHA * (distance / edgeWidth));
             }
 
-            unsigned int& pixel = pixels[y * MASK_WIDTH + x];
+            unsigned int& pixel = m_Pixels[y * MASK_WIDTH + x];
             const unsigned int currentAlpha = pixel >> 24;
             pixel = ((std::min)(currentAlpha, alpha) << 24);
         }
@@ -476,7 +391,7 @@ void VisionMaskRenderer::ClearScreenQuadSmooth(const ScreenQuad& quad)
 // 部屋や部屋扱いの領域をまとめて明るくする視界マスクを作成する。
 void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& centerPos, int viewDistance)
 {
-    std::fill(pixels.begin(), pixels.end(), (MAX_ALPHA << 24));
+    std::fill(m_Pixels.begin(), m_Pixels.end(), (MAX_ALPHA << 24));
     if (!map) return;
 
     const Room* room = map->GetRoomAt(centerPos);
@@ -608,13 +523,13 @@ void VisionMaskRenderer::BuildRoomAndViewMask(MapData* map, const Vector2Int& ce
 // CPU側のマスク画像をGPUテクスチャへ転送する。
 void VisionMaskRenderer::ApplyToGPU()
 {
-    if (!tex) return;
+    if (!m_Texture) return;
 
     D3D11_MAPPED_SUBRESOURCE mapped{};
-    if (FAILED(Renderer::GetDeviceContext()->Map(tex, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) return;
+    if (FAILED(Renderer::GetDeviceContext()->Map(m_Texture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped))) return;
     if (!mapped.pData)
     {
-        Renderer::GetDeviceContext()->Unmap(tex, 0);
+        Renderer::GetDeviceContext()->Unmap(m_Texture, 0);
         return;
     }
 
@@ -622,12 +537,12 @@ void VisionMaskRenderer::ApplyToGPU()
     {
         std::memcpy(
             (uint8_t*)mapped.pData + y * mapped.RowPitch,
-            &pixels[y * MASK_WIDTH],
+            &m_Pixels[y * MASK_WIDTH],
             MASK_WIDTH * 4
         );
     }
 
-    Renderer::GetDeviceContext()->Unmap(tex, 0);
+    Renderer::GetDeviceContext()->Unmap(m_Texture, 0);
 }
 
 // 現在のプレイヤー位置と階層設定に合わせて視界マスクを描画する。
@@ -643,7 +558,7 @@ void VisionMaskRenderer::Draw()
     if (!map || !player) return;
 
     // プレイヤー移動中は開始マスを中心にして、視界マスクの切り替わりを到着後に遅らせる。
-    const Vector2Int centerPos = hasFocusOverride ? focusGridPos : player->GetVisionGridPos();
+    const Vector2Int centerPos = m_HasFocusOverride ? m_FocusGridPos : player->GetVisionGridPos();
     const Vector3 centerWorld = GridToMaskWorld(centerPos);
 
     if (map->GetRoomAt(centerPos) != nullptr || IsRoomLikeTile(map, centerPos))
@@ -662,12 +577,12 @@ void VisionMaskRenderer::Draw()
     }
     ApplyToGPU();
 
-    if (!srv) return;
+    if (!m_ShaderResourceView) return;
 
     // マスクは画面へ重ねるため、深度判定を切ってから描画する。
     Renderer::SetDepthEnable(false);
-    maskPoly.SetTexture(srv);
-    maskPoly.Draw();
+    m_MaskPoly.SetTexture(m_ShaderResourceView);
+    m_MaskPoly.Draw();
     Renderer::SetDepthEnable(true);
 }
 
@@ -675,5 +590,5 @@ void VisionMaskRenderer::Draw()
 void VisionMaskRenderer::Uninit()
 {
     ReleaseTexture();
-    maskPoly.Uninit();
+    m_MaskPoly.Uninit();
 }

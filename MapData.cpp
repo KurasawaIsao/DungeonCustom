@@ -110,16 +110,6 @@ void MapData::ExpandActiveAreaWithWall(int padding)
 
     m_ActiveTiles = expandedActiveTiles;
 }
-void MapData::ApplyRooms()
-{
-    // 全部壁でリセット
-    for (int i = 0; i < m_Width * m_Height; i++)
-        m_Tiles[i] = TileType::Wall;
-
-    // 部屋をすべて適用し直す
-    for (auto& r : m_Rooms)
-        ApplyRoom(r);
-}
 
 void MapData::ApplyRoom(const Room& r)
 {
@@ -338,7 +328,7 @@ void MapData::Deserialize(const nlohmann::json& j)
 
 bool MapData::IsRoomBorderTile(int x, int y) const
 {
-    // 1そもそも座標がマップ外なら即終了
+    // そもそも座標がマップ外なら即終了
     if (!IsInside(x, y)) return false;
 
     //  床タイルでなければ判定しない

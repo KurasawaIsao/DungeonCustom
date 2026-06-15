@@ -9,7 +9,6 @@
 #include "Object3D.h"
 #include "WarpParticle.h"
 #include "TitleCharacter.h"
-#include "Easing.h"
 #include "Polygon.h"
 #include "TitleUI.h"
 #include "Fade.h"
@@ -66,11 +65,11 @@ void Title::Init()
     m_BGM->Play(true);
 	auto* warp = AddGameObject<WarpParticle>(1);
 
-    warp->Center = Vector3{ 0.0f, 2.0f, -1.0f  };
+    warp->m_Center = Vector3{ 0.0f, 2.0f, -1.0f  };
 
 	for (int i = 0; i < 60; i++)
 	{
-		warp->Spawn(warp->Center, Vector4(0.6f, 0.8f, 1.0f, 1.0f));
+		warp->Spawn(warp->m_Center, Vector4(0.6f, 0.8f, 1.0f, 1.0f));
 	}
 
 
@@ -388,8 +387,8 @@ void Title::StartSelectedDungeon()
     if (m_SceneStart) return;
 
     // 選択したダンジョン名を、読み込み側が使っている DungeonContext 配下のIDに変換する。
-    DataReference::NextDungeonId = "DungeonData\\DungeonContext\\" + GetSelectedDungeonName();
-    DataReference::IsEditorTestPlay = false;
+    DataReference::m_NextDungeonId = "DungeonData\\DungeonContext\\" + GetSelectedDungeonName();
+    DataReference::m_IsEditorTestPlay = false;
 
     if (auto* fade = Manager::GetScene()->GetGameObject<Fade>())
     {
@@ -405,7 +404,7 @@ void Title::StartEditorScene()
     if (m_SceneStart) return;
 
     // タイトルから直接エディタへ移動する場合も、通常プレイ扱いに戻してから遷移する。
-    DataReference::IsEditorTestPlay = false;
+    DataReference::m_IsEditorTestPlay = false;
 
     if (auto* fade = Manager::GetScene()->GetGameObject<Fade>())
     {

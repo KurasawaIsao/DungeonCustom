@@ -5,7 +5,7 @@
 
 namespace fs = std::filesystem;
 
-std::unordered_map<std::string, TrapSpawnTable> TrapTableDatabase::tables;
+std::unordered_map<std::string, TrapSpawnTable> TrapTableDatabase::m_Tables;
 
 void TrapTableDatabase::Init()
 {
@@ -14,23 +14,23 @@ void TrapTableDatabase::Init()
 
 const TrapSpawnTable* TrapTableDatabase::Get(const std::string& id)
 {
-    auto it = tables.find(id);
-    if (it == tables.end())
+    auto it = m_Tables.find(id);
+    if (it == m_Tables.end())
         return nullptr;
     return &it->second;
 }
 
 bool TrapTableDatabase::Exists(const std::string& id)
 {
-    return tables.find(id) != tables.end();
+    return m_Tables.find(id) != m_Tables.end();
 }
 
 std::vector<std::string> TrapTableDatabase::GetAllIds()
 {
     std::vector<std::string> ids;
-    ids.reserve(tables.size());
+    ids.reserve(m_Tables.size());
 
-    for (const auto& [id, table] : tables)
+    for (const auto& [id, table] : m_Tables)
         ids.push_back(id);
 
     return ids;
@@ -38,7 +38,7 @@ std::vector<std::string> TrapTableDatabase::GetAllIds()
 
 void TrapTableDatabase::LoadAll(const std::string& dir)
 {
-    tables.clear();
+    m_Tables.clear();
 
     std::error_code ec;
     if (!fs::exists(dir, ec) || ec)
@@ -62,12 +62,12 @@ void TrapTableDatabase::LoadAll(const std::string& dir)
         TrapSpawnTable table;
         if (SpawnTableIO::Load(entry.path().string(), table))
         {
-            if (tables.find(table.tableId) != tables.end())
+            if (m_Tables.find(table.tableId) != m_Tables.end())
             {
                 MessageLog::Instance().AddMessage("[Data] Duplicate trap tableId: " + table.tableId);
                 continue;
             }
-            tables.emplace(table.tableId, std::move(table));
+            m_Tables.emplace(table.tableId, std::move(table));
         }
     }
 }

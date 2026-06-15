@@ -679,6 +679,9 @@ void DungeonStructureEditor::DrawDungeonEditorWindow(
                 ImGui::EndCombo();
             }
 
+            // 最終項目がウィンドウ下端に重ならないよう、スクロール末尾に入力欄1行分の余白を設ける。
+            ImGui::Dummy(ImVec2(0.0f, ImGui::GetFrameHeightWithSpacing()));
+
             if (detailChanged) {
                 mirrorToBulkTargets([&](FloorData& target) { target = f; });
             }
