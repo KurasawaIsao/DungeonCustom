@@ -439,6 +439,28 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
 
     FaceDirection(dir);
 
+    // 次のマスで敵の通常攻撃範囲に入る場合は、戦闘演出を省略しないよう通常移動へ切り替える。
+    auto wouldStartCombatAt = [map](const Vector2Int& playerPos) {
+        UnitManager* units = UnitManager::Instance();
+        if (!units) return false;
+
+        for (Enemy* enemy : units->GetEnemies()) {
+            if (!enemy || enemy->GetHP() <= 0) continue;
+
+            Vector2Int enemyPos = enemy->GetGridPos();
+            Vector2Int attackDir = playerPos - enemyPos;
+            int chebyshev = attackDir.Chebyshev(Vector2Int(0, 0));
+            int manhattan = attackDir.Manhattan(Vector2Int(0, 0));
+
+            if (manhattan == 1) return true;
+            if (chebyshev == 1 && manhattan == 2 &&
+                !enemy->IsDiagonalMoveBlocked(enemyPos, attackDir, map)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     bool stopAfterOneStep = HasNewDashAdjacentEnemy();
     int maxSteps = map->GetWidth() * map->GetHeight();
 
@@ -463,6 +485,12 @@ void Player::ExecuteInstantDash(const Vector2Int& dir) {
         }
 
         const bool nextHasItem = IsItemAt(next, map);
+        if (wouldStartCombatAt(next)) {
+            // 戦闘が始まる1歩だけは通常移動にして、移動と攻撃のアニメーションを表示する。
+            Move(dir);
+            break;
+        }
+
         InstantMoveTo(next, nextHasItem);
         EndTurn();
         TurnManager::Instance()->ResolveAfterPlayerInstantMove();
@@ -1026,7 +1054,6 @@ void Player::ShootArrow(int index) {
     MessageLog::Instance().AddMessage(m_Name + u8"は" + slot.instance.GetDisplayName() + u8"を撃った。");
 
     FlyingObject* arrow = Manager::GetScene()->AddGameObject<FlyingObject>(1);
-    arrow->SetRotation(Vector3(0, m_Rotation.y - 90.0f, 0));
 
     // 装備中の束から1本分の状態を作り、投擲物と同じ飛翔処理へ渡す。
     ItemInstance firedArrow(data);

@@ -72,6 +72,7 @@ private:
     float m_FlyT = 0.0f;
     float m_Speed = 0.05f;
     float m_ItemSpin = 0.0f;
+    float m_FlightYawOffset = 0.0f;
     float m_ArcDuration = 0.5f;
     bool m_RotateItemInFlight = false;
     bool m_UseArcFlight = false;

@@ -18,7 +18,7 @@ void Trap::Init()
     Renderer::InitCommonShader();
     m_Rotation = Vector3{ 0.0f,0.0f,0.0f };
     m_Scale = { 1.0f, 1.0f, 1.0f };
-    m_IsVisible = false;
+    m_IsVisible = true;
 }
 
 void Trap::Update()
