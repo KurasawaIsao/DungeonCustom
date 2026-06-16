@@ -183,8 +183,12 @@ void Ally::Update()
     this->LookAt(m_FacingDir);
     UpdateAnimation();
     // 攻撃・特技・被ダメージの単発演出が終わったら、次の行動へ進める状態に戻す。
-    if (m_IsActingAnimation && (!m_AnimationModel->IsOneShotPlaying())) {
+    if (m_IsActingAnimation && (!m_AnimationModel || !m_AnimationModel->IsOneShotPlaying())) {
         m_IsActingAnimation = false;
+        if (m_MoveState == MoveState::Idle) {
+            // 戦闘演出の直前がRunでも、終了後は現在状態の待機モーションへ戻す。
+            PlayAnimation(GetMoveEndAnimation(), 1.0f);
+        }
     }
 }
 
