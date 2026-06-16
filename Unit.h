@@ -85,7 +85,9 @@ protected:
     Vector3 m_MoveEndPos;
 
     float m_MoveTimer = 0.0f;
-    float m_MoveDuration = 0.1f;
+    // 通常の1マス移動に使う基準時間。特殊移動の時間を通常移動へ持ち越さない。
+    static constexpr float DEFAULT_MOVE_DURATION = 0.1f;
+    float m_MoveDuration = DEFAULT_MOVE_DURATION;
     Vector3 m_VisualRotationOffset{ 0.0f, 0.0f, 0.0f };
     int m_KnockbackImpactDamage = 0;
     Unit* m_KnockbackImpactAttacker = nullptr;

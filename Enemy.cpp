@@ -259,6 +259,10 @@ void Enemy::Update()
 
     if (m_IsActingAnimation && (!m_AnimationModel || !m_AnimationModel->IsOneShotPlaying())) {
         m_IsActingAnimation = false;
+        if (m_MoveState == MoveState::Idle) {
+            // 戦闘演出の直前がRunでも、終了後は現在状態の待機モーションへ戻す。
+            PlayAnimation(GetMoveEndAnimation(), 1.0f);
+        }
     }
    
     // 状態異常のループエフェクトはユニットの頭上に追従させる。

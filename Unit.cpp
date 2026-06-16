@@ -677,7 +677,8 @@ void Unit::RequestMove(const Vector2Int& target)
     if (IsDiagonalMoveBlocked(m_GridPos, dir, map)) return;
     if (um && um->GetUnitAt(target)) return;
 
-    StartMove(target, m_MoveDuration);
+    // 通常移動はワープなどで一時変更された時間を使わず、基準時間で開始する。
+    StartMove(target, DEFAULT_MOVE_DURATION);
 }
 bool Unit::RequestMoveBool(const Vector2Int& target)
 {
@@ -698,7 +699,8 @@ bool Unit::RequestMoveBool(const Vector2Int& target)
     Unit* unit = um ? um->GetUnitAt(target) : nullptr;
     if (unit && unit != this) return false;
 
-    StartMove(target, m_MoveDuration);
+    // 通常移動はワープなどで一時変更された時間を使わず、基準時間で開始する。
+    StartMove(target, DEFAULT_MOVE_DURATION);
     return true;
 }
 bool Unit::HasKnockbackImpactDamage() const
@@ -897,7 +899,7 @@ void Unit::UpdateLerpMove() {
         // 鉄球の衝突ダメージは、吹き飛び到達後に停止フレームを挟まずその場で確定させる。
         if (finishedState == MoveState::Knockback) ApplyKnockbackImpactDamage();
 
-        m_MoveDuration = 0.1f;
+        m_MoveDuration = DEFAULT_MOVE_DURATION;
         m_MoveState = MoveState::Idle;
         m_MoveTimer = 0.0f;
         m_IsAnimatingMove = false;
