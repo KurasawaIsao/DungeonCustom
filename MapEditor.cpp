@@ -59,7 +59,7 @@ void MapEditor::Uninit() {
 }
 
 void MapEditor::Update() {
-    if (Input::GetKeyTrigger(VK_ESCAPE)) m_Enabled = !m_Enabled;
+    if (Input::GetKeyTrigger(VK_SHIFT)) m_Enabled = !m_Enabled;
     if (!m_Enabled) return;
 
     UpdateHover();
