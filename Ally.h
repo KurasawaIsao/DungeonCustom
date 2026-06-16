@@ -38,6 +38,7 @@ private:
 
     // 攻撃・特技アニメーションのNotifyまで、選択済みのゲーム処理を保持する。
     Unit* m_PendingAttackTarget = nullptr;
+    bool m_PendingAttackHit = false;
     std::shared_ptr<EffectBase> m_PendingSkillEffect;
     EffectContext m_PendingSkillContext;
     std::vector<Unit*> m_PendingSkillTargets;

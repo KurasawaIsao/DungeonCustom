@@ -459,19 +459,25 @@ void Ally::StartAttackWithNotify(Unit* target)
 {
     if (!target || target->GetHP() <= 0) return;
 
+    // 敵側と同じく、回避判定を先に確定して攻撃前メッセージをNotifyより先に出す。
+    m_PendingAttackTarget = target;
+    m_PendingAttackHit = CheckHit(GetACC(), target->GetEVD());
+    if (m_PendingAttackHit)
+    {
+        MessageLog::Instance().AddMessage(m_Name + u8"から");
+    }
+
     const bool showVisual = ShouldShowCombatVisual(target);
     if (showVisual &&
         m_AnimationModel &&
         m_AnimationModel->HasAnimationNotify("Attack", "AttackHit"))
     {
         // ダメージ処理はAttackHit Notifyまで保留し、見た目と判定の瞬間を一致させる。
-        m_PendingAttackTarget = target;
         SetTriggerAnimation("Attack", 1.0f);
         return;
     }
 
     // Notify未登録時は即時処理へ戻すが、表示可能なら攻撃モーション自体は再生する。
-    m_PendingAttackTarget = target;
     ResolvePendingAttack();
     if (showVisual) SetTriggerAnimation("Attack", 1.0f);
 }
@@ -479,10 +485,12 @@ void Ally::StartAttackWithNotify(Unit* target)
 void Ally::ResolvePendingAttack()
 {
     Unit* target = m_PendingAttackTarget;
+    const bool attackHit = m_PendingAttackHit;
     m_PendingAttackTarget = nullptr;
+    m_PendingAttackHit = false;
     if (!target || target->GetHP() <= 0) return;
 
-    if (!CheckHit(GetACC(), target->GetEVD()))
+    if (!attackHit)
     {
         MessageLog::Instance().AddMessage(m_Name + u8"の攻撃は外れた。");
         return;
@@ -540,6 +548,7 @@ void Ally::ResolvePendingSkill()
 void Ally::ClearPendingCombatActions()
 {
     m_PendingAttackTarget = nullptr;
+    m_PendingAttackHit = false;
     m_PendingSkillEffect.reset();
     m_PendingSkillContext = {};
     m_PendingSkillTargets.clear();
